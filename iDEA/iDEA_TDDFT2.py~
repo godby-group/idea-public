@@ -7,7 +7,7 @@ from scipy import linalg as la
 from scipy import special
 from scipy import sparse
 from scipy.sparse import linalg as spla
-import parameters as pm
+import parameters2 as pm
 import pickle
 import sys
 
