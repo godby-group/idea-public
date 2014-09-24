@@ -31,10 +31,13 @@ print('  --------------------------------------------------------------')
 # Function to construct the potential V
 def constructV(time):
    xgrid = np.linspace(-0.5*pm.L,0.5*pm.L,pm.N)
+   V = []
    if(time =='i'):
-      V = pm.Vext(xgrid)
-   if(time == 'r'):
-      V = pm.Vext(xgrid) + pm.Vptrb(xgrid)
+      for i in range(0,len(xgrid)):
+         V.append(pm.Vext(xgrid[i]))
+   if(time =='r'):
+      for i in range(0,len(xgrid)):
+         V.append(pm.Vext(xgrid[i]) + pm.Vptrb(xgrid[i]))
    return V
 
 # Function to construct the hamiltonain H
