@@ -313,7 +313,7 @@ def CNsolveComplexTime():
 	    b_RM = mkl.mkl_mvmultiply_c(C_RM.data,C_RM.indptr+1,C_RM.indices+1,1,Psiarr_RM,C_RM.shape[0],C_RM.indices.size)
 
 	# Solve Ax=b
-	Psiarr_RM,info = spla.cg(A_RM,b_RM,x0=Psiarr_RM,tol=ctol)
+	Psiarr_RM,info = spla.lgmres(A_RM,b_RM,x0=Psiarr_RM,tol=ctol)
         
 	# Expand the wavefunction
         Psiarr[1,:] = c_p*Psiarr_RM
