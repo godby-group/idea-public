@@ -55,7 +55,7 @@ def constructA(H,time):
    if(time == 'i'):   
       A = I + 1.0*(pm.cdt/2.0)*H
    if(time =='r'):   
-      A = I + 1.0j*(pm.cdt/2.0)*H
+      A = I + 1.0j*(pm.dt/2.0)*H
    return A
 
 # Function to construct the matrix C from the hamiltonain H
@@ -64,7 +64,7 @@ def constructC(H,time):
    if(time == 'i'):   
       C = I - 1.0*(pm.cdt/2.0)*H
    if(time == 'r'):   
-      C = I - 1.0j*(pm.cdt/2.0)*H
+      C = I - 1.0j*(pm.dt/2.0)*H
    return C
 
 # Function the calculate the density for a given wavefunction
@@ -164,6 +164,8 @@ def main():
 
    # Perform real time iterations until completed
    i = 0
+   if(TD != 1):
+      i = pm.rI
    densities = []
    while(i < pm.rI):
 
