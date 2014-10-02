@@ -164,7 +164,7 @@ def main():
 
    # Perform real time iterations until completed
    i = 0
-   if(TD != 1):
+   if(pm.TD != 1):
       i = pm.rI
    densities = []
    while(i < pm.rI):
