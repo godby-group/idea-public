@@ -1,0 +1,141 @@
+!    -*- f90 -*-
+! Note: the context of this file is case sensitive.
+
+python module ideafort ! in 
+    interface  ! in :ideafort
+        subroutine xygrid(n_e,n_x,n,ie,xy) ! in :ideafort:ideafort.f90
+            integer(kind=4) intent(in) :: n_e
+            integer(kind=4) intent(in) :: n_x
+            integer(kind=4) intent(in) :: n
+            integer(kind=4) intent(in) :: ie
+            integer(kind=4) dimension(n),intent(out),depend(n) :: xy
+        end subroutine xygrid
+        subroutine downgrid(n_e,n,xy,sgrid) ! in :ideafort:ideafort.f90
+            integer(kind=4) intent(in) :: n_e
+            integer(kind=4) intent(in) :: n
+            integer(kind=4) dimension(n,n_e),intent(in),depend(n,n_e) :: xy
+            integer(kind=4) dimension(n),intent(out),depend(n) :: sgrid
+        end subroutine downgrid
+        subroutine antisym(n_e,nxs,n,n_x,n_perms,xy,sgrid,downrows,downcols,downvals,uprows,upcols,upvals) ! in :ideafort:ideafort.f90
+            use omp_lib
+            integer(kind=4) intent(in) :: n_e
+            integer(kind=4) intent(in) :: nxs
+            integer(kind=4) intent(in) :: n
+            integer(kind=4) intent(in) :: n_x
+            integer(kind=4) intent(in) :: n_perms
+            integer(kind=4) dimension(n,n_e),intent(in),depend(n,n_e) :: xy
+            integer(kind=4) dimension(n),intent(in),depend(n) :: sgrid
+            integer(kind=4) dimension(nxs),intent(out),depend(nxs) :: downrows
+            integer(kind=4) dimension(nxs),intent(out),depend(nxs) :: downcols
+            real*8 dimension(nxs),intent(out),depend(nxs) :: downvals
+            integer(kind=4) dimension(n),intent(out),depend(n) :: uprows
+            integer(kind=4) dimension(n),intent(out),depend(n) :: upcols
+            real*8 dimension(n),intent(out),depend(n) :: upvals
+        end subroutine antisym
+        subroutine permutations(ind,n_perms,n_e,perms,swaps) ! in :ideafort:ideafort.f90
+            integer(kind=4) dimension(n_e),intent(in) :: ind
+            integer(kind=4) intent(in) :: n_perms
+            integer(kind=4) intent(in) :: n_e
+            integer(kind=4) dimension(n_perms,n_e),intent(out),depend(n_perms,n_e) :: perms
+            integer(kind=4) dimension(n_perms),intent(out),depend(n_perms) :: swaps
+        end subroutine permutations
+        subroutine one_permutation(ind,n,counter,n_e,n_perms,perms,swaps,swapcount) ! in :ideafort:ideafort.f90
+            integer(kind=4) dimension(n_e),intent(inout) :: ind
+            integer(kind=4) intent(in) :: n
+            integer(kind=4) intent(inout) :: counter
+            integer(kind=4) intent(in) :: n_e
+            integer(kind=4) intent(in) :: n_perms
+            integer(kind=4) dimension(n_perms,n_e),intent(inout),depend(n_perms,n_e) :: perms
+            integer(kind=4) dimension(n_perms),intent(inout),depend(n_perms) :: swaps
+            integer(kind=4) intent(inout) :: swapcount
+        end subroutine one_permutation
+        subroutine swap(n_e,ind,x,y,swapcount) ! in :ideafort:ideafort.f90
+            integer(kind=4) intent(in) :: n_e
+            integer(kind=4) dimension(n_e),intent(inout),depend(n_e) :: ind
+            integer(kind=4) intent(in) :: x
+            integer(kind=4) intent(in) :: y
+            integer(kind=4) intent(inout) :: swapcount
+        end subroutine swap
+        subroutine get_index(n_e,n_x,ind,j) ! in :ideafort:ideafort.f90
+            integer(kind=4) intent(in) :: n_e
+            integer(kind=4) intent(in) :: n_x
+            integer(kind=4) dimension(n_e),intent(in),depend(n_e) :: ind
+            integer(kind=4) intent(out) :: j
+        end subroutine get_index
+        subroutine coulomb(n_e,n,n_x,n_cells,xy,dx,c,w) ! in :ideafort:ideafort.f90
+            use omp_lib
+            integer(kind=4) intent(in) :: n_e
+            integer(kind=4) intent(in) :: n
+            integer(kind=4) intent(in) :: n_x
+            integer(kind=4) intent(in) :: n_cells
+            integer(kind=4) dimension(n,n_e),intent(in),depend(n,n_e) :: xy
+            real*8 intent(in) :: dx
+            real*8 intent(in) :: c
+            real*8 dimension(n),intent(out),depend(n) :: w
+        end subroutine coulomb
+        subroutine hartree(n_e,n_x,n,n_cells,dx,l,c,xy,inc_primary,v) ! in :ideafort:ideafort.f90
+            use omp_lib
+            integer(kind=4) intent(in) :: n_e
+            integer(kind=4) intent(in) :: n_x
+            integer(kind=4) intent(in) :: n
+            integer(kind=4) intent(in) :: n_cells
+            real*8 intent(in) :: dx
+            real*8 intent(in) :: l
+            real*8 intent(in) :: c
+            integer(kind=4) dimension(n,n_e),intent(in),depend(n,n_e) :: xy
+            integer(kind=4) intent(in) :: inc_primary
+            real*8 dimension(n),intent(out),depend(n) :: v
+        end subroutine hartree
+        subroutine kinetic(n_e,n,n_fdc,n_x,n_k,offsets,xy,fdc,phase,trows,tcols,tvals) ! in :ideafort:ideafort.f90
+            integer(kind=4) intent(in) :: n_e
+            integer(kind=4) intent(in) :: n
+            integer(kind=4) intent(in) :: n_fdc
+            integer(kind=4) intent(in) :: n_x
+            real*8 intent(in) :: phase
+            integer*8 intent(in) :: n_k
+            integer(kind=4) dimension(n_fdc),intent(in),depend(n_fdc) :: offsets
+            integer(kind=4) dimension(n,n_e),intent(in),depend(n,n_e) :: xy
+            real*8 dimension(n_fdc),intent(in),depend(n_fdc) :: fdc
+            integer(kind=4) dimension(n*n_k),intent(out),depend(n,n_k) :: trows
+            integer(kind=4) dimension(n*n_k),intent(out),depend(n,n_k) :: tcols
+            complex*16 dimension(n*n_k),intent(out),depend(n,n_k) :: tvals
+        end subroutine kinetic
+        subroutine density(n_cd, n_x, n, n_e, xy, dx, phi, rho)
+            integer(kind=4) intent(in) :: n_cd
+            integer(kind=4) intent(in) :: n_x
+            integer(kind=4) intent(in) :: n
+            integer(kind=4) intent(in) :: n_e
+            integer(kind=4) dimension(n,n_e),intent(in),depend(n,n_e) :: xy
+            real*8 intent(in) :: dx
+            complex*16 dimension(n_cd),intent(in),depend(n_cd) :: phi
+            real*8 dimension(n_x),intent(out),depend(n_x) :: rho
+        end subroutine density
+        subroutine reverse_sort(n_e, ind, sort)
+            integer(kind=4) intent(in) :: n_e
+            integer(kind=4) dimension(n_e),intent(in),depend(n_e) :: ind
+            integer(kind=4) dimension(n_e),intent(out),depend(n_e) :: sort
+        end subroutine reverse_sort
+        subroutine slater_determinant(n_e, n_perms, n, n_x, xy, u, phi)
+            integer(kind=4) intent(in) :: n_e
+            integer(kind=4) intent(in) :: n_perms
+            integer(kind=4) intent(in) :: n
+            integer(kind=4) intent(in) :: n_x
+            integer(kind=4) dimension(n,n_e),intent(in),depend(n,n_e) :: xy
+            complex*16 dimension(n_x,n_e),intent(in),depend(n_x,n_e) :: u
+            complex*16 dimension(n),intent(out),depend(n) :: phi
+        end subroutine slater_determinant
+        subroutine product_wavefunction(n_e, n_x, n_perms, swap, u, ind, perm, psi)
+            integer(kind=4) intent(in) :: n_e
+            integer(kind=4) intent(in) :: n_x
+            integer(kind=4) intent(in) :: n_perms
+            integer(kind=4) intent(in) :: swap
+            complex*16 dimension(n_x,n_e),intent(in),depend(n_x,n_e) :: u
+            integer(kind=4) dimension(n_e),intent(in),depend(n_e) :: ind
+            integer(kind=4) dimension(n_e),intent(in),depend(n_e) :: perm
+            complex*16 intent(out) :: psi
+        end subroutine product_wavefunction
+    end interface 
+end python module ideafort
+
+! This file was auto-generated with f2py (version:2).
+! See http://cens.ioc.ee/projects/f2py2e/

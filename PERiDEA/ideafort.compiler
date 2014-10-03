@@ -1,0 +1,1 @@
+f2py -c ideafort.pyf -m ideafort --fcompiler=gnu95 --f90flags='-fopenmp' -lgomp ideafort.f90

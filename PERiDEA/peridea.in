@@ -1,0 +1,14 @@
+2	# No. of electrons per supercell
+10.0	# Length of supercell
+100	# No. grid points per electron per supercell
+1.0	# Strength of Coulomb interaction
+1.0	# Coulomb softening constant
+6001	# No. supercells
+2.0	# *pi = phase difference of W.F. at left and right boundaries of supercell
+10	# No. threads to parallelise to
+3	# No. finite difference coefficients in kinetic energy matrix
+0	# Initial wavefunction type: 0 = noninteracting; 1 = random antisymmetric
+0.5	# Proportion of imaginary timestep to grid-spacing squared
+0	# 0 = ground-state only; 1 = ground-state + time-dependence
+20000	# Number of time steps
+0.01	# Time step
