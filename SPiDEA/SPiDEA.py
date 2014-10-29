@@ -43,7 +43,7 @@ def constructV(time):
 # Function to construct the hamiltonain H
 def constructH(time):
    xgrid = np.linspace(-0.5*pm.L,0.5*pm.L,pm.N)
-   K = -0.5*sps.diags([1, -2, 1], [-1, 0, 1], shape=(pm.N,pm.N))/(2.0*pm.dx**2)
+   K = -0.5*sps.diags([1, -2, 1],[-1, 0, 1],shape=(pm.N,pm.N))/(pm.dx**2)
    Vdiagonal = constructV(time)
    V = sps.spdiags(Vdiagonal, 0, pm.N, pm.N, format='csr')
    H = K + V
@@ -67,6 +67,16 @@ def constructC(H,time):
       C = I - 1.0j*(pm.dt/2.0)*H
    return C
 
+# Function to return the energy of a wavefunction given the hamiltonain H
+def calculateEnergy(H,wavefunction):
+   A = H*wavefunction
+   B = wavefunction
+   energies = []
+   for i in range(0,len(A)):
+      energies.append(A[i]/B[i])
+   energy = np.average(np.array(energies))
+   return energy
+
 # Function the calculate the density for a given wavefunction
 def calculateDensity(wavefunction):
    density = np.zeros(len(wavefunction))
@@ -76,7 +86,7 @@ def calculateDensity(wavefunction):
 
 # Function the return the value of the initial wavefunction at a given x
 def initialWavefunction(x):
-    return (1.0/math.sqrt(2.0*math.pi)) *(math.e**(-0.5*x**2))
+    return (1.0/math.sqrt(2.0*math.pi))*(math.e**(-0.5*x**2))
 
 # Function to print to screen
 def sprint(text):
@@ -136,7 +146,7 @@ def main():
       wavefunction = spla.spsolve(A,b)
 
       # Normalise the wavefunction
-      wavefunction = wavefunction/(np.linalg.norm(wavefunction)*pm.dx)
+      wavefunction = wavefunction/(np.linalg.norm(wavefunction)*pm.dx**0.5)
 
       # Calculate the density
       density = calculateDensity(wavefunction)
@@ -148,8 +158,12 @@ def main():
       # iterate
       i = i + 1
 
-   # Save data to file
+   # Calculate the groundstate energy
+   energy = calculateEnergy(H,wavefunction)
    print
+   print 'ground state energy = ', energy
+
+   # Save data to file
    if(pm.saveGround == 1):
       save(xgrid,V,'Potential.dat')
       save(xgrid,density,'GroundState.dat')
@@ -192,10 +206,10 @@ def main():
       i = i + 1
 
    # Animation
-   print
    if(pm.animatePlot == 1):
+      print
       animate(V,densities)
-   print
+      print
  
    # Program Complete
    print('All jobs done.')

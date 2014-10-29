@@ -11,14 +11,14 @@ animatePlot = 1            # Show animated plot of real time (1 = do, 0 = do not
 ctol = 1e-13               # Complex time tollerance
 
 # Defined grid parameters
-N = 150                    # Number of grid points
+N = 300                    # Number of grid points
 L = 30.0 		   # Size of the system
 rI = 5000	           # Number of real time iterations
 rT = 100.0 		   # Total real time
-cT = 500.0	           # Total complex time
+cT = 5000.0	           # Total complex time
 
 # Derived grid parameters
-dx = 2.0*L/(N-1)	   # Spatial Grid spacing
+dx = L/(N-1)	           # Spatial Grid spacing
 dt = rT/(rI-1)		   # Temporal Grid spacing
 cI = int(cT/dt)+1          # Number of complex iterations
 cdt = cT/(cI-1)            # Complex Time Grid spacing
