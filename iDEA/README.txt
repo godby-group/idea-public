@@ -69,8 +69,8 @@ mkl.f             - Contains all the FORTRAN implemented parallelisation
                     techniques.
 parameters.py     - The paramaters fiel used to set up the system and to 
                     tell iDEA.py what computations to perform.
-plot.py           - Used to plot the real time density for the 3 electron
-                    runs.
+plot.py           - Used to plot one timestep of the real time density for completed runs
+animate.py        - Used to aniate the real time density for completed runs
 Single-E....py    - Used to find the initial guess for the ground state 
                     wavefunction in three electron runs.
 sprint.py         - Used to print data to the screen using the parameter
@@ -81,3 +81,4 @@ sprint.py         - Used to print data to the screen using the parameter
 1. Set the required grid parameters in parameters.py 
 2. Set the required run parameters in parameters.py 
 3. Run iDEA.py
+4. Run animate.py to see time evolution of density

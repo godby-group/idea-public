@@ -8,7 +8,7 @@ import scipy.sparse as sps
 import scipy.sparse.linalg as spla
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-import parameters as pm
+import sparameters as pm
 
 # Print splash
 print('                                                                ')
@@ -106,8 +106,8 @@ def animate(potential,densities):
    plt.ion()
    xgrid = np.linspace(-0.5*pm.L,0.5*pm.L,pm.N)
    plt.plot(xgrid,potential)
-   plt.ylim(ymax=2.0) 
-   plt.ylim(ymin=-0.5)
+   plt.ylim(ymax=1.0) 
+   plt.ylim(ymin=-0.1)
    line, = plt.plot(xgrid,densities[0])
    for i in range(1,len(densities)):
       sprint('plotting real time density, timestep = ' + str(i))
@@ -161,7 +161,7 @@ def main():
    # Calculate the groundstate energy
    energy = calculateEnergy(H,wavefunction)
    print
-   print 'ground state energy = ', energy
+   print 'ground state energy =', energy
 
    # Save data to file
    if(pm.saveGround == 1):
@@ -194,9 +194,9 @@ def main():
       densities.append(density)
 
       # Calculate the wavefunction normalisation
-      normalisation = np.sum(np.absolute(wavefunction)**2)*(pm.dx**2)
+      normalisation = (np.linalg.norm(wavefunction)*pm.dx**0.5)
       sprint('real time = ' + str(i*pm.dt) + ', normalisation = ' + str(normalisation))
-      
+
       # Save data to file if required
       if(pm.saveGround == 1 and pm.saveTime == i):
          save(xgrid,V,'PtrbPotential.dat')

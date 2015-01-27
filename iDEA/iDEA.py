@@ -4,7 +4,6 @@ import iDEA_MB2
 import iDEA_MB3
 import Density
 import sprint
-import plot as plotter
 
 # Set message level
 msglvl = pm.msglvl
@@ -58,8 +57,6 @@ if(pm.NE == 2):
 	import iDEA_TDDFT2
 if(pm.NE == 3):
     iDEA_MB3.main()
-    if(pm.plot == 1):
-        plotter.plot(pm.plottime)
     if(pm.TDDFT == 1):
 	import iDEA_TDDFT3
 

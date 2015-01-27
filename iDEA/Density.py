@@ -9,11 +9,11 @@ import time
 import sprint
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 TD = pm.TD
 jmax = pm.jmax
 kmax = pm.kmax
-doPlot = pm.plot
 msglvl = pm.msglvl
 
 if int(TD) == 1:
@@ -32,7 +32,6 @@ Buffer = pm.Buffer
 ProbDensity = np.zeros((imax,jmax), dtype = np.float)
 
 def ProbabilityDensity():
-
     i = 0
     origdir = os.getcwd()    
     newdir = os.path.join('MPsiReal_binaries')
@@ -98,52 +97,57 @@ def ProbabilityDensity():
     check.close()
     return ProbDensity
 
-def Plotting(ProbPsi):
-	plt.ion()
-	tstart = time.time()  
-	xx = np.arange(-xmax,(xmax + (deltax/2.0)), deltax)  
-	
-	line, = plt.plot(xx,ProbPsi[1,:])
-
-	plt.ylim(ymax=0.5) 
-	plt.ylim(ymin=0.0) 
-	plt.xlim(xmax=xmax) 
-	plt.xlim(xmin=-xmax)
-	count=0
-	i = 0
-	while (i < imax-1):
-		line.set_ydata(ProbPsi[i,:])
-		plt.draw()  
-		#fname = '_tmp%03d.png'%i            # Uncomment to save frames, this produces a very large number of files
-		#matplotlib.pyplot.savefig(fname)    # Uncomment to save frames, this produces a very large number of files
-		string = 'Plotting Density: t = ' + str(i)
-		sprint.sprint(string,1,1,msglvl)
-		string = 'Plotting Density: t = ' + str(i)
-		sprint.sprint(string,2,1,msglvl)
-		count+=1
-		time.sleep(0.1)
-		i = i + 1
-	print
-	#print 'FPS:' , 200/(time.time()-tstart)
-	#print 'Making movie animation.mpg - this make take a while'
-	#os.system("mencoder 'mf://_tmp*.png' -mf type=png:fps=10 -ovc lavc -lavcopts vcodec=wmv2 -oac copy -o animation_Nt=%s_tmax=%s.mpg" %(imax,tmax))
-	#j=1
-	#while (j <= count-1):
-	#	os.remove('_tmp%03d.png'%(j))
-	#	j+=1
-	return
+#def Plotting(ProbPsi):
+#        Writer = animation.writers['ffmpeg']
+#        writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+#	plt.ion()
+#	tstart = time.time()  
+#	xx = np.arange(-xmax,(xmax + (deltax/2.0)), deltax)  
+#	
+#	line, = plt.plot(xx,ProbPsi[1,:])
+#
+#	plt.ylim(ymax=0.5) 
+#	plt.ylim(ymin=0.0) 
+#	plt.xlim(xmax=xmax) 
+#	plt.xlim(xmin=-xmax)
+#	count=0
+#	i = 0
+#	while (i < imax-1):
+#		line.set_ydata(ProbPsi[i,:])
+#		plt.draw()  
+#		fname = '_tmp%03d.png'%i        
+#		matplotlib.pyplot.savefig(fname)   
+#		string = 'Plotting Density: t = ' + str(i)
+#		sprint.sprint(string,1,1,msglvl)
+#		string = 'Plotting Density: t = ' + str(i)
+#		sprint.sprint(string,2,1,msglvl)
+#		count+=1
+#		time.sleep(0.1)
+#		i = i + 1
+#	print
+#	string = 'Making movie animation.mpg: this make take a while'
+#	sprint.sprint(string,1,0,msglvl)
+#       string = 'Making movie animation.mpg: this make take a while'
+#	sprint.sprint(string,2,0,msglvl)
+#	print 
+#	os.system("mencoder 'mf://_tmp*.png' -mf type=png:fps=10 -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o animation_Nt=%s_tmax=%s.avi" %(imax,tmax))
+#	j=0
+#	while (j <= count-1):
+#	    os.remove('_tmp%03d.png'%(j))
+#	    j+=1
+#	return
 	
 def Run():
     ProbDensity = ProbabilityDensity()
     ProbPsiFile = open("ProbPsi(Nx=%s,Nt=%s).db" % (jmax,imax),"w")
     pickle.dump(ProbDensity, ProbPsiFile)
     ProbPsiFile.close()
-    if int(TD) == 1 and int(doPlot == 1):
-    	Plotting(ProbDensity)
-    f = open('Ground-stateDensity.out', 'w')
-    for j in range(jmax):
-        f.write('%s %s\n' % (j*deltax-xmax, ProbDensity[0,j].real))
-    f.close()
+    #if int(TD) == 1:
+    #	Plotting(ProbDensity)
+    #f = open('Ground-stateDensity.out', 'w')
+    #for j in range(jmax):
+    #   f.write('%s %s\n' % (j*deltax-xmax, ProbDensity[0,j].real))
+    #f.close()
 
     return
 

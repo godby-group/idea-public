@@ -3,18 +3,18 @@ import numpy as np
 import scipy as sp
 
 # Defined run parameters
-TD = 1                     # Run time dependance (1 = run time dependance, 0 = only find ground state)
+TD = 1                     # Run  time dependance (1 = run time dependance, 0 = only find ground state)
 saveGround = 1             # Save the ground state density (1 = do, 0 = do not)
 saveReal = 1               # Save the real time density (1 = do, 0 = do not)
-saveTime = 4999            # Timestep to save real time density
+saveTime = 999             # Timestep to save real time density
 animatePlot = 1            # Show animated plot of real time (1 = do, 0 = do not)      
 ctol = 1e-13               # Complex time tollerance
 
 # Defined grid parameters
 N = 300                    # Number of grid points
 L = 30.0 		   # Size of the system
-rI = 5000	           # Number of real time iterations
-rT = 100.0 		   # Total real time
+rI = 1000	           # Number of real time iterations
+rT = 50.0 		   # Total real time
 cT = 5000.0	           # Total complex time
 
 # Derived grid parameters

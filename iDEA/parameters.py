@@ -6,15 +6,13 @@ import numpy as np
 NE = 2                          # Number of electrons (2 or 3)
 TD = 1                          # Time dependance (0: Just find system ground state, 1: Run time dependance with pertubation)
 TDDFT = 0                       # Run TDDFT (0: Do not run, 1: Do run)
-plot = 1                        # Plot the time dependent densities (0: Do not plot, 1: Do plot)
-plottime = 1                    # Timestep to plot to CDensity.dat (3 electron only)
 par = 0                         # Use parallelised solver and multiplication (0: serial, 1: parallel) (Recommend using parallel for large runs)
 ctol = 1e-14                    # Tolerance of complex time evolution (Recommended: 1e-14)
 rtol = 1e-14                    # Tolerance of real time evolution (Recommended: 1e-14)
 msglvl = 1                      # Message level (0: No printing, 1: Normal printing, 2: Verbose printing)
 
 # Define grid parameters
-grid = 150                      # Number of grid points
+grid = 151                      # Number of grid points (must be odd number)
 jmax = grid			# Number of grid points to represent 1st electronic wavefunction
 kmax = jmax 			# Number of grid points to represent 2nd electronic wavefunction
 lmax = jmax             	# Number of grid points to represent 3rd electronic wavefunction
