@@ -1,65 +1,40 @@
-# Library imports
+# Determine version of source code to be used
 import parameters as pm
-import iDEA_MB2
-import iDEA_MB3
-import Density
-import sprint
+import os
+version = 'ver' + str(pm.code_version)
 
-# Set message level
-msglvl = pm.msglvl
+# Ensure output directories exist, if not create them
+os.system('mkdir -p outputs/' + str(pm.run_name))
+os.system('mkdir -p outputs/' + str(pm.run_name) + '/data')
+os.system('mkdir -p outputs/' + str(pm.run_name) + '/raw')
+os.system('mkdir -p outputs/' + str(pm.run_name) + '/plots')
+os.system('mkdir -p outputs/' + str(pm.run_name) + '/animations')
 
-# Print splash
-sprint.sprint('                                                              ',1,0,msglvl)
-sprint.sprint('                  *    ****     *****       *                 ',1,0,msglvl)
-sprint.sprint('                       *   *    *          * *                ',1,0,msglvl)
-sprint.sprint('                  *    *    *   *         *   *               ',1,0,msglvl)
-sprint.sprint('                  *    *     *  *****    *     *              ',1,0,msglvl)
-sprint.sprint('                  *    *    *   *       *********             ',1,0,msglvl)
-sprint.sprint('                  *    *   *    *      *         *            ',1,0,msglvl)
-sprint.sprint('                  *    ****     ***** *           *           ',1,0,msglvl)
-sprint.sprint('                                                              ',1,0,msglvl)
-sprint.sprint('  ------------------------------------------------------------',1,0,msglvl)
-sprint.sprint('  |           Interacting Dynamic Electrons Approach         |',1,0,msglvl)
-sprint.sprint('  |              to Many-body Quantum Mechanics              |',1,0,msglvl)
-sprint.sprint('  |                                                          |',1,0,msglvl)
-sprint.sprint('  |                 Created by Piers Lillystone,             |',1,0,msglvl)                         
-sprint.sprint('  |                 Matt Hodgson, Jacob Chapman,             |',1,0,msglvl)
-sprint.sprint('  |               Thomas Durrant & Jack Wetherell            |',1,0,msglvl)
-sprint.sprint('  |                   The University of York                 |',1,0,msglvl)
-sprint.sprint('  ------------------------------------------------------------',1,0,msglvl)
-sprint.sprint('                                                              ',1,0,msglvl)
-sprint.sprint('                                                              ',2,0,msglvl)
-sprint.sprint('                                                              ',2,0,msglvl)
-sprint.sprint('                  *    ****     *****       *                 ',2,0,msglvl)
-sprint.sprint('                       *   *    *          * *                ',2,0,msglvl)
-sprint.sprint('                  *    *    *   *         *   *               ',2,0,msglvl)
-sprint.sprint('                  *    *     *  *****    *     *              ',2,0,msglvl)
-sprint.sprint('                  *    *    *   *       *********             ',2,0,msglvl)
-sprint.sprint('                  *    *   *    *      *         *            ',2,0,msglvl)
-sprint.sprint('                  *    ****     ***** *           *           ',2,0,msglvl)
-sprint.sprint('                                                              ',2,0,msglvl)
-sprint.sprint('  ------------------------------------------------------------',2,0,msglvl)
-sprint.sprint('  |           Interacting Dynamic Electrons Approach         |',2,0,msglvl)
-sprint.sprint('  |              to Many-body Quantum Mechanics              |',2,0,msglvl)
-sprint.sprint('  |                                                          |',2,0,msglvl)
-sprint.sprint('  |                 Created by Piers Lillystone,             |',2,0,msglvl)                         
-sprint.sprint('  |                 Matt Hodgson, Jacob Chapman,             |',2,0,msglvl)
-sprint.sprint('  |               Thomas Durrant & Jack Wetherell            |',2,0,msglvl)
-sprint.sprint('  |                   The University of York                 |',2,0,msglvl)
-sprint.sprint('  ------------------------------------------------------------',2,0,msglvl)
-sprint.sprint('                                                              ',2,0,msglvl)
+# Collect relevent source code to be run
+os.system('cp source/' + str(version) + '/* outputs/' + str(pm.run_name))
+os.system('cp parameters.py' + ' outputs/' + str(pm.run_name))
 
-# Run required jobs
-if(pm.NE == 2):
-    iDEA_MB2.main()
-    Density.Run()
-    if(pm.TDDFT == 1):
-	import iDEA_TDDFT2
-if(pm.NE == 3):
-    iDEA_MB3.main()
-    if(pm.TDDFT == 1):
-	import iDEA_TDDFT3
+# Run relevent code
+os.system('python outputs/' + str(pm.run_name) + '/run.py')
 
-# All jobs done
-sprint.sprint('All Jobs Done.',1,0,msglvl)
-sprint.sprint('All Jobs Done.',2,0,msglvl)
+# Remove temporary code
+os.system('mv outputs/' + str(pm.run_name) + '/parameters.py outputs/' + str(pm.run_name) + '/parameters.temp')
+os.system('mv outputs/' + str(pm.run_name) + '/ViDEO.py outputs/' + str(pm.run_name) + '/ViDEO.temp')
+os.system('rm -f outputs/' + str(pm.run_name) + '/*.py')
+os.system('rm -f outputs/' + str(pm.run_name) + '/*.pyc')
+os.system('rm -f outputs/' + str(pm.run_name) + '/*.npy')
+os.system('rm -f outputs/' + str(pm.run_name) + '/*.f90')
+os.system('rm -f outputs/' + str(pm.run_name) + '/*.f')
+os.system('rm -f outputs/' + str(pm.run_name) + '/*.compiler')
+os.system('rm -f outputs/' + str(pm.run_name) + '/*.so')
+os.system('rm -f outputs/' + str(pm.run_name) + '/*.py~')
+os.system('rm -f outputs/' + str(pm.run_name) + '/*.txt')
+os.system('rm -f outputs/' + str(pm.run_name) + '/*.compiler~')
+os.system('rm -f *.py~')
+os.system('rm -f *.pyc')
+
+# Add ViDEO to the directory to be used for visualisation
+os.system('mv outputs/' + str(pm.run_name) + '/ViDEO.temp outputs/' + str(pm.run_name) + '/ViDEO.py')
+
+# Add the parameters file to show details of the run
+os.system('mv outputs/' + str(pm.run_name) + '/parameters.temp outputs/' + str(pm.run_name) + '/parameters.py')

@@ -1,3 +1,24 @@
+######################################################################################
+# Name: 2 electron Many Body                                                         #
+######################################################################################
+# Author(s): Piers Lillystone, Jacob Chapman, Jack Wetherell                         #
+######################################################################################
+# Description:                                                                       #
+# Computes exact many body wavefunction and density                                  #
+#                                                                                    #
+#                                                                                    #
+######################################################################################
+# Notes:                                                                             #
+#                                                                                    #
+#                                                                                    #
+#                                                                                    #
+######################################################################################
+
+# Do not run stand-alone
+if(__name__ == '__main__'):
+    print('do not run stand-alone')
+    quit()
+
 # Library Imports
 import os
 import mkl
@@ -102,13 +123,6 @@ def InitialconI():
         j = j + 1
     return Psiarr[0,:]
 
-# Takes the ground state solution and uses it as the initial eigenfunction in the real propagation
-def InitialconR():
-    Psi2D = np.zeros((jmax,kmax), dtype = np.cfloat)
-    Psi2D = np.load('Psi_IC_Real2.npy')
-    Psiarr[0,:] = PsiInverter(Psi2D[:,:],0)
-    return Psiarr[0,:]
-
 # Define function to turn array of compressed indexes into seperated indexes
 def PsiConverterI(Psiarr,i):
     Psi2D = np.zeros((jmax,kmax), dtype = np.cfloat)
@@ -119,9 +133,7 @@ def PsiConverterI(Psiarr,i):
         Psi2D[j,k] = Psiarr[jk]
         jk = jk + 1
     mPsi2D[:,:] = (np.absolute(Psi2D[:,:])**2)
-    np.save('Psi_IC_Real', Psiarr[:])
-    np.save('Psi_IC_Real2', Psi2D[:,:])
-    return
+    return mPsi2D
 
 # Define function to turn array of compressed indexes into seperated indexes
 def PsiConverterR(Psiarr,i):
@@ -133,15 +145,7 @@ def PsiConverterR(Psiarr,i):
         Psi2D[j,k] = Psiarr[jk]
         jk = jk + 1
     mPsi2D[:,:] = (np.absolute(Psi2D[:,:])**2)
-    origdir = os.getcwd()
-    newdir = os.path.join('MPsiReal_binaries')
-    if not os.path.isdir(newdir):
-        os.mkdir(newdir)
-    os.chdir(newdir)
-    np.save('MPsi2DReal_%i' %(i),mPsi2D)
-    np.save('Psi2DReal_%i' %(i),Psi2D)
-    os.chdir(origdir)
-    return 
+    return mPsi2D
 
 # Psi inverter
 def PsiInverter(Psi2D,i):
@@ -156,20 +160,6 @@ def PsiInverter(Psi2D,i):
             k = k + 1
         j = j + 1
     return Psiarr[:]
-	
-# Plotting Function
-def Plotter():
-    origdir = os.getcwd()
-    newdir = os.path.join('MPsiReal_binaries')
-    Psi = np.load('Psi_IC_Real2.npy')
-    fig = plt.figure()
-    ax = Axes3D(fig)
-    X = np.arange(-xmax,(xmax+(deltax/2.0)), deltax)
-    Y = np.arange(-xmax,(xmax+(deltax/2.0)), deltax)
-    X, Y = np.meshgrid(X, Y)
-    ax.plot_wireframe(X, Y, Psi[:,:], rstride = 1, cstride = 1, linewidth=0.1, antialiased=True)
-    plt.show()
-    return
 
 # Function to calulate energy of a wavefuntion
 def Energy(Psi):
@@ -186,6 +176,27 @@ def ConstructAf(A):
     A2 = copy.copy(A)
     Af = sp.sparse.bmat([[A1,-A2],[A2,A1]]).tocsr()
     return Af
+
+# Function to output the system's external potential
+def OutputPotential():
+    output_file1 = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_2gs_ext_vxt.db','w')
+    potential = []
+    i = 0
+    while(i < pm.grid):
+        potential.append(pm.well(float(i*deltax)))
+        i = i + 1
+    pickle.dump(potential,output_file1)
+    output_file1.close()
+    if(pm.TD == 1):
+        output_file2 = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_2td_ext_vxt.db','w')
+        TDP = []
+        i = 0
+        while(i < pm.imax):
+            TDP.append(potential)
+            i = i + 1
+        pickle.dump(TDP,output_file2)
+        output_file2.close()
+    return
 
 # Function to iterate over complex time
 def CNsolveComplexTime():
@@ -209,7 +220,7 @@ def CNsolveComplexTime():
 
 	# Begin timing the iteration
         start = time.time()
-        string = 'Complex Time = ' + str(i*deltat)
+        string = 'complex time = ' + str(i*deltat)
 	sprint.sprint(string,2,0,msglvl)
         
 	# Reduce the wavefunction
@@ -231,7 +242,7 @@ def CNsolveComplexTime():
 
 	# Calculate the energy
         Ev = Energy(Psiarr)
-	string = 'Energy = ' + str(Ev)
+	string = 'energy = ' + str(Ev)
 	sprint.sprint(string,2,0,msglvl)
 
 	# Normalise the wavefunction
@@ -240,24 +251,24 @@ def CNsolveComplexTime():
 	
 	# Stop timing the iteration
 	finish = time.time()
-        string = 'Time to Complete Step: ' + str(finish-start)
+        string = 'time to Complete Step: ' + str(finish-start)
 	sprint.sprint(string,2,0,msglvl)
 
 	# Test for convergance
 	wf_con = np.linalg.norm(Psiarr[0,:]-Psiarr[1,:])
-	string = 'Wave Function Convergence: ' + str(wf_con)
+	string = 'wave function convergence: ' + str(wf_con)
 	sprint.sprint(string,2,0,msglvl)
-	string = 'Many Body Complex Time: ' + 't = ' + str(i*deltat) + ', Convergence = ' + str(wf_con)
+	string = 'many body complex time: ' + 't = ' + str(i*deltat) + ', convergence = ' + str(wf_con)
         sprint.sprint(string,1,1,msglvl)
 	if(i>1):
 	    e_con = old_energy - Ev
-	    string = 'Energy Convergence: ' + str(e_con)
+	    string = 'energy convergence: ' + str(e_con)
 	    sprint.sprint(string,2,0,msglvl)
 	    if(e_con < ctol*10.0 and wf_con < ctol*10.0):
 		print
-	        string = 'Many Body Complex Time: Ground State Converged' 
+	        string = 'many body complex time: ground state converged' 
 		sprint.sprint(string,1,0,msglvl)
-                string = 'Ground State Converged' 
+                string = 'ground state converged' 
 		sprint.sprint(string,2,0,msglvl)
 	        i = imax
 	old_energy = copy.copy(Ev)
@@ -268,22 +279,30 @@ def CNsolveComplexTime():
         i += 1
 
     # Convert Psi
-    PsiConverterI(Psiarr[1,:],i)
+    Psi2Dcon = PsiConverterI(Psiarr[1,:],i)
+ 
+    # Calculate denstiy
+    density = np.sum(Psi2Dcon[:,:], axis=0)*deltax*2.0
+
+    # Output ground state density
+    output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_2gs_ext_den.db','w')
+    pickle.dump(density,output_file)
+    output_file.close()
+    OutputPotential()
 
     # Dispose of matrices and terminate
     A = 0
     C = 0
-    return 
+    return Psiarr[1,:]
 
 # Function to iterate over real time
-def CNsolveRealTime():
+def CNsolveRealTime(wavefunction):
     i = 1
 
-    # Set the initial condition of the wavefunction
-    Psiarr[0,:] = InitialconR()
+    # Initialse wavefunction
+    Psiarr[0,:] = wavefunction
     PsiConverterR(Psiarr[0,:],0)
     Psiarr_RM = c_m*Psiarr[0,:]
-    Particle = open('Particle.txt', 'w')
 
     # Construct the matrix A
     A = Matrixdef(i,r)
@@ -297,18 +316,20 @@ def CNsolveRealTime():
     # Construct the matrix C
     C = -(A-sp.sparse.identity(jmax**2, dtype=np.cfloat))+sp.sparse.identity(jmax**2, dtype=np.cfloat)
     C_RM = c_m*C*c_p
-    
+
     # Perform iterations
-    while (i < imax):
+    TDD = []
+    while (i <= imax):
 
 	# Begin timing the iteration
         start = time.time()
-	string = 'Real Time = ' + str(i*deltat) + '/' + str((imax-1)*deltat)
+	string = 'real time = ' + str(i*deltat) + '/' + str((imax-1)*deltat)
 	sprint.sprint(string,2,0,msglvl)
 
 	# Reduce the wavefunction
         if (i>=2):
             Psiarr[0,:] = Psiarr[1,:]
+            Psiarr_RM = c_m*Psiarr[0,:]
 
         # Construct the vector b
 	b = C*Psiarr[0,:]
@@ -333,12 +354,11 @@ def CNsolveRealTime():
 	Psiarr[1,:] = c_p*Psiarr_RM
 
 	# Convert the wavefunction
-        PsiConverterR(Psiarr[1,:],i)
-   
-	# Write to file
-        text = '\n Time Step =' + str(i) + ', Integral of modulus over all space, ie. P(particle1 and particle2)='
-	text = text + str(np.sum(np.absolute(Psiarr[1,:])**2)*(deltax**2))
-        Particle.write(text)
+        Psi2Dcon = PsiConverterR(Psiarr[1,:],i)
+
+        # Calculate denstiy
+        density = np.sum(Psi2Dcon[:,:], axis=0)*deltax*2.0
+        TDD.append(density)
 
 	# Stop timing the iteration
 	finish = time.time()
@@ -346,12 +366,12 @@ def CNsolveRealTime():
 	sprint.sprint(string,2,0,msglvl)
 
 	# Print to screen
-        string = 'Residual: ' + str(np.linalg.norm(A*Psiarr[1,:]-b))
+        string = 'residual: ' + str(np.linalg.norm(A*Psiarr[1,:]-b))
 	sprint.sprint(string,2,0,msglvl)
 	normal = np.sum(np.absolute(Psiarr[1,:])**2)*(deltax**2)
-        string = 'Normalisation: ' + str(normal)
+        string = 'normalisation: ' + str(normal)
 	sprint.sprint(string,2,0,msglvl)
-	string = 'Many Body Real Time: ' + 't = ' + str(i*deltat) + ', Normalisation = ' + str(normal)
+	string = 'many body real time: ' + 't = ' + str(i*deltat) + ', normalisation = ' + str(normal)
         sprint.sprint(string,1,1,msglvl)
         string = '---------------------------------------------------'
 	sprint.sprint(string,2,0,msglvl)
@@ -359,10 +379,13 @@ def CNsolveRealTime():
 	# Iterate
         i += 1
 
+    # Output time dependant density
+    output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_2td_ext_den.db','w')
+    pickle.dump(TDD,output_file)
+
     # Dispose of matrices and terminate
     A = 0
     C = 0
-    Particle.close()
     sprint.sprint(' ',1,0,msglvl)
     return
 
@@ -375,15 +398,8 @@ def main():
     # Construct reduction and expansion matrices
     c_m, c_p, Nx_RM = antisym(jmax, True)
 
-    # Record run infomation
-    text = open('run_info(Nt=%s,tmax=%s)' %(imax,pm.tmax), 'w')
-    text.write("Information:\n\n")
-    text.write("jmax:%g\nkmax:%g\nimax:%g\nxmax:%g\ntmax:%g\n" %(jmax,kmax,imax,xmax,pm.tmax))
-    text.write("deltax:%g\ndeltat:%g\n" %(deltax,pm.deltat))
-    text.close()
-
     # Complex Time array initialisations 
-    string = 'Many Body Complex Time: Constructing Arrays'
+    string = 'many body complex time: constructing arrays'
     sprint.sprint(string,2,0,msglvl)
     sprint.sprint(string,1,0,msglvl)
     Psiarr = np.zeros((2,jmax**2), dtype = np.cfloat)
@@ -393,12 +409,13 @@ def main():
     r = 0.0 + (1.0)*(deltat/(4.0*(deltax**2))) 
 
     # Evolve throught complex time
-    CNsolveComplexTime() 
+    wavefunction = CNsolveComplexTime() 
 
     # Real Time array initialisations 
-    string = 'Many Body Real Time: Constructing Arrays'
-    sprint.sprint(string,1,0,msglvl)
-    sprint.sprint(string,2,0,msglvl)
+    if(pm.TD == 1):
+        string = 'many body real time: constructing arrays'
+        sprint.sprint(string,1,0,msglvl)
+        sprint.sprint(string,2,0,msglvl)
     Psiarr = np.zeros((2,jmax**2), dtype = np.cfloat)
     Psi2D = np.zeros((jmax,kmax), dtype = np.cfloat)
     Rhv2 = np.zeros((jmax**2), dtype = np.cfloat)
@@ -409,14 +426,12 @@ def main():
         tmax = pm.tmax
         imax = pm.imax
         deltat = tmax/(imax-1)
+        deltax = pm.deltax
+        r = 0.0 + (1.0j)*(deltat/(4.0*(deltax**2)))
+        CNsolveRealTime(wavefunction)
     if int(TD) == 0:
        tmax = 0.0
        imax = 1
        deltat = 0.0
-    deltax = pm.deltax
-    r = 0.0 + (1.0j)*(deltat/(4.0*(deltax**2)))
-    CNsolveRealTime()
 
-# Run stand-alone
-if(__name__ == '__main__'):
-    main()
+

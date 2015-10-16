@@ -1,3 +1,24 @@
+######################################################################################
+# Name: 3 electron Many Body                                                         #
+######################################################################################
+# Author(s): Jacob Chapman, Thomas Durrant, Jack Wetherell                           #
+######################################################################################
+# Description:                                                                       #
+# Computes exact many body wavefunction and density                                  #
+#                                                                                    #
+#                                                                                    #
+######################################################################################
+# Notes:                                                                             #
+#                                                                                    #
+#                                                                                    #
+#                                                                                    #
+######################################################################################
+
+# Do not run stand-alone
+if(__name__ == '__main__'):
+    print('do not run stand-alone')
+    quit()
+
 # Library Imports
 import sys
 import mkl
@@ -10,14 +31,14 @@ import sprint
 import numpy as np
 import scipy as sp
 import os as os
+import fort as f
 from scipy import linalg as la
 from scipy import special
 from scipy import sparse
-import fort as f
 from antisym3e import *
 from scipy.sparse import linalg as spla
 import parameters as pm
-from Single_Electron_Solver import get_MB_groundstDen as groundstDen
+from ses import get_MB_groundstDen as groundstDen
 
 # Variable initialisation
 jmax = pm.jmax
@@ -138,10 +159,10 @@ def InitialconR():
 # Define function to turn array of compressed indexes into seperated indexes
 def PsiConverterI(Psiarr,i):
     Psi3D = np.zeros((jmax,kmax,lmax), dtype = np.cfloat)
-    origdir = os.getcwd()
-    newdir = os.path.join('MPsiReal_binaries_3D')
-    if not os.path.isdir(newdir):
-        os.mkdir(newdir)
+    #origdir = os.getcwd()
+    #newdir = os.path.join('MPsiReal_binaries_3D')
+    #if not os.path.isdir(newdir):
+    #    os.mkdir(newdir)
     jkl = 0
     while (jkl < jmax**3):
         k, j, l = InvGind(jkl)
@@ -160,36 +181,11 @@ def PsiConverterI(Psiarr,i):
     if (i!=0):
         np.save('Psi_IC_Real', Psiarr[:])
         np.save('Psi_IC_Real3D', Psi3D)
-        os.chdir(newdir)
         np.save('Psi2DComplex_%i' %(i),Psi3D)
-        os.chdir(origdir)
     if (i==0):
         np.save('Psi_IC_Inital', Psiarr[:])
         np.save('Psi_IC_Inital3D', Psi3D)
-        os.chdir(newdir)
-        np.save('Psi2DComplex_%i' %(i),Psi3D)
-        os.chdir(origdir)
-        #j=0
-        #k=0
-        #l=0
-        #ProbDensity=np.zeros((jmax), dtype=np.cfloat)
-        #ProbDensity2=np.zeros((jmax), dtype=np.cfloat)
-        #test=open('arg%i.dat' %(i),'w')
-        #while (l<jmax):
-        #        j = 0
-        #        while (j < kmax):
-        #            k = 0
-        #            while (k < lmax):
-        #                ProbDensity[l]=ProbDensity[l]+Psi3D[k,j,l]*np.conjugate(Psi3D[k,j,l])
-                        #ProbDensity2[l]=ProbDensity2[l]+Psi3D[0,k,j,l]*np.conjugate(Psi3D[0,k,j,l])
-                        #test2.write('%i\t%s\n' %(l,mPsi3D[1,k,j,l]))
-        #                k = k + 1
-        #            j = j + 1
-        #        x = -xmax*1.0 + (l*deltax/1.0)
-        #        ProbDensity = ProbDensity*(deltax**0)*3.0
-        #        test.write("%5.10g\t%5.10g\n" %(x,ProbDensity[l]))
-        #        l = l + 1
-        #test.close()    
+        np.save('Psi2DComplex_%i' %(i),Psi3D)  
     return 
 
 # Cut down version that returns Psi3D and does not write to file - works for both times
@@ -212,25 +208,10 @@ def PsiConverterR(Psiarr,i):
         Psi3D[k,j,l] = Psiarr[jkl]
         mPsi3D[k,j,l] = (np.absolute(Psi3D[k,j,l])**2)
         jkl = jkl + 1                                         
-    origdir = os.getcwd()
-    newdir = os.path.join('MPsiReal_binaries_3D')
-    if not os.path.isdir(newdir):
-        os.mkdir(newdir)
-    dendir = os.path.join("CDensity")
-    # Output 3D wavefunction
-    #ios.chdir(newdir)
-    #np.save('MPsi2DReal_%i' %(i),mPsi3D)
-    #np.save('Psi2DReal_%i' %(i),Psi3D)
-    #print 'Psi2DReal_',i,'.npy saved'
-    #os.chdir(origdir)
-    if not os.path.isdir(dendir):
-        os.mkdir(dendir)
     den = np.zeros(jmax, dtype=np.float)
     for element in range(0, jmax):
         den[element] = 3*np.sum(mPsi3D[element,:,:])*deltax**2
-    os.chdir(dendir)
     np.save('chargeDensity_%i' %(i),den)
-    os.chdir(origdir)
     return
 
 # Psi inverter
@@ -256,6 +237,27 @@ def Energy(Psi):
     a = np.linalg.norm(Psi[0,:])
     b = np.linalg.norm(Psi[1,:])
     return -(np.log(b/a))/cdeltat
+
+# Function to output the system's external potential
+def OutputPotential():
+    output_file1 = open('raw/' + str(pm.run_name) +  '_3gs_ext_vxt.db','w')
+    potential = []
+    i = 0
+    while(i < pm.grid):
+        potential.append(pm.well(float(i*deltax)))
+        i = i + 1
+    pickle.dump(potential,output_file1)
+    output_file1.close()
+    if(pm.TD == 1):
+        output_file2 = open('raw/' + str(pm.run_name) +  '_3td_ext_vxt.db','w')
+        TDP = []
+        i = 0
+        while(i < pm.imax):
+            TDP.append(potential)
+            i = i + 1
+        pickle.dump(TDP,output_file2)
+        output_file2.close()
+    return
 
 # Function to construct the real matrix Af 
 def ConstructAf(A):
@@ -335,39 +337,29 @@ def CNsolveComplexTime():
 
 	# Test for convergance
 	wf_con = np.linalg.norm(Psiarr[0,:]-Psiarr[1,:])
-	string = 'Wave Function Convergence: ' + str(wf_con)
+	string = 'wave function convergence: ' + str(wf_con)
 	sprint.sprint(string,2,0,msglvl)
-	string = 'Many Body Complex Time: ' + 't = ' + str(i*deltat) + ', Convergence = ' + str(wf_con)
+	string = 'many body complex time: ' + 't = ' + str(i*deltat) + ', convergence = ' + str(wf_con)
         sprint.sprint(string,1,1,msglvl)
 	if(i>1):
 	    e_con = old_energy - Ev
-	    string = 'Energy Convergence: ' + str(e_con)
+	    string = 'energy convergence: ' + str(e_con)
 	    sprint.sprint(string,2,0,msglvl)
 	    normal = np.sum(np.absolute(Psiarr[1,:])**2)*(deltax**3)          
-            string = 'Normalisation: ' + str(normal)                          
+            string = 'normalisation: ' + str(normal)                          
             sprint.sprint(string,2,0,msglvl)                                  
-            string = 'Residual: ' + str(np.linalg.norm(A_RM*Psiarr_RM-b_RM))  
+            string = 'residual: ' + str(np.linalg.norm(A_RM*Psiarr_RM-b_RM))  
 	    sprint.sprint(string,2,0,msglvl)                                  
 	    if(wf_con < ctol*10.0):
 		print
-	        string = 'Many Body Complex Time: Ground State Converged' 
+	        string = 'many body complex time: ground state converged' 
 		sprint.sprint(string,1,0,msglvl)
-                string = 'Ground State Converged' 
+                string = 'ground state converged' 
 		sprint.sprint(string,2,0,msglvl)
 	        i = cimax
 	old_energy = copy.copy(Ev)
         string = '---------------------------------------------------'
 	sprint.sprint(string,2,0,msglvl)
-      
-	# Comparing to a known ground state
-        #if errors:
-        #    Psiarr3D = PsiConverterLite(Psiarr[1,:])
-        #    PsiarrD = np.zeros(jmax, dtype=np.float)
-        #    for j in range(0, Psiarr3D.shape[0]):
-        #        PsiarrD[j] = 3*np.sum(np.absolute(Psiarr3D[j,:,:])**2)*deltax**2
-        #    error = abs(gdstD - PsiarrD)
-        #    errorTot = np.sum(error)*deltax
-        #    print "   Error (wrt non-int ground state): ", errorTot
 
         # Iterate
         i += 1
@@ -383,7 +375,7 @@ def CNsolveComplexTime():
 # Function to iterate over real time
 def CNsolveRealTime():
     i = 1
-
+    
     # Set the initial condition of the wavefunction
     Psiarr[0,:] = InitialconR()
     PsiConverterR(Psiarr[0,:],0)
@@ -402,7 +394,6 @@ def CNsolveRealTime():
     # Construct the matrix C
     C = -(A-sp.sparse.identity(jmax**3, dtype=np.cfloat))+sp.sparse.identity(jmax**3, dtype=np.cfloat)
     C_RM = c_m*C*c_p
-
     while (i < imax):
 	# Begin timing the iteration
         start = time.time()
@@ -438,25 +429,23 @@ def CNsolveRealTime():
         PsiConverterR(Psiarr[1,:],i)
         
 	# Write to file
-        text = '\n Time Step =' + str(i) + ', Integral of modulus over all space, ie. P(particle1 and particle2)='
+        text = '\n time Step =' + str(i) + ', integral of modulus over all space, ie. P(particle1 and particle2)='
 	text = text + str(np.sum(np.absolute(Psiarr[1,:])**2)*(deltax**2))
         Particle.write(text)
 
         # Stop timing the iteration
 	finish = time.time()
-        string = 'Time to Complete Step: ' + str(finish-start)
+        string = 'time to complete step: ' + str(finish-start)
 	sprint.sprint(string,2,0,msglvl)
 
         # Print to screen
-        string = 'Residual: ' + str(np.linalg.norm(A_RM*Psiarr_RM-b_RM))
+        string = 'residual: ' + str(np.linalg.norm(A_RM*Psiarr_RM-b_RM))
 	sprint.sprint(string,2,0,msglvl)
 	normal = np.sum(np.absolute(Psiarr[1,:])**2)*(deltax**3)
-        string = 'Normalisation: ' + str(normal)
+        string = 'normalisation: ' + str(normal)
         sprint.sprint(string,2,0,msglvl)
         antisym =  np.sum(abs(f.elec3.antisym1d(Psiarr[1:,], jmax))**2) * deltax * (1.0/6.0**2) 
-        #string = 'Antisymmetry: ' + str(antisym)
-	#sprint.sprint(string,2,0,msglvl)
-	string = 'Many Body Real Time: ' + 't = ' + str(i*deltat) + ', Normalisation = ' + str(normal)
+	string = 'many body real time: ' + 't = ' + str(i*deltat) + ', normalisation = ' + str(normal)
         sprint.sprint(string,1,1,msglvl)
         string = '---------------------------------------------------'
 	sprint.sprint(string,2,0,msglvl)
@@ -468,7 +457,6 @@ def CNsolveRealTime():
     A = 0
     C = 0
     Particle.close()
-    sprint.sprint(' ',1,0,msglvl)
     return
 
 # Call this function to run iDEA-MB for 3 electrons
@@ -476,21 +464,16 @@ def main():
 
     # Use global variables
     global jmax,kmax,lmax,xmax,tmax,deltax,deltat,gdstD,imax,msglvl,Psiarr,Mat,Rhv2,Psi3D,r,Mat3,c_m,c_p
+    string = 'many body complex time: constructing arrays'
+    sprint.sprint(string,2,0,msglvl)
+    sprint.sprint(string,1,0,msglvl)
+    OLD = os.getcwd()
+    os.chdir('outputs/' + str(pm.run_name) + '/')
 
     # Construct reduction and expansion matrices
     c_m, c_p = antisym(jmax)
 
-    # Record run infomation
-    text = open('run_info_Complex(Nt=%s,tmax=%s)' %(imax,pm.tmax), 'w')
-    text.write("Information:\n\n")
-    text.write("jmax:%g\nkmax:%g\nimax:%g\nxmax:%g\ntmax:%g\n" %(jmax,kmax,imax,xmax,pm.tmax))
-    text.write("deltax:%g\ndeltat:%g\n" %(deltax,pm.deltat))
-    text.close()
-
     # Complex Crank Nicholoson Array Initialisations
-    string = 'Many Body Complex Time: Constructing Arrays'
-    sprint.sprint(string,2,0,msglvl)
-    sprint.sprint(string,1,0,msglvl)
     Psiarr = np.zeros((2,jmax**3), dtype = np.cfloat)   
     Mat = sparse.lil_matrix((jmax**3,jmax**3),dtype = np.cfloat)	
     Mat3 = sparse.lil_matrix((jmax**3,jmax**3),dtype = np.cfloat)  
@@ -503,53 +486,33 @@ def main():
     Psi3D_Int = CNsolveComplexTime()
 
     # Real Time CN array initialisations
-    string = 'Many Body Real Time: Constructing Arrays'
-    sprint.sprint(string,1,0,msglvl)
-    sprint.sprint(string,2,0,msglvl)
-    Psiarr = np.zeros((2,jmax**3), dtype = np.cfloat)	     
-    Rhv2 = np.zeros((jmax**3), dtype = np.cfloat)     
-    Mat2 = sparse.lil_matrix((jmax**3,jmax**3),dtype = np.cfloat)
-    r = 0.0 + (1.0j)*(deltat/(4.0*(deltax**2)))
-
-    # Save the run details to run_info
-    text = open('run_info_Real(Nt=%s,tmax=%s)' %(imax,pm.tmax), 'w')
-    text.write("Information:\n\n")
-    text.write("jmax:%g\nkmax:%g\nimax:%g\nxmax:%g\ntmax:%g\n" %(jmax,kmax,imax,xmax,pm.tmax))
-    text.write("deltax:%g\ndeltat:%g\n" %(deltax,pm.deltat))
-    text.close()
+    if int(TD) == 1:
+        string = 'many body real time: constructing arrays'
+        sprint.sprint(string,1,0,msglvl)
+        sprint.sprint(string,2,0,msglvl)
+        Psiarr = np.zeros((2,jmax**3), dtype = np.cfloat)	     
+        Rhv2 = np.zeros((jmax**3), dtype = np.cfloat)     
+        Mat2 = sparse.lil_matrix((jmax**3,jmax**3),dtype = np.cfloat)
+        r = 0.0 + (1.0j)*(deltat/(4.0*(deltax**2)))
 
     # Evolve throught real time
     if int(TD) == 1:
     	CNsolveRealTime()
         Den = np.zeros((imax,jmax))
-        dendir = os.path.join("CDensity")
-        origdir = os.getcwd()
-        for i in range(imax):
-            os.chdir(dendir)        
+        for i in range(imax):     
             Den[i,:] = np.load('chargeDensity_%i.npy' %(i))
-            os.remove('chargeDensity_%i.npy'%(i))
-            os.chdir(origdir)
-        os.chdir(dendir)  
-        ProbPsiFile = open("ProbPsi(Nx=%s,Nt=%s).db" % (jmax,imax),"w")
+        ProbPsiFile = open('raw/' + str(pm.run_name) + '_3td_ext_den.db','w')
         pickle.dump(Den, ProbPsiFile)
         ProbPsiFile.close()
-        os.chdir(origdir)
-    else:
-	imax = 1
-	CNsolveRealTime()
-        Den = np.zeros(jmax)
-        dendir = os.path.join("CDensity")
-        origdir = os.getcwd()
-        os.chdir(dendir)        
-        Den[:] = np.load('chargeDensity_%i.npy' %(0))
-        os.remove('chargeDensity_%i.npy'%(0))
-        os.chdir(origdir)
-        os.chdir(dendir)  
-        ProbPsiFile = open("ProbPsi(Nx=%s,Nt=%s).db" % (jmax,1),"w")
-        pickle.dump(Den, ProbPsiFile)
-        ProbPsiFile.close()
-        os.chdir(origdir)
+    imax = 1
+    CNsolveRealTime()
+    Den = np.zeros(jmax)
+    Den[:] = np.load('chargeDensity_%i.npy' %(0))
+    os.remove('chargeDensity_%i.npy'%(0)) 
+    ProbPsiFile = open('raw/' + str(pm.run_name) + '_3gs_ext_den.db','w')
+    pickle.dump(Den, ProbPsiFile)
+    ProbPsiFile.close()
+    OutputPotential()
+    os.chdir(OLD)
+    print
 
-# Run stand-alone
-if(__name__ == '__main__'):
-    main()

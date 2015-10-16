@@ -1,7 +1,30 @@
+######################################################################################
+# Name: Antisymmetrisation operations for 3 electrons matrices                       #
+######################################################################################
+# Author(s): James Ramsden                                                           #
+######################################################################################
+# Description:                                                                       #
+# Reduces the size of the many body matrices for 3 electron systems by using the     #
+# Pauli exclusion principle.                                                         #
+#                                                                                    #
+######################################################################################
+# Notes:                                                                             #
+#                                                                                    #
+#                                                                                    #
+#                                                                                    #
+######################################################################################
+
+# Do not run stand-alone
+if(__name__ == '__main__'):
+    print('do not run stand-alone')
+    quit()
+
+# Library imports
 from numpy import prod, zeros
 from scipy.misc import factorial
 from scipy.sparse import lil_matrix
 
+# Construct grid
 def gridz(N_x):
     N_e = 3
     Nxl = N_x**N_e
@@ -22,6 +45,7 @@ def gridz(N_x):
                 count += 1
     return sgrid, lgrid
 
+# Construct antisym matrices
 def antisym(N_x):
     N_e = 3
     Nxl = N_x**N_e
