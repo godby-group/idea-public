@@ -37,7 +37,7 @@ dt = pm.deltat
 TD = pm.TD
 NE = pm.LDA_NE
 Mix = 0.1 
-tol = 1e-12 
+tol = 1e-14 
 Cost = 1 
 Run = 1
 E_xc_Exact = 0
@@ -248,7 +248,8 @@ for i in range(jmax): # Initial guess for V_KS (External Potential)
 V_ext[:] = V_KS[j,:] 
 n_x[j,:], Psi0[j,:], Psi1[j,:] = TISE(V_KS[j,:],j) # Solve Schrodinger Equation initially
 n_x_old[j,:] = n_x[j,:]
-while(Cost>tol):  
+
+while(Cost>tol):
     V_h[j,:] = Hartree(n_x[j,:]) # Calculate Hartree, XC and KS potential
     V_xc[j,:] = XC(n_x[j,:])
     V_hxc[j,:] = V_h[j,:] + V_xc[j,:]

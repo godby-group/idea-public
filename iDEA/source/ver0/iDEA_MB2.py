@@ -183,7 +183,7 @@ def OutputPotential():
     potential = []
     i = 0
     while(i < pm.grid):
-        potential.append(pm.well(float(i*pm.deltax)-pm.xmax))
+        potential.append(pm.well(float(i*deltax)))
         i = i + 1
     pickle.dump(potential,output_file1)
     output_file1.close()

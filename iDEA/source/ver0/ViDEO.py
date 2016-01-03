@@ -71,7 +71,7 @@ def save_plot_gs(filename,dx,L):
 # Function to save timestep of time dependant data to a dat file
 def save_data_td(filename,dx,L,save_data_timestep):
    input_file = open('raw/' + str(filename) + '.db', 'r')
-   output_file = open('data/' + str(filename) + '_' + str(save_plot_timestep) + '.dat', 'w')
+   output_file = open('data/' + str(filename) + '_' + str(save_data_timestep) + '.dat', 'w')
    data = pickle.load(input_file)[save_data_timestep]
    for i in range(0,len(data)):
       x = -0.5*L + dx*float(i)
@@ -103,7 +103,7 @@ def animate_mp4(filename,dx,L,step):
    input_file = open('raw/' + str(filename) + '.db', 'r')
    raw_data = pickle.load(input_file)
    for i in range(0,len(raw_data),step):
-       spring = 'animating: ' + str(100.0*float(float(i)/float(len(raw_data)))) + '%'
+       spring = 'animating: ' + str(int(100.0*float(float(i)/float(len(raw_data))))) + '%'
        sprint(spring,1,1,1)
        file_name = '_tmp%07d.dat'%i
        output_file = open(file_name, 'w')
@@ -139,9 +139,9 @@ def sprint(text, n, s, msglvl):
 
 # Gather file information from user
 run_name = pm.run_name
-NE = int(input('number of electrons (1,2,3): '))
+NE = int(input('number of electrons: '))
 td = bool(input('is the data ground state or time dependant (gs=0,td=1): '))
-approx = int(input('enter which approximation to use (exact=0,LDA=1,MLP=2): '))
+approx = int(input('enter which approximation to use (exact=0,NON=1,LDA=2,MLP=3): '))
 data = int(input('enter which quantity to plot (DEN=0,VXT=1,VKS=2,VH=3,VXC=4): '))
 N = pm.grid
 L = pm.xmax*2
@@ -154,8 +154,10 @@ else:
 if(approx == 0):
    filename = filename + 'ext_'
 if(approx == 1):
-   filename = filename + 'lda_'
+   filename = filename + 'non_'
 if(approx == 2):
+   filename = filename + 'lda_'
+if(approx == 3):
    filename = filename + 'mlp_' 
 if(data == 0):
    filename = filename + 'den'

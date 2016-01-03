@@ -81,15 +81,15 @@ U_KS = zeros((imax,pm.jmax))
 U_MB = zeros((imax,pm.jmax))
 
 # Function to read inputs
-def ReadInput():
+def ReadInput(approx):
     global n_MB
     if(pm.TD):
-        file_name = 'outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_ext_den.db'
+        file_name = 'outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_' + str(approx) + '_den.db'
         input_file = open(file_name,'r')
         data = pickle.load(input_file)
         n_MB[:,:] = data
     else:
-        file_name = 'outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_ext_den.db'
+        file_name = 'outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(approx) + '_den.db'
         input_file = open(file_name,'r')
         data = pickle.load(input_file)
         n_MB[0,:] = data
@@ -99,7 +99,7 @@ def ReadInput():
 def CalculateGroundstate(V_KS,n_MB,mu):
 
     #Build Hamiltonian
-    p=0.05 #Determines the rate of convergence of the ground-state RE
+    p=0.0008 #Determines the rate of convergence of the ground-state RE
     HGS=copy(T)
     V_KS[0,:]+=mu*(n_KS[0,:]**p-n_MB[0,:]**p)
     HGS[0,:]+=V_KS[0,:]
@@ -136,7 +136,9 @@ def GroundState(V_KS,n_MB,mu):
     if pm.NE==3:
         V_KS,n_KS,cost_n_GS,Psi0,Psi1,Psi2=CalculateGroundstate(V_KS,n_MB,0)
     print 'REV: initial guess cost = %s' % cost_n_GS
-    while cost_n_GS > 1e-15:
+    iterations = 0
+    max_iterations = 10000
+    while cost_n_GS > 1e-3:
         cost_old = cost_n_GS
         string = 'REV: charge density cost = ' + str(cost_old)
 	sprint.sprint(string,1,1,pm.msglvl)
@@ -151,6 +153,7 @@ def GroundState(V_KS,n_MB,mu):
 	    mu = mu*0.5
         if mu < 1e-15:
             break
+        iterations += 1
     V_h[0,:] = Hartree(n_KS[0,:])
     V_Hxc[0,:] = V_KS[0,:]-V_ext[0,:]
     V_xc[0,:] = V_Hxc[0,:]-V_h[0,:]
@@ -379,17 +382,17 @@ def CalculateKohnSham(V_KS,A_KS,J_KS,Psi0,Psi1,Psi2):
     return 
 
 # Main control function
-def main():
+def main(approx):
     global j, tol
-    ReadInput() # Read in exact charge density obtained from MB code
+    ReadInput(approx) # Read in exact charge density obtained from code
     GroundState(V_KS,n_MB,mu) # Calculate (or, if already obtained, check) ground-state KS potentia
-    f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_ext_vks.db', 'w') # KS potential	
+    f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(approx) + '_vks.db', 'w') # KS potential	
     pickle.dump(V_KS[0,:],f)				
     f.close()
-    f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_ext_vh.db', 'w') # H potential	
+    f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(approx) + '_vh.db', 'w') # H potential	
     pickle.dump(V_h[0,:],f)				
     f.close()
-    f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_ext_vxc.db', 'w') # XC potential	
+    f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(approx) + '_vxc.db', 'w') # XC potential	
     pickle.dump(V_xc[0,:],f)				
     f.close()
     tol = 1e-12 # Set inital convergence tolerance for exact and KS current densities
@@ -401,13 +404,13 @@ def main():
         V_xc[j,:] = V_KS[j,:]-V_ext[j,:]-V_h[j,:]
     print
     if pm.TD==1:
-         f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_ext_vks.db', 'w') # KS potential	
+         f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_' + str(approx) + '_vks.db', 'w') # KS potential	
          pickle.dump(V_KS[:,:],f)				
          f.close()
-         f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_ext_vh.db', 'w') # H potential	
+         f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_' + str(approx) + '_vh.db', 'w') # H potential	
          pickle.dump(V_h[:,:],f)				
          f.close()
-         f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_ext_vxc.db', 'w') # XC potential	
+         f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_' + str(approx) + '_vxc.db', 'w') # XC potential	
          pickle.dump(V_xc[:,:],f)				
          f.close()
          #f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_ext_jks.db', 'w') # current potential	

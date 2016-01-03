@@ -35,7 +35,7 @@ def draw(msglvl):
    sprint.sprint('                                                              ',1,0,msglvl)
    sprint.sprint('  +----------------------------------------------------------+',1,0,msglvl)
    sprint.sprint('  |           Interacting Dynamic Electrons Approach         |',1,0,msglvl)
-   sprint.sprint('  |              to Many-body Quantum Mechanics              |',1,0,msglvl)
+   sprint.sprint('  |              to Many-Body Quantum Mechanics              |',1,0,msglvl)
    sprint.sprint('  |                                                          |',1,0,msglvl)
    sprint.sprint('  |        Created by Piers Lillystone, James Ramsden        |',1,0,msglvl)                         
    sprint.sprint('  |        Matt Hodgson, Jacob Chapman, Thomas Durrant       |',1,0,msglvl)
