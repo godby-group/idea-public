@@ -1,7 +1,7 @@
 ######################################################################################
 # Name: Reverse Engineering                                                          #
 ######################################################################################
-# Author(s): James Ramsden, Matt Hodgson, Matthew Smith                              # 
+# Author(s): Matt Hodgson, James Ramsden, Matthew Smith                              # 
 ######################################################################################
 # Description:                                                                       #
 # Computes exact VKS, VH, VXC using the RE algorithm from the exact density          #
@@ -17,9 +17,9 @@
 # stabiliesing the algorithm. Time-dependent RE is much more difficult, and is       #
 # dependent on the system. If the TDRE is not converging the most likely reason      #
 # is that dt is too big. There could also be a problem with noise. Noise should be   #
-# obvious in he velocity field. If noise is dominating the system, try changing the  #
-# noise filtering value 'alpha'. Alpha controls how much of the high frequency       #
-# terms are removed from the KS vector potential.                                    #
+# obvious in he velocity field (current/density). If noise is dominating the system, #
+# try changing the noise filtering value 'alpha'. Alpha controls how much of the     #
+# high frequency terms are removed from the KS vector potential.                     #
 #                                                                                    #
 ######################################################################################
 
@@ -79,6 +79,8 @@ A_min = zeros(pm.jmax)
 Apot = zeros(pm.jmax)
 U_KS = zeros((imax,pm.jmax))
 U_MB = zeros((imax,pm.jmax))
+U_t = zeros((2,pm.jmax,pm.NE),dtype='complex')
+B = zeros(pm.NE,dtype='complex')
 
 # Function to read inputs
 def ReadInput(approx):
@@ -99,28 +101,21 @@ def ReadInput(approx):
 def CalculateGroundstate(V_KS,n_MB,mu):
 
     #Build Hamiltonian
-    p=0.0008 #Determines the rate of convergence of the ground-state RE
+    p=0.05 #Determines the rate of convergence of the ground-state RE
     HGS=copy(T)
     V_KS[0,:]+=mu*(n_KS[0,:]**p-n_MB[0,:]**p)
     HGS[0,:]+=V_KS[0,:]
 
     #Solve KS equations
-    K, U=eig_banded(HGS,True)
+    K,U=eig_banded(HGS,True)
+    U[:,:]/=sqdx #Normalise
 
     #Calculate density and cost function
     n_KS[0,:]=0
     for i in range(pm.NE):
-        n_KS[0,:]+=abs(U[:,i])**2/pm.deltax
-    Psi0[0,:]=U[:,0]/sqdx
-    Psi1[0,:]=U[:,1]/sqdx
-    Psi2[0,:]=U[:,2]/sqdx
+        n_KS[0,:]+=abs(U[:,i])**2
     cost_n_GS=sum(abs(n_MB[0,:]-n_KS[0,:]))*pm.deltax
-    if pm.NE==1:
-        return V_KS,n_KS,cost_n_GS,Psi0
-    if pm.NE==2:
-        return V_KS,n_KS,cost_n_GS,Psi0,Psi1
-    if pm.NE==3:
-        return V_KS,n_KS,cost_n_GS,Psi0,Psi1,Psi2
+    return V_KS,n_KS,cost_n_GS,U
 
 # Function to load or force calculation of the ground-state potential
 def GroundState(V_KS,n_MB,mu):
@@ -129,26 +124,16 @@ def GroundState(V_KS,n_MB,mu):
         x = i*pm.deltax-pm.xmax
         V_KS[0,i] = pm.well(x) #Initial guess for KS potential
         V_ext[0,i] = pm.well(x)
-    if pm.NE==1:
-        V_KS,n_KS,cost_n_GS,Psi0=CalculateGroundstate(V_KS,n_MB,0)
-    if pm.NE==2:
-        V_KS,n_KS,cost_n_GS,Psi0,Psi1=CalculateGroundstate(V_KS,n_MB,0)
-    if pm.NE==3:
-        V_KS,n_KS,cost_n_GS,Psi0,Psi1,Psi2=CalculateGroundstate(V_KS,n_MB,0)
+    V_KS,n_KS,cost_n_GS,U=CalculateGroundstate(V_KS,n_MB,0)
     print 'REV: initial guess cost = %s' % cost_n_GS
     iterations = 0
     max_iterations = 10000
-    while cost_n_GS > 1e-3:
+    while cost_n_GS > 1e-13:
         cost_old = cost_n_GS
         string = 'REV: charge density cost = ' + str(cost_old)
 	sprint.sprint(string,1,1,pm.msglvl)
 	sprint.sprint(string,2,1,pm.msglvl)
-        if pm.NE==1:
-            V_KS,n_KS,cost_n_GS,Psi0=CalculateGroundstate(V_KS,n_MB,mu)
-        if pm.NE==2:
-            V_KS,n_KS,cost_n_GS,Psi0,Psi1=CalculateGroundstate(V_KS,n_MB,mu)
-        if pm.NE==3:
-            V_KS,n_KS,cost_n_GS,Psi0,Psi1,Psi2=CalculateGroundstate(V_KS,n_MB,mu)
+        V_KS,n_KS,cost_n_GS,U=CalculateGroundstate(V_KS,n_MB,mu)
 	if abs(cost_n_GS-cost_old) < 1e-15 or cost_n_GS > cost_old:
 	    mu = mu*0.5
         if mu < 1e-15:
@@ -157,6 +142,9 @@ def GroundState(V_KS,n_MB,mu):
     V_h[0,:] = Hartree(n_KS[0,:])
     V_Hxc[0,:] = V_KS[0,:]-V_ext[0,:]
     V_xc[0,:] = V_Hxc[0,:]-V_h[0,:]
+    z=0
+    for k in range(pm.NE):
+        U_t[z,:,k]=U[:,k]
     return
 
 # Function used in calculation of the Hatree potential
@@ -270,8 +258,8 @@ def Filter(A_KS,j):
     return A_KS
 
 # Function to solve TDKSEs, using the Crank-Nicolson method
-def SolveSE(V_KS,A_KS,Psi0,Psi1,Psi2,j):
-    Mat=sparse.lil_matrix((pm.jmax,pm.jmax), dtype='complex')					 						
+def SolveSE(V_KS,A_KS,U_t,j):
+    Mat=sparse.lil_matrix((pm.jmax,pm.jmax),dtype='complex')					 						
     for i in range(pm.jmax):
         Mat[i,i]=1.0+0.5j*pm.deltat*(1.0/pm.deltax**2+0.5*A_KS[j,i]**2+V_KS[j,i])
     for i in range(pm.jmax-1):
@@ -283,19 +271,14 @@ def SolveSE(V_KS,A_KS,Psi0,Psi1,Psi2,j):
     for i in range(2,pm.jmax):
         Mat[i,i-2]=0.5j*pm.deltat*(1.0j*A_KS[j,i-2]+1.0j*A_KS[j,i])*(frac2)/pm.deltax
     Mat=Mat.tocsr()
-    Matin=-(Mat-sparse.identity(pm.jmax, dtype=cfloat))+sparse.identity(pm.jmax, dtype=cfloat)
-    B0=Matin*Psi0[j-1,:]
-    B1=Matin*Psi1[j-1,:]
-    B2=Matin*Psi2[j-1,:]
-    Psi0[j,:]=spla.spsolve(Mat,B0)								
-    Psi1[j,:]=spla.spsolve(Mat,B1)	
-    Psi2[j,:]=spla.spsolve(Mat,B2)										
-    if pm.NE==1:
-        return V_KS,A_KS,n_KS,cost_n,Psi0
-    if pm.NE==2:
-        return V_KS,A_KS,n_KS,cost_n,Psi0,Psi1
-    if pm.NE==3:
-        return V_KS,A_KS,n_KS,cost_n,Psi0,Psi1,Psi2
+    Matin=-(Mat-sparse.identity(pm.jmax,dtype=cfloat))+sparse.identity(pm.jmax,dtype=cfloat)
+    for i in range(pm.NE):
+        B[i]=Matin*U_t[z,:,i]
+        z=1+(-1)**z
+        U_t[z,:,i]=spla.spsolve(Mat,B[i])
+        z=1+(-1)**z
+    z=1+(-1)**z									
+    V_KS,A_KS,n_KS,cost_n,U_t
 
 # Function to calculate the current density
 def CalculateCurrentDensity(n,n_MB):			
@@ -305,20 +288,18 @@ def CalculateCurrentDensity(n,n_MB):
     return CD
 
 # Function to calculate the KS vector (and finally scalar) potential
-def CalculateKohnSham(V_KS,A_KS,J_KS,Psi0,Psi1,Psi2):
+def CalculateKohnSham(V_KS,A_KS,J_KS,U_t):
 
     # Set initial trial vector potential as previous time-step's vector potential
     global tol
     A_KS[j,:]=A_KS[j-1,:] 
-    SolveSE(V_KS,A_KS,Psi0,Psi1,Psi2,j) 
+    SolveSE(V_KS,A_KS,U_t,j) 
 
     # Calculate KS charge density
-    if pm.NE==1:
-        n_KS[j,:]=abs(Psi0[j,:])**2 
-    if pm.NE==2:
-        n_KS[j,:]=abs(Psi0[j,:])**2+abs(Psi1[j,:])**2 
-    if pm.NE==3:
-        n_KS[j,:]=abs(Psi0[j,:])**2+abs(Psi1[j,:])**2+abs(Psi2[j,:])**2
+    n_KS[j,:]=0
+    for i in range(pm.NE):
+        n_KS[j,:]+=abs(U_t[j,:,i])**2
+
     J_KS[j,:]=CalculateCurrentDensity(n_KS,n_MB) # Calculate KS current density
     J_MB[j,:]=CalculateCurrentDensity(n_MB,n_MB) # Calculate KS current density
     
@@ -337,13 +318,10 @@ def CalculateKohnSham(V_KS,A_KS,J_KS,Psi0,Psi1,Psi2):
             if tol<1e-3:
                 tol=tol*10 # Increase allowed convergence tolerance for J_check
                 A_KS[j,:]=A_KS[j-1,:] # Reset vector potential
-                SolveSE(V_KS,A_KS,Psi0,Psi1,Psi2,j) # Solve Schrodinger equation for KS system using initial trial potential
-                if pm.NE==1:
-                    n_KS[j,:]=abs(Psi0[j,:])**2 
-                if pm.NE==2:
-                    n_KS[j,:]=abs(Psi0[j,:])**2+abs(Psi1[j,:])**2 
-                if pm.NE==3:
-                    n_KS[j,:]=abs(Psi0[j,:])**2+abs(Psi1[j,:])**2+abs(Psi2[j,:])**2
+                SolveSE(V_KS,A_KS,U_t,j) # Solve Schrodinger equation for KS system using initial trial potential
+                n_KS[j,:]=0
+                for i in range(pm.NE):
+                    n_KS[j,:]+=abs(U_t[j,:,i])**2
                 J_KS[j,:]=CalculateCurrentDensity(n_KS,n_MB)
                 cost_J[j]=sum(abs(J_KS[j,:]-J_MB[j,:]))*pm.deltax
                 cost_n[j]=sum(abs(n_KS[j,:]-n_MB[j,:]))*pm.deltax
@@ -353,13 +331,10 @@ def CalculateKohnSham(V_KS,A_KS,J_KS,Psi0,Psi1,Psi2):
         A_KS[j,:]+=(J_KS[j,:]-J_MB[j,:])/n_MB[j,:] # Update vector potential
         A_KS=ExtrapolateVectorPotential(A_KS,n_MB) # Extrapolate vector potential from low density regions to edges of system
         A_KS=Filter(A_KS,j) # Remove high frequencies from vector potential
-        SolveSE(V_KS,A_KS,Psi0,Psi1,Psi2,j) # Solve Schrodinger equation using updated vector potential
-        if pm.NE==1:
-            n_KS[j,:]=abs(Psi0[j,:])**2 
-        if pm.NE==2:
-            n_KS[j,:]=abs(Psi0[j,:])**2+abs(Psi1[j,:])**2 
-        if pm.NE==3:
-            n_KS[j,:]=abs(Psi0[j,:])**2+abs(Psi1[j,:])**2+abs(Psi2[j,:])**2
+        SolveSE(V_KS,A_KS,U_t,j) # Solve Schrodinger equation using updated vector potential
+        n_KS[j,:]=0
+        for i in range(pm.NE):
+            n_KS[j,:]+=abs(U_t[j,:,i])**2
         J_KS[j,:]=CalculateCurrentDensity(n_KS,n_MB) # Calculate updated KS current density
         cost_J[j] = sum(abs(J_KS[j,:]-J_MB[j,:]))*pm.deltax 
         cost_n[j] = sum(abs(n_KS[j,:]-n_MB[j,:]))*pm.deltax   
@@ -383,7 +358,7 @@ def CalculateKohnSham(V_KS,A_KS,J_KS,Psi0,Psi1,Psi2):
 
 # Main control function
 def main(approx):
-    global j, tol
+    global j, tol, z, U_t
     ReadInput(approx) # Read in exact charge density obtained from code
     GroundState(V_KS,n_MB,mu) # Calculate (or, if already obtained, check) ground-state KS potentia
     f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(approx) + '_vks.db', 'w') # KS potential	
@@ -397,7 +372,7 @@ def main(approx):
     f.close()
     tol = 1e-12 # Set inital convergence tolerance for exact and KS current densities
     for j in range(1,imax): # Propagate from the ground-state
-        CalculateKohnSham(V_KS,A_KS,J_KS,Psi0,Psi1,Psi2) # Calculate KS potential
+        CalculateKohnSham(V_KS,A_KS,J_KS,U_t) # Calculate KS potential
         U_KS[j,:] = J_KS[j,:]/n_KS[j,:] # Calculate KS velocity field
         V_h[j,:] = Hartree(n_KS[j,:])
         V_Hxc[j,:] = V_KS[j,:]-V_ext[j,:]

@@ -64,7 +64,7 @@ if(pm.NON_RE == 1):
       import iDEA_RE
       iDEA_RE.main('non')
 if(pm.MLP == 1):
-      import iDEA_MLP
+      print('MLP: not yet implemented')
 
 # All jobs done
 string = 'all jobs done \n'

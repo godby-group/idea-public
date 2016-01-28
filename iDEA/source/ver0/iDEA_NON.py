@@ -99,7 +99,7 @@ def main():
 
    # Compute first N wavefunctions
    print 'NON: computing ground state density'
-   solution = spla.eigs(H, k=pm.NE, which='SM', maxiter=10000)
+   solution = spla.eigs(H, k=pm.NE, which='SM', maxiter=1000000)
    energies = solution[0] 
    wavefunctions = solution[1]
 

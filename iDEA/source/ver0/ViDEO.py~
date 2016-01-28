@@ -142,7 +142,7 @@ run_name = pm.run_name
 NE = int(input('number of electrons: '))
 td = bool(input('is the data ground state or time dependant (gs=0,td=1): '))
 approx = int(input('enter which approximation to use (exact=0,NON=1,LDA=2,MLP=3): '))
-data = int(input('enter which quantity to plot (DEN=0,VXT=1,VKS=2,VH=3,VXC=4,MLP_COST=5,MLP_ELF=6): '))
+data = int(input('enter which quantity to plot (DEN=0,VXT=1,VKS=2,VH=3,VXC=4,COST(MLP ONLY)=5): '))
 N = pm.grid
 L = pm.xmax*2
 dx = float(L/(N-1))
@@ -171,8 +171,6 @@ if(data == 4):
    filename = filename + 'vxc'
 if(data == 5):
    filename = filename + 'cost'
-if(data == 6):
-   filename = filename + 'elf'
 
 # Determine what the user wants to be processed
 if(td==0):
