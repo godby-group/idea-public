@@ -287,7 +287,7 @@ if(TD == 0):
 if(TD==1):
    for i in range(jmax): # Perturbed V_KS
        V_KS[1,i] = V_KS[0,i] + Potential(i,1)  
-   V_ext[:] = V_ext[:] + Potential(i,1) # Perturbed external potential 
+       V_ext[i] = V_ext[i] + Potential(i,1) # Perturbed external potential 
    for j in range(1,imax): # Evolve TDSE using Crank-Nicolson scheme
        string = 'LDA: evolving through real time: t = ' + str(j*dt) 
        PS(string)

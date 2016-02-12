@@ -28,9 +28,10 @@ import cmath
 import pickle
 import numpy as np
 import scipy as sp
+import parameters as pm
 import scipy.sparse as sps
 import scipy.sparse.linalg as spla
-import parameters as pm
+
 
 # Function to construct the kinetic energy K
 def constructK():
@@ -99,7 +100,7 @@ def main():
 
    # Compute first N wavefunctions
    print 'NON: computing ground state density'
-   solution = spla.eigs(H, k=pm.NE, which='SM', maxiter=1000000)
+   solution = spla.eigs(H, k=pm.NE, which='SR', maxiter=1000000)
    energies = solution[0] 
    wavefunctions = solution[1]
 
@@ -150,7 +151,8 @@ def main():
             b = C*wavefunction   
 
             # Solve Ax=b
-            wavefunction, info = spla.bicgstab(A,b,x0=wavefunction)
+            wavefunction, info = spla.cg(A,b,x0=wavefunction,tol=pm.non_rtol)
+            print info
 
             # Calculate the density
             density = calculateDensity(wavefunction)

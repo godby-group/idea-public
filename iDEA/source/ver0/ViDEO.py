@@ -185,7 +185,7 @@ if(td==1):
    save_plot = bool(input('save to png image (0=no,1=yes): '))
    if(save_plot):
        save_plot_timestep = int(input('timestep to plot image: '))
-   animate = bool(input('save to mp4 video (0=no,1=yes): '))
+   animate = bool(input('save to avi video (0=no,1=yes): '))
    if(animate):
       step = int(input('skip every n frames (1=animate all frames, 2=skip every 2 frames, etc): n = '))
 

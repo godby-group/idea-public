@@ -240,20 +240,25 @@ def Energy(Psi):
 
 # Function to output the system's external potential
 def OutputPotential():
-    output_file1 = open('raw/' + str(pm.run_name) +  '_3gs_ext_vxt.db','w')
+    output_file1 = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_3gs_ext_vxt.db','w')
     potential = []
     i = 0
     while(i < pm.grid):
-        potential.append(pm.well(float(i*deltax)))
+        potential.append(pm.well(float((i*deltax)-pm.xmax)))
         i = i + 1
     pickle.dump(potential,output_file1)
     output_file1.close()
     if(pm.TD == 1):
-        output_file2 = open('raw/' + str(pm.run_name) +  '_3td_ext_vxt.db','w')
+        potential2 = []
+        i = 0
+        while(i < pm.grid):
+        	potential2.append(pm.well(float((i*deltax)-pm.xmax)) + pm.petrb(float((i*deltax)-pm.xmax)))
+        	i = i + 1
+        output_file2 = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_3td_ext_vxt.db','w')
         TDP = []
         i = 0
         while(i < pm.imax):
-            TDP.append(potential)
+            TDP.append(potential2)
             i = i + 1
         pickle.dump(TDP,output_file2)
         output_file2.close()

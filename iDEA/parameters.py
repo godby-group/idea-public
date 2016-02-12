@@ -1,11 +1,11 @@
 # Library imports
-import numpy as np 
+import numpy as np
 import scipy as sp
 import math
 
 # Define run parameters
 run_name = 'run_name'           # Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
-code_version = 0                # Version of iDEA to use (0: As downloaded off the git) (Global: 1.1.0)
+code_version = 0                # Version of iDEA to use (0: As downloaded off the git) (Global: 1.3.0)
 NE = 2                          # Number of electrons
 TD = 0                          # Time dependance (0: Just find system ground state, 1: Run time dependance with pertubation)
 MB = 1                          # Run Many-Body  
@@ -17,26 +17,23 @@ MLP = 1                         # Run MLP approximation
 par = 0                         # Use parallelised solver and multiplication (0: serial, 1: parallel) Note: Recommend using parallel for large runs
 ctol = 1e-14                    # Tolerance of complex time evolution (Recommended: 1e-14)
 rtol = 1e-14                    # Tolerance of real time evolution (Recommended: 1e-14)
-ctmax = 5000.0			# Total complex time
-MB_RE = 0                       # Reverse engineer many-body density
+ctmax = 10000.0			# Total complex time
+MB_RE = 1                       # Reverse engineer many-body density
 
 # Non-Interacting approximation parameters
-NON_RE = 0                      # Reverse engineer non-interacting density
+NON_RE = 1                      # Reverse engineer non-interacting density
+non_rtol = 1e-14                # Tolerance of real time evolution (Recommended: 1e-14)
 
 # LDA parameters
 LDA_NE = 3                      # Number of electrons used in construction of the LDA
 
-# MLP parameters
-f=0.0				# f mixing parameter
-cost=1                          # Calculate cost function (must have exact density)
-
 # Define grid parameters
-grid = 101                      # Number of grid points (must be an odd number)
+grid = 201                      # Number of grid points (must be an odd number)
 xmax = 20.0 			# Size of the system
-tmax = 5.0 			# Total real time
-imax = 5001			# Number of real time iterations
+tmax = 1.0 			# Total real time
+imax = 10001			# Number of real time iterations
 
-#Definition of initial external potential
+# Definition of initial external potential
 def well(x):
     return 0.5*(0.25**2)*(x**2)
 
@@ -44,6 +41,7 @@ def well(x):
 def petrb(x):
     return -0.1*x
 
+##############################################################
 ##################### Derived Parameters #####################
 ##############################################################
 
