@@ -219,12 +219,12 @@ while(Cost>tol):
     V_KS[j,:] = Mix*V_KS[j,:] + (1.0-Mix)*V_KS_old[j,:] # Mix KS potential# 
     
     Cost = sum(abs(n_x[j,:]-n_x_old[j,:])*dx)
-    string = 'MLP (f='+str(pm.f)+'): ground-state KS potential: run = ' + str(Run) + ', charge density cost (convergence)= ' + str(Cost)
+    string = 'MLP: (f='+str(pm.f)+'): ground-state KS potential: run = ' + str(Run) + ', charge density cost (convergence)= ' + str(Cost)
     PS(string)
     n_x_old[j,:] = n_x[j,:]
     V_KS_old[j,:] = V_KS[j,:]
     Run = Run + 1
-print "\n"
+print
 
 # find a file in a path
 def find(name, path):

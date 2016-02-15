@@ -27,6 +27,10 @@ non_rtol = 1e-14                # Tolerance of real time evolution (Recommended:
 # LDA parameters
 LDA_NE = 3                      # Number of electrons used in construction of the LDA
 
+# MLP parameters
+f=0.0                           # f mixing parameter
+cost=0                          # Calculate cost function (must have exact density)
+
 # Define grid parameters
 grid = 201                      # Number of grid points (must be an odd number)
 xmax = 20.0 			# Size of the system
