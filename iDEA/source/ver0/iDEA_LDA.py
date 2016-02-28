@@ -1,7 +1,7 @@
 ######################################################################################
-# Name: 1 electron LDA                                                               #
+# Name: LDA approximation                                                            #
 ######################################################################################
-# Author(s): Mike Entwistle                                                          #
+# Author(s): Mike Entwistle, Matt Hodgson                                            #
 ######################################################################################
 # Description:                                                                       #
 # Computes approximations to VKS, VH, VXC using the LDA self consistently.           #
@@ -14,7 +14,7 @@
 #                                                                                    #
 ######################################################################################
 
-# Import libraries
+# Import Libraries
 from math import *									
 from numpy import *
 from scipy.linalg import eig_banded, solve
@@ -26,7 +26,7 @@ from scipy import special
 from scipy.sparse import linalg as spla
 
 # Parameters
-jmax = pm.jmax
+jmax = pm.jmax 
 imax = pm.imax
 xmax = pm.xmax 
 tmax = pm.tmax
@@ -36,14 +36,13 @@ sqdx = sqrt(dx)
 dt = pm.deltat
 TD = pm.TD
 NE = pm.LDA_NE
-Mix = 0.1
-tol = 1e-12
+Mix = pm.LDA_mix
+tol = pm.LDA_tol 
 Cost = 1 
 Run = 1
 E_xc_Exact = 0 
 
 # Matrices
-Psi0 = zeros((imax,jmax), dtype='complex') # Wave function for particle						
 V_h = zeros((imax,jmax)) # Potentials
 V_xc = zeros((imax,jmax)) 
 V_hxc = zeros((imax,jmax)) 
@@ -60,26 +59,32 @@ CNLHS = sparse.lil_matrix((jmax,jmax),dtype='complex') # Matrix for the left han
 Mat = sparse.lil_matrix((jmax,jmax),dtype='complex')   
 Matin = sparse.lil_matrix((jmax,jmax),dtype='complex') # Inverted Matrix for the right hand side of the Crank Nicholson method 
 																		
-# Potential Generator 
-def Potential(i,j):
+# Potential Generator
+def Potential(i,j): 
         x = -xmax + i*dx 
         if (j==0): 
             V = pm.well(x)
         else: 
-            V = pm.petrb(x)
+            V = pm.petrb(x) 
         return V
 
-# Solve the time-independent Schrodinger equation 	
-def TISE(V_KS,j): 				                         											
-        HGS = copy(T) # Reset Hamiltonian									
-        HGS[0,:] += V_KS[:] # Add The Kohn-Sham potential to the Hamiltonian																
-        K, U = eig_banded(HGS, True) # Returns eigenvalues (K) and eigenvectors (U)					 									
-        Psi0[j,:] = U[:,0]/sqdx # Normalise the wave functions 							
-        n_x[j,:] = abs(Psi0[j,:])**2 # Calculate charge density				   
-        return n_x[j,:], Psi0[j,:]
-
-# Define function for Fourier transforming into real-space	
-def realspace(vector): 											
+# Solve the time-independent Schrodinger equation
+def TISE(V_KS,j):  					                         											
+        HGS = copy(T) 									
+        HGS[0,:] += V_KS[:]																	
+        # Solve KS equations
+        K,U=eig_banded(HGS,True)
+        Psi = zeros((pm.NE,imax,jmax), dtype='complex')
+        for i in range(pm.NE):
+            Psi[i,j,:] = U[:,i]/sqdx # Normalise
+        # Calculate density and cost function
+        n_x[j,:]=0
+        for i in range(pm.NE):
+             n_x[j,:]+=abs(Psi[i,j,:])**2 # Calculate the density from the single-particle wavefunctions				   
+        return n_x[j,:], Psi
+ 
+# Define function for Fourier transforming into real-space
+def realspace(vector):  												
 	mid_k = int(0.5*(jmax-1))
 	fftin = zeros(jmax-1, dtype='complex')
 	fftin[0:mid_k+1] = vector[mid_k:jmax]
@@ -91,7 +96,7 @@ def realspace(vector):
 	return func
 
 # Define function for Fourier transforming into k-space
-def momentumspace(func): 											
+def momentumspace(func): 												
 	mid_k = int(0.5*(jmax-1))
 	fftin = zeros(jmax-1, dtype='complex')
 	fftin[0:jmax-1] = func[0:jmax-1] + 0.0j
@@ -103,7 +108,7 @@ def momentumspace(func):
 	return vector
 
 # Define function for generating the Hartree potential for a given charge density
-def Hartree(n):
+def Hartree(n): 
 	n_k = momentumspace(n)*dx							 												
 	X_x = zeros(jmax)
 	for i in range(jmax):
@@ -120,7 +125,7 @@ def Hartree(n):
 	return V_hx
 
 # Calculation of the current density via the continuity equation
-def Currentdensity(j, n): 											
+def Currentdensity(j, n):  											
 	J = zeros(jmax, dtype ='float')
 	if j != 0:
 		for i in range(jmax):			
@@ -156,7 +161,7 @@ def Currentdensity(j, n):
 	return J[:]
 
 # LDA approximation for XC potential
-def XC(n):
+def XC(n): 
         V_xc = zeros(jmax)
         if (NE == 1):
           V_xc[:] = ((-1.389 + 2.44*n[:] - 2.05*(n[:])**2)*n[:]**0.653) 
@@ -166,8 +171,8 @@ def XC(n):
           V_xc[:] = ((-1.24 + 2.1*n[:] - 1.7*(n[:])**2)*n[:]**0.61) 
         return V_xc[:]
 
-# LDA approximation for XC energy
-def EXC(n):
+# LDA approximation for XC energy 
+def EXC(n): 
         E_xc_LDA = 0.0
         if (NE == 1):
           for i in range(jmax-1):
@@ -205,6 +210,7 @@ def error(E_xc_LDA, E_xc_Exact):
                 LDA_error_percentage = LDA_error_percentage*100
                 #print 'E_xc_LDA is', (round(LDA_error_percentage, 2)),'% too high' 
         else:
+            print
             print 'LDA: exchange-correlation energy: ', (round(E_xc_LDA, 4))
 
 # Print statements 
@@ -215,17 +221,23 @@ def PS(text):
 	sys.stdout.flush()
 
 # Solve the Crank Nicolson equation
-def CrankNicolson(V_KS, Psi0, n, j): 
-	Mat = LHS(V_KS, j) # The Hamiltonian here is using the Kohn-Sham potential. 												
-	Mat = Mat.tocsr()
-	Matin = -(Mat-sparse.identity(jmax, dtype=cfloat)) + sparse.identity(jmax, dtype=cfloat)
-	B0 = Matin*Psi0[j-1,:] # Solve the Crank Nicolson equation to get the wave-function at dt later.
-	Psi0[j,:] = spla.spsolve(Mat, B0) 														
-	n[j,:] = abs(Psi0[j,:])**2
-	return n, Psi0
+def CrankNicolson(V_KS, Psi, n, j): 
+	Mat = LHS(V_KS, j) # The Hamiltonian here is using the Kohn-Sham potential 
+        Mat=Mat.tocsr()
+        Matin=-(Mat-sparse.identity(pm.jmax,dtype='complex'))+sparse.identity(pm.jmax,dtype='complex')
+        for i in range(pm.NE):
+            B=Matin*Psi[i,j-1,:]
+            Psi[i,j,:]=spla.spsolve(Mat,B)
 
-# Left hand side of the Crank Nicolson method
-def LHS(V_KS, j): 												
+        # Calculate density and cost function
+        n[j,:]=0
+        for i in range(pm.NE):
+             n[j,:]+=abs(Psi[i,j,:])**2 # Calculate the density from the single-particle wavefunctions
+
+	return n, Psi
+
+ # Left hand side of the Crank Nicolson method
+def LHS(V_KS, j):											
 	for i in range(jmax):
 	    CNLHS[i,i] = 1.0+0.5j*dt*(1.0/dx**2+V_KS[i])
 	    if i < jmax-1:
@@ -240,7 +252,7 @@ for i in range(jmax): # Initial guess for V_KS (External Potential)
     V_KS[j,i] = Potential(i,j) 
     V_KS_old[j,i] = Potential(i,j)
 V_ext[:] = V_KS[j,:] 
-n_x[j,:], Psi0[j,:] = TISE(V_KS[j,:],j) # Solve Schrodinger Equation initially
+n_x[j,:], Psi = TISE(V_KS[j,:],j) # Solve Schrodinger Equation initially
 n_x_old[j,:] = n_x[j,:]
 while(Cost>tol):  
     V_h[j,:] = Hartree(n_x[j,:]) # Calculate Hartree, XC and KS potential
@@ -248,59 +260,56 @@ while(Cost>tol):
     V_hxc[j,:] = V_h[j,:] + V_xc[j,:]
     V_KS[j,:] = V_ext[:] + V_hxc[j,:]
     V_KS[j,:] = Mix*V_KS[j,:] + (1.0-Mix)*V_KS_old[j,:] # Mix KS potential
-    n_x[j,:], Psi0[j,:] = TISE(V_KS[j,:],j) # Solve Schrodinger Equation
+    n_x[j,:], Psi = TISE(V_KS[j,:],j) # Solve Schrodinger Equation
     Cost = sum(abs(n_x[j,:]-n_x_old[j,:])*dx)
-    string = 'LDA: ground-state KS potential: run = ' + str(Run) + ', charge density cost = ' + str(Cost)
+    string = 'LDA: ground-state Kohn-Sham potential: run = ' + str(Run) + ', charge density cost = ' + str(Cost)
     PS(string)
     n_x_old[j,:] = n_x[j,:]
     V_KS_old[j,:] = V_KS[j,:]
     Run = Run + 1
-V_h[j,:] = Hartree(n_x[j,:]) # Calculate Hartree and XC potential with correct density 
+V_h[j,:] = Hartree(n_x[j,:])
 V_xc[j,:] = XC(n_x[j,:])
 V_hxc[j,:] = V_h[j,:] + V_xc[j,:]
-E_xc_LDA = EXC(n_x[j,:]) # XC energy 
+E_xc_LDA = EXC(n_x[j,:]) 
 error(E_xc_LDA, E_xc_Exact)    
-if (TD == 0): 
-   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_1gs_lda_vks.db', 'w') # KS potential	
+if(TD == 0): 
+   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_vks.db', 'w') # KS potential	
    pickle.dump(V_KS[0,:],f)				
    f.close()
-   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_1gs_lda_vh.db', 'w') # H potential	
+   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_vh.db', 'w') # H potential	
    pickle.dump(V_h[0,:],f)				
    f.close()
-   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_1gs_lda_vxc.db', 'w') # XC potential	
+   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_vxc.db', 'w') # XC potential	
    pickle.dump(V_xc[0,:],f)				
    f.close()
-   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_1gs_lda_den.db', 'w') # Density	
+   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_den.db', 'w') # Density	
    pickle.dump(n_x[0,:],f)				
    f.close()
 
-
 # Find realtime values
-if (TD ==1):
+if(TD==1):
    for i in range(jmax): # Perturbed V_KS
        V_KS[1,i] = V_KS[0,i] + Potential(i,1)  
        V_ext[i] = V_ext[i] + Potential(i,1) # Perturbed external potential 
    for j in range(1,imax): # Evolve TDSE using Crank-Nicolson scheme
        string = 'LDA: evolving through real time: t = ' + str(j*dt) 
        PS(string)
-       n_x, Psi0 = CrankNicolson(V_KS[j,:], Psi0, n_x, j)  
+       n_x, Psi = CrankNicolson(V_KS[j,:], Psi, n_x, j)  
        J_x[j,:] = Currentdensity(j,n_x)
        V_h[j,:] = Hartree(n_x[j,:]) 
        V_xc[j,:] = XC(n_x[j,:])
        if(j != imax-1):
            V_KS[j+1,:] = V_ext[:] + V_h[j,:] + V_xc[j,:] # Update KS potential
-   for i in range(jmax): # Ground-state external potential
-      V_ext[i] = Potential(i,0) 
-   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_1td_lda_vks.db', 'w') # KS potential	
+   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_lda_vks.db', 'w') # KS potential	
    pickle.dump(V_KS,f)				
    f.close()
-   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_1td_lda_vh.db', 'w') # H potential	
+   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_lda_vh.db', 'w') # H potential	
    pickle.dump(V_h,f)				
    f.close()
-   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_1td_lda_vxc.db', 'w') # XC potential	
+   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_lda_vxc.db', 'w') # XC potential	
    pickle.dump(V_xc,f)				
    f.close()
-   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_1td_lda_den.db', 'w') # Density	
+   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_lda_den.db', 'w') # Density	
    pickle.dump(n_x,f)				
    f.close()
    print

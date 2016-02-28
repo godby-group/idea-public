@@ -33,6 +33,7 @@ import parameters as pm
 import scipy.sparse as sps
 import scipy.sparse.linalg as spla
 
+
 # Function to construct the kinetic energy K
 def constructK():
    xgrid = np.linspace(-pm.xmax,pm.xmax,pm.grid)

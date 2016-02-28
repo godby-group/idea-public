@@ -28,9 +28,9 @@ import cmath
 import pickle
 import numpy as np
 import scipy as sp
-import parameters as pm
 import scipy.sparse as sps
 import scipy.sparse.linalg as spla
+import parameters as pm
 
 # Function to construct the potential V
 def constructV(time):

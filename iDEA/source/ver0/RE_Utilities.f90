@@ -9,10 +9,12 @@
 !                                                                                    !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Notes:                                                                             !
-! Compile with mkl.compiler                                                          !
+! Compile with *                                                                     !
 !                                                                                    !
 !                                                                                    !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!* f2py -c --fcompiler=intelem -L${MKLROOT}/lib/intel64/ -lmkl_rt -m RE_Utilities RE_Utilities.f90 --f90flags='-openmp' -lgomp --opt='-fast'
 
 	SUBROUTINE continuity_eqn(j,nx,dx,dt,n,lnrow,lncol,cd,lcd) 
     

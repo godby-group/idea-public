@@ -9,11 +9,12 @@
 !                                                                                    !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Notes:                                                                             !
-! Compile with mkl.compiler                                                          !
+! Compile with *                                                                     !
 !                                                                                    !
 !                                                                                    !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!* f2py -c --fcompiler=intelem -L${MKLROOT}/lib/intel64/ -lmkl_rt -m mkl mkl.f --f90flags='-openmp' -lgomp --opt='-fast'
 
 !============================INTEL's BLAS MULTIPLY METHOD (C)======================================
                                                                                                   

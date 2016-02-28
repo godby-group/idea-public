@@ -141,8 +141,8 @@ def sprint(text, n, s, msglvl):
 run_name = pm.run_name
 NE = int(input('number of electrons: '))
 td = bool(input('is the data ground state or time dependant (gs=0,td=1): '))
-approx = int(input('enter which approximation to use (exact=0,NON=1,LDA=2,MLP=3): '))
-data = int(input('enter which quantity to plot (DEN=0,VXT=1,VKS=2,VH=3,VXC=4,MLP_COST=5,MLP_ELF=6): '))
+approx = int(input('enter which approximation to use (exact=0,NON=1,LDA=2,MLP=3,MBPT=4): '))
+data = int(input('enter which quantity to plot (DEN=0,CUR=1,VXT=2,VKS=3,VH=4,VXC=5,ELF=6): '))
 N = pm.grid
 L = pm.xmax*2
 dx = float(L/(N-1))
@@ -158,19 +158,21 @@ if(approx == 1):
 if(approx == 2):
    filename = filename + 'lda_'
 if(approx == 3):
-   filename = filename + 'mlp_' 
+   filename = filename + 'mlp_'
+if(approx == 4):
+   filename = filename + 'mbpt_'
 if(data == 0):
    filename = filename + 'den'
 if(data == 1):
-   filename = filename + 'vxt'
+   filename = filename + 'cur'
 if(data == 2):
-   filename = filename + 'vks'
+   filename = filename + 'vxt'
 if(data == 3):
-   filename = filename + 'vh'
+   filename = filename + 'vks'
 if(data == 4):
-   filename = filename + 'vxc'
+   filename = filename + 'vh'
 if(data == 5):
-   filename = filename + 'cost'
+   filename = filename + 'vxc'
 if(data == 6):
    filename = filename + 'elf'
 
