@@ -331,6 +331,17 @@ def ConstructAf(A):
     Af = sp.sparse.bmat([[A1,-A2],[A2,A1]]).tocsr()
     return Af
 
+# Function to calculate the current density
+def calculateCurrentDensity(total_td_density):
+    current_density = []
+    for i in range(0,len(total_td_density)-1):
+         string = 'MB: computing time dependent current density t = ' + str(i*pm.deltat)
+         sprint.sprint(string,1,1,pm.msglvl)
+         J = np.zeros(pm.jmax)
+         J = RE_Utilities.continuity_eqn(pm.jmax,pm.deltax,pm.deltat,total_td_density[i+1],total_td_density[i])
+         current_density.append(J)
+    return current_density
+
 # Apply the Crank-Nickolson method using complex time to find the ground state of the system
 def CNsolveComplexTime():
     i = 1
@@ -556,10 +567,10 @@ def main():
         for i in range(imax):     
             Den[i,:] = np.load('chargeDensity_%i.npy' %(i))
 
-	    # Calculate current density
-            if i>0:
-                current = CalculateCurrentDensity(Den,i) 
-                current_density.append(current)
+        # Calculate current density
+        current_density = calculateCurrentDensity(Den)
+        print   
+
         ground = Den.tolist().pop(0)
         ProbPsiFile = open('outputs/' + str(pm.run_name) + '/' + 'raw/' + str(pm.run_name) + '_3td_ext_den.db','w')
         pickle.dump(Den, ProbPsiFile)

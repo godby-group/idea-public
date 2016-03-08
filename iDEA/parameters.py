@@ -17,11 +17,11 @@ par = 0                         # Use parallelised solver and multiplication (0:
 ctol = 1e-14                    # Tolerance of complex time evolution (Recommended: 1e-14)
 rtol = 1e-14                    # Tolerance of real time evolution (Recommended: 1e-14)
 ctmax = 10000.0			# Total complex time
-MB_RE = 1                       # Reverse engineer many-body density
+MB_RE = 0                       # Reverse engineer many-body density
 
 # Non-Interacting approximation parameters
 NON_rtol = 1e-14                # Tolerance of real time evolution (Recommended: 1e-14)
-NON_RE = 1                      # Reverse engineer non-interacting density
+NON_RE = 0                      # Reverse engineer non-interacting density
 
 # LDA parameters
 LDA_NE = 3                      # Number of electrons used in construction of the LDA
@@ -36,19 +36,19 @@ cost=0                          # Calculate cost function (must have exact densi
 MBPT_RE = 0                     # Reverse engineer mbpt density
 
 # Define grid parameters
-grid = 201                      # Number of grid points (must be an odd number)
-xmax = 10.0 			# Size of the system
-tmax = 5.0 			# Total real time
-imax = 5001			# Number of real time iterations
+grid = 301                      # Number of grid points (must be an odd number)
+xmax = 20.0 			# Size of the system
+tmax = 10.0 			# Total real time
+imax = 50001			# Number of real time iterations
 
-# Definition of the external potential
+#Definition of initial external potential
 def well(x):
-    return 0.5*(0.25**2)*(x**2)
+   return (0.5)*(0.25**2)*(x**2)
 
 # Defination of the perturbation potential begining at t=0
 def petrb(x):
-    return -0.05*x
-
+   return -0.1*x
+ 
 # Derived parameters
 jmax = grid			# Number of grid points to represent 1st electronic wavefunction
 kmax = jmax 			# Number of grid points to represent 2nd electronic wavefunction

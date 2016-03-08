@@ -20,7 +20,9 @@ from numpy import *
 from scipy.linalg import eig_banded, solve
 import parameters as pm
 import sys
-import pickle 
+import sprint
+import RE_Utilities
+import pickle
 from scipy import sparse
 from scipy import special
 from scipy.sparse import linalg as spla
@@ -246,6 +248,17 @@ def LHS(V_KS, j):
 		CNLHS[i,i-1] = -0.5j*dt*(0.5/dx)/dx
 	return CNLHS
 
+# Function to calculate the current density
+def calculateCurrentDensity(total_td_density):
+    current_density = []
+    for i in range(0,len(total_td_density)-1):
+         string = 'LDA: computing time dependent current density t = ' + str(i*pm.deltat)
+         sprint.sprint(string,1,1,pm.msglvl)
+         J = zeros(pm.jmax)
+         J = RE_Utilities.continuity_eqn(pm.jmax,pm.deltax,pm.deltat,total_td_density[i+1],total_td_density[i])
+         current_density.append(J)
+    return current_density
+
 # Find groundstate values
 j = 0
 for i in range(jmax): # Initial guess for V_KS (External Potential)
@@ -262,7 +275,7 @@ while(Cost>tol):
     V_KS[j,:] = Mix*V_KS[j,:] + (1.0-Mix)*V_KS_old[j,:] # Mix KS potential
     n_x[j,:], Psi = TISE(V_KS[j,:],j) # Solve Schrodinger Equation
     Cost = sum(abs(n_x[j,:]-n_x_old[j,:])*dx)
-    string = 'LDA: ground-state Kohn-Sham potential: run = ' + str(Run) + ', charge density cost = ' + str(Cost)
+    string = 'LDA: ground-state Kohn-Sham potential: run = ' + str(Run) + ', convergence = ' + str(Cost)
     PS(string)
     n_x_old[j,:] = n_x[j,:]
     V_KS_old[j,:] = V_KS[j,:]
@@ -295,11 +308,13 @@ if(TD==1):
        string = 'LDA: evolving through real time: t = ' + str(j*dt) 
        PS(string)
        n_x, Psi = CrankNicolson(V_KS[j,:], Psi, n_x, j)  
-       J_x[j,:] = Currentdensity(j,n_x)
        V_h[j,:] = Hartree(n_x[j,:]) 
        V_xc[j,:] = XC(n_x[j,:])
        if(j != imax-1):
            V_KS[j+1,:] = V_ext[:] + V_h[j,:] + V_xc[j,:] # Update KS potential
+
+   # Calculate current density
+   current_density = calculateCurrentDensity(n_x)
    f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_lda_vks.db', 'w') # KS potential	
    pickle.dump(V_KS,f)				
    f.close()
@@ -312,5 +327,8 @@ if(TD==1):
    f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_lda_den.db', 'w') # Density	
    pickle.dump(n_x,f)				
    f.close()
+   output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_lda_cur.db','w') # Current density 
+   pickle.dump(current_density,output_file)
+   output_file.close()
    print
 

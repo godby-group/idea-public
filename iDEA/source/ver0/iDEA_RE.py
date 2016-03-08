@@ -248,9 +248,8 @@ def SolveKSE(V_KS,A_KS,Psi,j,frac1,frac2,z):
     return V_KS,A_KS,Psi,z
 
 # Function to calculate the current density
-def CalculateCurrentDensity(n,n_MB,upper_bound,j):	
-    J=np.zeros(pm.jmax)
-    RE_Utilities.continuity_eqn(j+1,pm.jmax,pm.deltax,pm.deltat,n,J)
+def CalculateCurrentDensity(n,n_MB,upper_bound,j):
+    J=RE_Utilities.continuity_eqn(pm.jmax,pm.deltax,pm.deltat,n[j,:],n[j-1,:])
     J=ExtrapolateCD(J,j,n,n_MB,upper_bound)
     return J
 
@@ -316,7 +315,7 @@ def CalculateKS(V_KS,A_KS,J_KS,Psi,j,upper_bound,frac1,frac2,z,tol,n_MB,J_MB,cos
         if cost_J[j]<cost_min:  # Keep present vector potential for reference if produces lower cost function evaluation
             cost_min=cost_J[j]
             A_min[:]=A_KS[j,:]
-        J_check=RE_Utilities.compare(J_KS,J_MB,tol) # Check if KS and exact current density are equal 
+        J_check=RE_Utilities.compare(pm.jmax,J_KS[j,:],J_MB[j,:],tol) # Check if KS and exact current density are equal
         if J_check:
             A_KS[j,:]=A_min[:] # Go with the best answer
             z=z*(-1)+1 # Only save two times at any point
@@ -396,7 +395,6 @@ def main(approx):
     if pm.TD==1:
 
         # Time-dependence
-        print
         n_MB=ReadInput(approx,n_MB,1,imax) # Read in exact charge density obtained from code
         for i in range(pm.jmax):
             petrb[i]=pm.petrb((i*pm.deltax-pm.xmax))

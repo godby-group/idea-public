@@ -4,7 +4,7 @@
 # Author(s): Jack Wetherell                                                          #
 ######################################################################################
 # Description:                                                                       #
-# Visualise iDEA outputs to .dat .png .mp4 from .db                                  #
+# Visualise iDEA outputs to .dat .png .avi from .db                                  #
 #                                                                                    #
 #                                                                                    #
 ######################################################################################

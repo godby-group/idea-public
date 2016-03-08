@@ -266,6 +266,17 @@ def OutputPotential():
         output_file2.close()
     return
 
+# Function to calculate the current density
+def calculateCurrentDensity(total_td_density):
+    current_density = []
+    for i in range(0,len(total_td_density)-1):
+         string = 'MB: computing time dependent current density t = ' + str(i*pm.deltat)
+         sprint.sprint(string,1,1,pm.msglvl)
+         J = np.zeros(pm.jmax)
+         J = RE_Utilities.continuity_eqn(pm.jmax,pm.deltax,pm.deltat,total_td_density[i+1],total_td_density[i])
+         current_density.append(J)
+    return current_density
+
 # Function to iterate over complex time
 def CNsolveComplexTime():
     i = 1
@@ -436,10 +447,6 @@ def CNsolveRealTime(wavefunction):
         TDD.append(density)
         TDD_GS.append(density)
 
-	# Calculate current density
-        current = CalculateCurrentDensity(TDD_GS,i) 
-        current_density.append(current)
-
 	# Stop timing the iteration
 	finish = time.time()
         string = 'Time to Complete Step: ' + str(finish-start)
@@ -458,6 +465,9 @@ def CNsolveRealTime(wavefunction):
 
 	# Iterate
         i += 1
+
+    # Calculate current density
+    current_density = calculateCurrentDensity(TDD_GS)
 
     # Output time dependent density
     output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_2td_ext_den.db','w')
@@ -517,5 +527,4 @@ def main():
        tmax = 0.0
        imax = 1
        deltat = 0.0
-
 

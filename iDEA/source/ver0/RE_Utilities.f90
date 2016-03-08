@@ -1,7 +1,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Name: RE parallelisation                                                           !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! Author(s): Matthew Smith                                                           !
+! Author(s): Ed Higgins, Aaron Hopkinson, Matthew Smith                              !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Description:                                                                       !
 ! Uses MKL to parallelise some functions in RE                                       !
@@ -16,42 +16,47 @@
 
 !* f2py -c --fcompiler=intelem -L${MKLROOT}/lib/intel64/ -lmkl_rt -m RE_Utilities RE_Utilities.f90 --f90flags='-openmp' -lgomp --opt='-fast'
 
-	SUBROUTINE continuity_eqn(j,nx,dx,dt,n,lnrow,lncol,cd,lcd) 
-    
-Cf2py intent(in) J, NX, DX, DT, N, LNROW, LNCOL, LCD
-Cf2py intent(inout) CD
+  subroutine continuity_eqn(cd,nx,dx,dt,n_new,n_old)
+  implicit none
+!f2py intent(out) cd
+!f2py intent(in) nx, dx, dt, n_new, n_old
+!f2py depend(nx) cd, n_new, n_old
 
-	INTEGER				j, nx, lnrow, lncol, lcd, i, k	
-        INTEGER,			parameter :: dp = SELECTED_REAL_KIND(15,307)
-	REAL(KIND=dp)			n(lnrow,lncol)
-	REAL(KIND=dp)			cd(lcd)
-	REAL(KIND=dp)			dx, dt, prefac
+  double precision, dimension(nx),  intent(out) ::  cd
+  integer,                          intent(in)  ::  nx
+  double precision,                 intent(in)  ::  dx
+  double precision,                 intent(in)  ::  dt
+  double precision, dimension(nx),  intent(in)  ::  n_new
+  double precision, dimension(nx),  intent(in)  ::  n_old
+  integer           ::  i, k  
+  double precision  :: prefac
 
-	prefac = dx/dt
-	do i=1,nx
-		do k=1, i
-			cd(i) = cd(i) - prefac*(n(j,k)-n(j-1,k))
-		end do
-	end do
+  prefac = dx/dt
+  cd(:) = 0.0d0
+  do i=1,nx
+    do k=1, i
+      cd(i) = cd(i) - prefac*(n_new(k)-n_old(k))
+    end do
+  end do
 
-	RETURN
-	END
+  end subroutine continuity_eqn
 
-	SUBROUTINE COMPARE(J,LENJ,J0,LENJ0,TOL,J_CHECK) 
-    
-Cf2py intent(in) LENJ,J0,LENJ0,TOL
-Cf2py intent(out) J_CHECK
 
-	INTEGER lenJ, lengthJ0
-	DOUBLE PRECISION J(lenJ)
-	DOUBLE PRECISION J0(lenJ0)
-	DOUBLE PRECISION tol
-	LOGICAL	J_CHECK
-	
-	J_CHECK = all( abs(J-J0) < tol )
+  subroutine compare(j_check,lenj,j,j0,tol)
+  implicit none
+!f2py intent(out) j_check
+!f2py intent(in)  lenj,j,j0,tol
+!f2py depend(lenj) j, j0
 
-	RETURN
-	END
+  logical,                            intent(out) ::  j_check
+  integer,                            intent(in)  ::  lenj
+  double precision, dimension(lenj),  intent(in)  ::  j
+  double precision, dimension(lenj),  intent(in)  ::  j0
+  double precision,                   intent(in)  ::  tol
+  
+  j_check = all( abs(j-j0) < tol )
+
+  end subroutine compare
 
 
 

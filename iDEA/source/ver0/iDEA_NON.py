@@ -29,6 +29,7 @@ import pickle
 import sprint
 import numpy as np
 import scipy as sp
+import RE_Utilities
 import parameters as pm
 import scipy.sparse as sps
 import scipy.sparse.linalg as spla
@@ -70,6 +71,17 @@ def calculateDensity(wavefunction):
    for i in range(0,len(density)):
       density[i] = abs(wavefunction[i])**2
    return density
+
+# Function to calculate the current density
+def calculateCurrentDensity(total_td_density):
+    current_density = []
+    for i in range(0,len(total_td_density)-1):
+         string = 'NON: computing time dependent current density t = ' + str(i*pm.deltat)
+         sprint.sprint(string,1,1,pm.msglvl)
+         J = np.zeros(pm.jmax)
+         J = RE_Utilities.continuity_eqn(pm.jmax,pm.deltax,pm.deltat,total_td_density[i+1],total_td_density[i])
+         current_density.append(J)
+    return current_density
 
 # Function to combine densities
 def addDensities(densities):
@@ -134,6 +146,8 @@ def main():
 
       # Create densities
       td_densities = []
+      total_density_gs = []
+      total_density_gs.append(density)
       for n in range(0,pm.NE):
          wavefunction = wavefunctions[:,n]
          densities = []
@@ -164,8 +178,8 @@ def main():
          td_densities.append(densities)
          print
   
-      # Compute total density
-      print('NON: computing time dependant density')
+      # Calculate total density
+      print('NON: computing time dependent density')
       total_density = []
       i = 0
       while(i < pm.imax):
@@ -176,10 +190,20 @@ def main():
          density = addDensities(densities)
          total_density.append(density)
          i = i + 1
+      total_density_gs = total_density_gs + total_density
 
-      # Save time dependant data to pickle file
+      # Calculate current density
+      current_density = calculateCurrentDensity(total_density_gs)
+      print
+
+      # Save time dependent data to pickle file (density)
       output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_non_den.db','w')
       pickle.dump(total_density,output_file)
+      output_file.close()
+
+      # Save time dependent data to pickle file (current density)
+      output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_non_cur.db','w')
+      pickle.dump(current_density,output_file)
       output_file.close()
 
    # Program complete
