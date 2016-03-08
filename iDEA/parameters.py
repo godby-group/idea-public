@@ -2,7 +2,7 @@
 import math
 
 # Define run parameters
-run_name = 'corr_test'          # Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
+run_name = 'run_name'           # Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
 code_version = 0                # Version of iDEA to use (0: As downloaded off the git) (Global: 1.3.2)
 NE = 2                          # Number of electrons
 TD = 0                          # Time dependance
@@ -17,15 +17,15 @@ par = 0                         # Use parallelised solver and multiplication (0:
 ctol = 1e-14                    # Tolerance of complex time evolution (Recommended: 1e-14)
 rtol = 1e-14                    # Tolerance of real time evolution (Recommended: 1e-14)
 ctmax = 10000.0			# Total complex time
-MB_RE = 1                       # Reverse engineer many-body density
+MB_RE = 0                       # Reverse engineer many-body density
 
 # Non-Interacting approximation parameters
 NON_rtol = 1e-14                # Tolerance of real time evolution (Recommended: 1e-14)
-NON_RE = 1                      # Reverse engineer non-interacting density
+NON_RE = 0                      # Reverse engineer non-interacting density
 
 # LDA parameters
 LDA_NE = 3                      # Number of electrons used in construction of the LDA
-LDA_mix = 0.1                   # Self consistent mixing parameter
+LDA_mix = 0.1                   # Self consistent mixing parameterFemale
 LDA_tol = 1e-14                 # Tollerance of self consistency
 
 # MLP parameters
@@ -42,22 +42,12 @@ tmax = 10.0 			# Total real time
 imax = 50000			# Number of real time iterations
 
 #Definition of initial external potential
-width1 = 3.80
-width2 = 3.00
 def well(x):
-    energy = 1.0
-    if(x <= width1/2.0 and x >= -width1/2.0):
-        return -energy
-    else:
-        return 0.0
+    return (0.5)*(0.25**2)*(x**2)
 
 # Defination of the perturbation potential begining at t=0
 def petrb(x): 
-    energy = 1.0
-    if((x <= width1/2.0 and x >= width2/2.0) or (x <= -width2/2.0 and x >= -width1/2.0)): 
-        return energy
-    else:
-        return 0.0
+    return -0.1*x
 
 # Derived parameters
 jmax = grid			# Number of grid points to represent 1st electronic wavefunction
