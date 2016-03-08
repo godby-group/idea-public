@@ -2,8 +2,8 @@
 import math
 
 # Define run parameters
-run_name = 'run_name'           # Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
-code_version = 0                # Version of iDEA to use (0: As downloaded off the git) (Global: 1.3.1)
+run_name = 'corr_test'          # Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
+code_version = 0                # Version of iDEA to use (0: As downloaded off the git) (Global: 1.3.2)
 NE = 2                          # Number of electrons
 TD = 0                          # Time dependance
 MB = 1                          # Run Exact Many-Body calculation 
@@ -17,11 +17,11 @@ par = 0                         # Use parallelised solver and multiplication (0:
 ctol = 1e-14                    # Tolerance of complex time evolution (Recommended: 1e-14)
 rtol = 1e-14                    # Tolerance of real time evolution (Recommended: 1e-14)
 ctmax = 10000.0			# Total complex time
-MB_RE = 0                       # Reverse engineer many-body density
+MB_RE = 1                       # Reverse engineer many-body density
 
 # Non-Interacting approximation parameters
 NON_rtol = 1e-14                # Tolerance of real time evolution (Recommended: 1e-14)
-NON_RE = 0                      # Reverse engineer non-interacting density
+NON_RE = 1                      # Reverse engineer non-interacting density
 
 # LDA parameters
 LDA_NE = 3                      # Number of electrons used in construction of the LDA
@@ -39,16 +39,26 @@ MBPT_RE = 0                     # Reverse engineer mbpt density
 grid = 301                      # Number of grid points (must be an odd number)
 xmax = 20.0 			# Size of the system
 tmax = 10.0 			# Total real time
-imax = 50001			# Number of real time iterations
+imax = 50000			# Number of real time iterations
 
 #Definition of initial external potential
+width1 = 3.80
+width2 = 3.00
 def well(x):
-   return (0.5)*(0.25**2)*(x**2)
+    energy = 1.0
+    if(x <= width1/2.0 and x >= -width1/2.0):
+        return -energy
+    else:
+        return 0.0
 
 # Defination of the perturbation potential begining at t=0
-def petrb(x):
-   return -0.1*x
- 
+def petrb(x): 
+    energy = 1.0
+    if((x <= width1/2.0 and x >= width2/2.0) or (x <= -width2/2.0 and x >= -width1/2.0)): 
+        return energy
+    else:
+        return 0.0
+
 # Derived parameters
 jmax = grid			# Number of grid points to represent 1st electronic wavefunction
 kmax = jmax 			# Number of grid points to represent 2nd electronic wavefunction
