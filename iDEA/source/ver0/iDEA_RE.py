@@ -402,12 +402,18 @@ def main(approx):
         V_KS[:,:]=V_KS[0,:]+petrb[:] # Add the perturbing field to the external potential and the KS potential
         V_KS[0,:]-=petrb[:]
         tol=1e-13 # Set inital convergence tolerance for exact and KS current densities
-        for j in range(1,imax): # Propagate from the ground-state
-            n_KS,V_KS,J_KS,Apot,z=CalculateKS(V_KS,A_KS,J_KS,Psi,j,upper_bound,frac1,frac2,z,tol,n_MB,J_MB,cost_n,cost_J,A_min,n_KS,Apot,exp) # Calculate KS potential
-            U_KS[j,:]=J_KS[j,:]/n_KS[j,:] # Calculate KS velocity field
-            V_h[j,:]=Hartree(n_KS[j,:])
-            V_Hxc[j,:]=V_KS[j,:]-(V_ext[:]+petrb[:])
-            V_xc[j,:]=V_KS[j,:]-(V_ext[:]+petrb[:]+V_h[j,:])
+        try:
+            counter = 0
+            for j in range(1,imax): # Propagate from the ground-state
+                n_KS,V_KS,J_KS,Apot,z=CalculateKS(V_KS,A_KS,J_KS,Psi,j,upper_bound,frac1,frac2,z,tol,n_MB,J_MB,cost_n,cost_J,A_min,n_KS,Apot,exp) # Calculate KS potential
+                U_KS[j,:]=J_KS[j,:]/n_KS[j,:] # Calculate KS velocity field
+                V_h[j,:]=Hartree(n_KS[j,:])
+                V_Hxc[j,:]=V_KS[j,:]-(V_ext[:]+petrb[:])
+                V_xc[j,:]=V_KS[j,:]-(V_ext[:]+petrb[:]+V_h[j,:])
+                counter += 1
+        except:
+            print
+            print 'REV: Stopped at timestep ' + str(counter) + '! Outputing all quantities'
         file_name=open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_' + str(approx) + '_vks.db', 'w') # KS potential	
         pickle.dump(V_KS[:,:],file_name)				
         file_name.close()
