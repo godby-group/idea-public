@@ -252,8 +252,7 @@ def CalculateCurrentDensity(n,n_MB,upper_bound,j):
             for k in range(j+1):
                 x=k*pm.deltax-pm.xmax
                 J[j]-=abs(pm.im_petrb(x))*n[j,k]*pm.deltax
-    else:
-        J=ExtrapolateCD(J,j,n,n_MB,upper_bound)
+    #J=ExtrapolateCD(J,j,n,n_MB,upper_bound)
     return J
 
 # Function to calculate the KS vector (and finally scalar) potential
