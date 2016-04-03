@@ -98,8 +98,6 @@ def GroundState(V_KS,n_MB,mu,sqdx,V_ext,T,n_KS):
         V_ext[i]=pm.well((i*pm.deltax-pm.xmax))
     V_KS,n_KS,cost_n_GS,U=CalculateGroundstate(V_KS,n_MB,0,sqdx,V_ext,T,n_KS)
     print 'REV: initial guess electron density error = %s' % cost_n_GS
-    iterations=0
-    max_iterations=1e7
     while cost_n_GS>1e-13:
         cost_old = cost_n_GS
         string = 'REV: electron density error = ' + str(cost_old)
@@ -110,7 +108,6 @@ def GroundState(V_KS,n_MB,mu,sqdx,V_ext,T,n_KS):
 	    mu*=0.5
         if mu < 1e-15:
             break
-        iterations+=1
     return V_KS,n_KS,U,V_ext
 
 # Function used in calculation of the Hatree potential
@@ -143,7 +140,7 @@ def Hartree(n):
     X_x=np.zeros(pm.jmax)
     for i in range(pm.jmax):
         X_x[i]=1.0/(abs(i*pm.deltax-pm.xmax)+pm.acon)
-    X_k=momentumspace(X_x)*pm.deltax/2*pm.xmax
+    X_k=momentumspace(X_x)*pm.deltax/(2*pm.xmax)
     V_k=np.zeros(pm.jmax,dtype='complex')
     V_k[:]=X_k[:]*n_k[:]
     fftout=realspace(V_k).real*2*pm.xmax/pm.deltax
@@ -200,7 +197,7 @@ def ExtrapolateVectorPotential(A_KS,n_MB,j,upper_bound):
         if n_MB[j,i]>nmaxr:
             nmaxr=n_MB[j,i]
             imaxr=l
-    dAdx=np.zeros(pm.jmax)
+    dAdx=np.zeros(pm.jmax,dtype='complex')
 
     # Extraplorate the Hxc vector potential for the low density regions
     for i in range(imaxl+1):
@@ -250,7 +247,12 @@ def SolveKSE(V_KS,A_KS,Psi,j,frac1,frac2,z):
 # Function to calculate the current density
 def CalculateCurrentDensity(n,n_MB,upper_bound,j):
     J=RE_Utilities.continuity_eqn(pm.jmax,pm.deltax,pm.deltat,n[j,:],n[j-1,:])
-    J=ExtrapolateCD(J,j,n,n_MB,upper_bound)
+    if pm.im==1:
+        for j in range(pm.jmax):
+            for k in range(j+1):
+                x=k*pm.deltax-pm.xmax
+                J[j]-=abs(pm.im_petrb(x))*n[j,k]*pm.deltax
+    #J=ExtrapolateCD(J,j,n,n_MB,upper_bound)
     return J
 
 # Function to calculate the KS vector (and finally scalar) potential
@@ -351,8 +353,8 @@ def main(approx):
     frac2=1.0/24.0
 
     # Initalise matrices
-    T=np.zeros((2,pm.jmax),dtype='float')
-    T[0,:]=np.ones(pm.jmax,dtype='float')/pm.deltax**2									
+    T=np.zeros((2,pm.jmax),dtype='complex')
+    T[0,:]=np.ones(pm.jmax,dtype='complex')/pm.deltax**2									
     T[1,:]=-0.5*np.ones(pm.jmax,dtype='float')/pm.deltax**2									
     n_MB=np.zeros((imax,pm.jmax),dtype='float')									
     n_KS=np.zeros((imax,pm.jmax),dtype='float')
@@ -365,17 +367,17 @@ def main(approx):
     CNLHS=sparse.lil_matrix((pm.jmax,pm.jmax),dtype='complex')					
     Mat=sparse.lil_matrix((pm.jmax,pm.jmax),dtype='complex')					
     Matin=sparse.lil_matrix((pm.jmax,pm.jmax),dtype='complex')				
-    V_ext=np.zeros(pm.jmax,dtype='float')
-    V_KS=np.zeros((imax,pm.jmax),dtype='float')
+    V_ext=np.zeros(pm.jmax,dtype='complex')
+    V_KS=np.zeros((imax,pm.jmax),dtype='complex')
     V_h=np.zeros((imax,pm.jmax),dtype='float')									
-    V_xc=np.zeros((imax,pm.jmax),dtype='float')
-    V_Hxc=np.zeros((imax,pm.jmax),dtype='float')								
-    A_KS=np.zeros((imax,pm.jmax),dtype='float')									
-    A_min=np.zeros(pm.jmax,dtype='float')									
-    Apot=np.zeros(pm.jmax,dtype='float')
+    V_xc=np.zeros((imax,pm.jmax),dtype='complex')
+    V_Hxc=np.zeros((imax,pm.jmax),dtype='complex')								
+    A_KS=np.zeros((imax,pm.jmax),dtype='complex')									
+    A_min=np.zeros(pm.jmax,dtype='complex')									
+    Apot=np.zeros(pm.jmax,dtype='complex')
     U_KS=np.zeros((imax,pm.jmax),dtype='float')
     U_MB=np.zeros((imax,pm.jmax),dtype='float')
-    petrb=np.zeros(pm.jmax,dtype='float')
+    petrb=np.zeros(pm.jmax,dtype='complex')
 
     # Begin
     n_MB=ReadInput(approx,n_MB,0,imax) # Read in exact charge density obtained from code
@@ -384,13 +386,13 @@ def main(approx):
     V_Hxc[0,:]=V_KS[0,:]-V_ext[:] # Calculate the Hartree exhange-correlation potential
     V_xc[0,:]=V_Hxc[0,:]-V_h[0,:] # Calculate the exchange-correlation potential
     f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(approx) + '_vks.db', 'w') # KS potential	
-    pickle.dump(V_KS[0,:],f)				
+    pickle.dump(V_KS[0,:].real,f)				
     f.close()
     f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(approx) + '_vh.db', 'w') # H potential	
     pickle.dump(V_h[0,:],f)				
     f.close()
     f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(approx) + '_vxc.db', 'w') # XC potential	
-    pickle.dump(V_xc[0,:],f)				
+    pickle.dump(V_xc[0,:].real,f)				
     f.close()
     if pm.TD==1:
 
@@ -415,12 +417,12 @@ def main(approx):
             print
             print 'REV: Stopped at timestep ' + str(counter) + '! Outputing all quantities'
         file_name=open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_' + str(approx) + '_vks.db', 'w') # KS potential	
-        pickle.dump(V_KS[:,:],file_name)				
+        pickle.dump(V_KS[:,:].real,file_name)				
         file_name.close()
         file_name=open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_' + str(approx) + '_vh.db', 'w') # H potential	
         pickle.dump(V_h[:,:],file_name)				
         file_name.close()
         file_name=open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_' + str(approx) + '_vxc.db', 'w') # xc potential	
-        pickle.dump(V_xc[:,:],file_name)				
+        pickle.dump(V_xc[:,:].real,file_name)				
         file_name.close()
 

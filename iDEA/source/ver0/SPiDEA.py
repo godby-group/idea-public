@@ -88,6 +88,22 @@ def calculateDensity(wavefunction):
       density[i] = abs(wavefunction[i])**2
    return density
 
+# Function to calculate the current density
+def calculateCurrentDensity(total_td_density):
+    current_density = []
+    for i in range(0,len(total_td_density)-1):
+         string = 'MB: computing time dependent current density t = ' + str(i*pm.deltat)
+         sprint.sprint(string,1,1,pm.msglvl)
+         J = np.zeros(pm.jmax)
+         J = RE_Utilities.continuity_eqn(pm.jmax,pm.deltax,pm.deltat,total_td_density[i+1],total_td_density[i])
+         if pm.im == 1:
+             for j in range(pm.jmax):
+                 for k in range(j+1):
+                     x = k*pm.deltax-pm.xmax
+                     J[j] -= abs(pm.im_petrb(x))*total_td_density[i][k]*pm.deltax
+         current_density.append(J)
+    return current_density
+
 # Function the return the value of the initial wavefunction at a given x
 def initialWavefunction(x):
     return (1.0/math.sqrt(2.0*math.pi))*(math.e**(-0.5*x**2))
@@ -199,8 +215,12 @@ def main():
 
    # Save time dependant data to pickle file
    if(pm.TD == 1):
+      current_density = calculateCurrentDensity(densities)
       output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_1td_ext_den.db','w')
       pickle.dump(densities,output_file)
+      output_file.close()
+      output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_1td_ext_cur.db','w')
+      pickle.dump(current_density,output_file)
       output_file.close()
       output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_1td_ext_vxt.db','w')
       pickle.dump(potentials,output_file)

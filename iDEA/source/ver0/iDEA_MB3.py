@@ -311,7 +311,7 @@ def OutputPotential():
         while(i < pm.imax):
             TDP.append(potential2)
             i = i + 1
-        pickle.dump(TDP,output_file2)
+        pickle.dump(TDP.real,output_file2)
         output_file2.close()
     return
 
@@ -339,6 +339,11 @@ def calculateCurrentDensity(total_td_density):
          sprint.sprint(string,1,1,pm.msglvl)
          J = np.zeros(pm.jmax)
          J = RE_Utilities.continuity_eqn(pm.jmax,pm.deltax,pm.deltat,total_td_density[i+1],total_td_density[i])
+         if pm.im==1:
+             for j in range(pm.jmax):
+                 for k in range(j+1):
+                     x = k*pm.deltax-pm.xmax
+                     J[j] -= abs(pm.im_petrb(x))*total_td_density[i][k]*pm.deltax
          current_density.append(J)
     return current_density
 

@@ -25,7 +25,7 @@ NON_RE = 0                      # Reverse engineer non-interacting density
 
 # LDA parameters
 LDA_NE = 3                      # Number of electrons used in construction of the LDA
-LDA_mix = 0.1                   # Self consistent mixing parameterFemale
+LDA_mix = 0.1                   # Self consistent mixing parameter
 LDA_tol = 1e-14                 # Tollerance of self consistency
 
 # MLP parameters
@@ -36,18 +36,31 @@ cost=0                          # Calculate cost function (must have exact densi
 MBPT_RE = 0                     # Reverse engineer mbpt density
 
 # Define grid parameters
-grid = 301                      # Number of grid points (must be an odd number)
-xmax = 20.0 			# Size of the system
+grid = 201                      # Number of grid points (must be an odd number)
+xmax = 10.0 			# Size of the system
 tmax = 10.0 			# Total real time
-imax = 50000			# Number of real time iterations
+imax = 10000			# Number of real time iterations
 
 #Definition of initial external potential
 def well(x):
-    return (0.5)*(0.25**2)*(x**2)
+    return 0.5*(0.25**2)*(x**2)
 
 # Defination of the perturbation potential begining at t=0
-def petrb(x): 
-    return -0.1*x
+im = 0 # Use imaginary potentials
+def petrb(x):  
+    y = -1.0*x
+    if(im == 1):
+        return y + im_petrb(x)
+    return y
+
+# Definition of the imaginary potentials
+def im_petrb(x):
+    strength = 1.0
+    length_from_edge = 5.0
+    I = xmax - length_from_edge
+    if(-xmax < x and x < -I) or (xmax > x and x > I):
+        return -strength*1.0j
+    return 0.0
 
 # Derived parameters
 jmax = grid			# Number of grid points to represent 1st electronic wavefunction

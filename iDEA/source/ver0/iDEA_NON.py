@@ -80,6 +80,11 @@ def calculateCurrentDensity(total_td_density):
          sprint.sprint(string,1,1,pm.msglvl)
          J = np.zeros(pm.jmax)
          J = RE_Utilities.continuity_eqn(pm.jmax,pm.deltax,pm.deltat,total_td_density[i+1],total_td_density[i])
+         if pm.im==1:
+             for j in range(pm.jmax):
+                 for k in range(j+1):
+                     x = k*pm.deltax-pm.xmax
+                     J[j] -= abs(pm.im_petrb(x))*total_td_density[i][k]*pm.deltax
          current_density.append(J)
     return current_density
 
@@ -198,12 +203,12 @@ def main():
 
       # Save time dependent data to pickle file (density)
       output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_non_den.db','w')
-      pickle.dump(total_density,output_file)
+      pickle.dump(np.asarray(total_density),output_file)
       output_file.close()
 
       # Save time dependent data to pickle file (current density)
       output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_non_cur.db','w')
-      pickle.dump(current_density,output_file)
+      pickle.dump(np.asarray(current_density),output_file)
       output_file.close()
 
    # Program complete

@@ -45,18 +45,18 @@ Run = 1
 E_xc_Exact = 0 
 
 # Matrices
-V_h = zeros((imax,jmax)) # Potentials
-V_xc = zeros((imax,jmax)) 
-V_hxc = zeros((imax,jmax)) 
+V_h = zeros((imax,jmax), dtype ='float') # Potentials
+V_xc = zeros((imax,jmax), dtype ='float') 
+V_hxc = zeros((imax,jmax), dtype ='float') 
 n_x = zeros((imax,jmax), dtype ='float') # Charge Density
 n_x_old = zeros((imax,jmax), dtype='float') 
-J_x = zeros((imax,jmax)) # Current Density 
+J_x = zeros((imax,jmax), dtype ='float') # Current Density 
 T = zeros((2,jmax), dtype='complex') # Kinetic Energy operator
 T[0,:] = ones(jmax)/dx**2 								
 T[1,:] = -0.5*ones(jmax)/dx**2 
-V_KS = zeros((imax,jmax)) # Kohn-Sham potential
-V_KS_old = zeros((imax,jmax)) 
-V_ext = zeros(jmax) # External potential
+V_KS = zeros((imax,jmax),dtype='complex') # Kohn-Sham potential
+V_KS_old = zeros((imax,jmax),dtype='complex') 
+V_ext = zeros(jmax,dtype='complex') # External potential
 CNLHS = sparse.lil_matrix((jmax,jmax),dtype='complex') # Matrix for the left hand side of the Crank Nicholson method
 Mat = sparse.lil_matrix((jmax,jmax),dtype='complex')   
 Matin = sparse.lil_matrix((jmax,jmax),dtype='complex') # Inverted Matrix for the right hand side of the Crank Nicholson method 
@@ -254,8 +254,13 @@ def calculateCurrentDensity(total_td_density):
     for i in range(0,len(total_td_density)-1):
          string = 'LDA: computing time dependent current density t = ' + str(i*pm.deltat)
          sprint.sprint(string,1,1,pm.msglvl)
-         J = zeros(pm.jmax)
+         J = np.zeros(pm.jmax)
          J = RE_Utilities.continuity_eqn(pm.jmax,pm.deltax,pm.deltat,total_td_density[i+1],total_td_density[i])
+         if pm.im==1:
+             for j in range(pm.jmax):
+                 for k in range(j+1):
+                     x = k*pm.deltax-pm.xmax
+                     J[j] -= abs(pm.im_petrb(x))*total_td_density[i][k]*pm.deltax
          current_density.append(J)
     return current_density
 
@@ -284,20 +289,19 @@ V_h[j,:] = Hartree(n_x[j,:])
 V_xc[j,:] = XC(n_x[j,:])
 V_hxc[j,:] = V_h[j,:] + V_xc[j,:]
 E_xc_LDA = EXC(n_x[j,:]) 
-error(E_xc_LDA, E_xc_Exact)    
-if(TD == 0): 
-   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_vks.db', 'w') # KS potential	
-   pickle.dump(V_KS[0,:],f)				
-   f.close()
-   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_vh.db', 'w') # H potential	
-   pickle.dump(V_h[0,:],f)				
-   f.close()
-   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_vxc.db', 'w') # XC potential	
-   pickle.dump(V_xc[0,:],f)				
-   f.close()
-   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_den.db', 'w') # Density	
-   pickle.dump(n_x[0,:],f)				
-   f.close()
+error(E_xc_LDA, E_xc_Exact)
+f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_vks.db', 'w') # KS potential	
+pickle.dump(V_KS[0,:],f)				
+f.close()
+f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_vh.db', 'w') # H potential	
+pickle.dump(V_h[0,:],f)				
+f.close()
+f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_vxc.db', 'w') # XC potential	
+pickle.dump(V_xc[0,:],f)				
+f.close()
+f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_den.db', 'w') # Density	
+pickle.dump(n_x[0,:],f)				
+f.close()
 
 # Find realtime values
 if(TD==1):
@@ -316,7 +320,7 @@ if(TD==1):
    # Calculate current density
    current_density = calculateCurrentDensity(n_x)
    f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_lda_vks.db', 'w') # KS potential	
-   pickle.dump(V_KS,f)				
+   pickle.dump(V_KS.real,f)				
    f.close()
    f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_lda_vh.db', 'w') # H potential	
    pickle.dump(V_h,f)				
