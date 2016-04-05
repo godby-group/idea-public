@@ -3,7 +3,7 @@ import math
 
 # Define run parameters
 run_name = 'run_name'           # Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
-code_version = 0                # Version of iDEA to use (0: As downloaded off the git) (Global: 1.3.3)
+code_version = 0                # Version of iDEA to use (0: As downloaded off the git) (Global: 1.4.0)
 NE = 2                          # Number of electrons
 TD = 0                          # Time dependance
 MB = 1                          # Run Exact Many-Body calculation 

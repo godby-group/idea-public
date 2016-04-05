@@ -311,7 +311,7 @@ def OutputPotential():
         while(i < pm.imax):
             TDP.append(potential2)
             i = i + 1
-        pickle.dump(TDP.real,output_file2)
+        pickle.dump(TDP,output_file2)
         output_file2.close()
     return
 
