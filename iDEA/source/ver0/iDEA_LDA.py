@@ -317,8 +317,6 @@ if(TD==1):
        if(j != imax-1):
            V_KS[j+1,:] = V_ext[:] + V_h[j,:] + V_xc[j,:] # Update KS potential
 
-   # Calculate current density
-   current_density = calculateCurrentDensity(n_x)
    f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_lda_vks.db', 'w') # KS potential	
    pickle.dump(V_KS.real,f)				
    f.close()
@@ -331,6 +329,9 @@ if(TD==1):
    f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_lda_den.db', 'w') # Density	
    pickle.dump(n_x,f)				
    f.close()
+
+   # Calculate current density
+   current_density = calculateCurrentDensity(n_x)
    output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_lda_cur.db','w') # Current density 
    pickle.dump(current_density,output_file)
    output_file.close()

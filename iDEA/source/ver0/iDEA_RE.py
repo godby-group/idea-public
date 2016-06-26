@@ -395,6 +395,7 @@ def main(approx):
     f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(approx) + '_vxc.db', 'w') # XC potential	
     pickle.dump(V_xc[0,:].real,f)				
     f.close()
+    print
     if pm.TD==1:
 
         # Time-dependence

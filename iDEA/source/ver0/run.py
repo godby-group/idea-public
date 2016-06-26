@@ -60,6 +60,11 @@ if(pm.LDA == 1):
       import iDEA_LDA
 if(pm.MLP == 1):
       import iDEA_MLP
+if(pm.HF == 1):
+      import iDEA_HF
+if(pm.HF_RE == 1):
+      import iDEA_RE
+      iDEA_RE.main('hf')
 if(pm.MBPT == 1):
       iDEA_MBPT.main()
 if(pm.MBPT_RE == 1):
@@ -70,8 +75,3 @@ if(pm.MBPT_RE == 1):
 string = 'all jobs done \n'
 sprint.sprint(string,2,0,pm.msglvl)
 sprint.sprint(string,1,0,pm.msglvl)
- 
-
-
-
-

@@ -14,7 +14,7 @@
 !                                                                                    !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!* f2py -c --fcompiler=intelem -L${MKLROOT}/lib/intel64/ -lmkl_rt -m RE_Utilities RE_Utilities.f90 --f90flags='-openmp' -lgomp --opt='-fast'
+!* f2py -c --fcompiler=intelem -L${MKLROOT}/lib/intel64/ -lmkl_rt -m RE_Utilities RE_Utilities.f --f90flags='-openmp' -lgomp --opt='-fast'
 
   subroutine continuity_eqn(cd,nx,dx,dt,n_new,n_old)
   implicit none
