@@ -3,7 +3,7 @@ import math
 
 # Define run parameters
 run_name = 'run_name'           # Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
-code_version = 0                # Version of iDEA to use (0: As downloaded off the git) (Global: 1.5.0)
+code_version = 0                # Version of iDEA to use (0: As downloaded off the git) (Global: 1.5.1)
 NE = 2                          # Number of electrons
 TD = 0                          # Time dependance
 MB = 1                          # Run Exact Many-Body calculation 
@@ -30,7 +30,7 @@ LDA_mix = 0.01                  # Self consistent mixing parameter
 LDA_tol = 1e-12                 # Tollerance of self consistency
 
 # MLP parameters
-f=0.0                           # f mixing parameter
+f=0.0                           # f mixing parameter (if f='e' the weight is optimzed with the elf)
 cost=0                          # Calculate cost function (must have exact density)
 
 # HF parameters
