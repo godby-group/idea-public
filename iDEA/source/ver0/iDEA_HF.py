@@ -69,7 +69,7 @@ def coulomb():
       xi = i*dx-0.5*L
       for j in range(Nx):
          xj = j*dx-0.5*L
-         U[i,j] = 1.0/(abs(xi-xj) + 1)
+         U[i,j] = 1.0/(abs(xi-xj) + pm.acon)
    return U
 
 # COnstruct fock operator

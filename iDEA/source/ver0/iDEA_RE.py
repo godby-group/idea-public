@@ -134,21 +134,17 @@ def momentumspace(func):
     vector[0]=vector[pm.jmax-1].conjugate()
     return vector
 
-# Function used to calculate the Hatree potential
-def Hartree(n):
-    n_k=momentumspace(n)*pm.deltax
-    X_x=np.zeros(pm.jmax)
-    for i in range(pm.jmax):
-        X_x[i]=1.0/(abs(i*pm.deltax-pm.xmax)+pm.acon)
-    X_k=momentumspace(X_x)*pm.deltax/(2*pm.xmax)
-    V_k=np.zeros(pm.jmax,dtype='complex')
-    V_k[:]=X_k[:]*n_k[:]
-    fftout=realspace(V_k).real*2*pm.xmax/pm.deltax
-    V_hx=np.zeros(pm.jmax)
-    V_hx[0:0.5*(pm.jmax+1)]=fftout[0.5*(pm.jmax-1):pm.jmax]
-    V_hx[0.5*(pm.jmax+1):pm.jmax-1]=fftout[1:0.5*(pm.jmax-1)]
-    V_hx[pm.jmax-1]=V_hx[0]
-    return V_hx
+def Hartree(density):                         
+   return dot(coulomb(),density)*pm.deltax           
+                                              
+# Function to construct coulomb matrix        
+def coulomb():                                
+   for i in range(pm.jmax):                        
+      xi = i*pm.deltax-xmax                         
+      for j in range(pm.jmax):                     
+         xj = j*pm.deltax-pm.xmax                      
+         U[i,j] = 1.0/(abs(xi-xj) + pm.acon)  
+   return U                                   
 
 # Function to extrapolate the current density from regions of low density to the system's edges
 def ExtrapolateCD(J,j,n,n_MB,upper_bound):

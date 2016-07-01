@@ -85,48 +85,19 @@ def TISE(V_KS,j):
              n_x[j,:]+=abs(Psi[i,j,:])**2 # Calculate the density from the single-particle wavefunctions				   
         return n_x[j,:], Psi
  
-# Define function for Fourier transforming into real-space
-def realspace(vector):  												
-	mid_k = int(0.5*(jmax-1))
-	fftin = zeros(jmax-1, dtype='complex')
-	fftin[0:mid_k+1] = vector[mid_k:jmax]
-	fftin[jmax-mid_k:jmax-1] = vector[1:mid_k]
-	fftout = fft.ifft(fftin)
-	func = zeros(jmax, dtype='complex')
-	func[0:jmax-1] = fftout[0:jmax-1]
-	func[jmax-1] = func[0]
-	return func
-
-# Define function for Fourier transforming into k-space
-def momentumspace(func): 												
-	mid_k = int(0.5*(jmax-1))
-	fftin = zeros(jmax-1, dtype='complex')
-	fftin[0:jmax-1] = func[0:jmax-1] + 0.0j
-	fftout = fft.fft(fftin)
-	vector = zeros(jmax, dtype='complex')
-	vector[mid_k:jmax] = fftout[0:mid_k+1]
-	vector[1:mid_k] = fftout[jmax-mid_k:jmax-1]
-	vector[0] = vector[jmax-1].conjugate()
-	return vector
-
-# Define function for generating the Hartree potential for a given charge density
-def Hartree(n): 
-	n_k = momentumspace(n)*dx							 												
-	X_x = zeros(jmax)
-	for i in range(jmax):
-		x = i*dx-0.5*L
-		X_x[i] = 1.0/(abs(x)+1.0)
-	X_k = momentumspace(X_x)*dx/L
-	V_k = zeros(jmax, dtype='complex')
-	V_k[:] = X_k[:]*n_k[:]
-	fftout = realspace(V_k).real*L/dx
-	V_hx = zeros(jmax)
-	V_hx[0:0.5*(jmax+1)] = fftout[0.5*(jmax-1):jmax]
-	V_hx[0.5*(jmax+1):jmax-1] = fftout[1:0.5*(jmax-1)]
-	V_hx[jmax-1] = V_hx[0]
-	return V_hx
-
-# Calculation of the current density via the continuity equation
+def Hartree(density):                 
+   return dot(coulomb(),density)*dx             
+                                        
+# Function to construct coulomb matrix  
+def coulomb():                          
+   for i in range(Nx):                  
+      xi = i*dx-0.5*L                   
+      for j in range(Nx):               
+         xj = j*dx-0.5*L                
+         U[i,j] = 1.0/(abs(xi-xj) + pm.acon)  
+   return U                             
+                                        
+# Calculate current density
 def Currentdensity(j, n):  											
 	J = zeros(jmax, dtype ='float')
 	if j != 0:
