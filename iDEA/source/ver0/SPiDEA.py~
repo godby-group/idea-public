@@ -169,7 +169,6 @@ def main():
    output_file = open('outputs/' + str(pm.run_name) + '/data/' + str(pm.run_name) + '_1gs_ext_E.dat','w')
    output_file.write(str(energy))
    output_file.close()
-
    # Save ground state data to pickle file
    output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_1gs_ext_den.db','w')
    pickle.dump(density,output_file)

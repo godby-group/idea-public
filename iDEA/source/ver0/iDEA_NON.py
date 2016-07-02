@@ -134,6 +134,11 @@ def main():
       energy += energies[i]
    print('NON: ground state energy: ' + str(energy.real))
 
+   # Save ground state energy to dat file
+   output_file = open('outputs/' + str(pm.run_name) + '/data/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_non_E.dat','w')
+   output_file.write(str(energy.real))
+   output_file.close()
+
    # Save ground state density to pickle file
    output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_non_den.db','w')
    pickle.dump(density,output_file)

@@ -85,10 +85,12 @@ def CalculateGroundstate(V_KS,n_MB,mu,sqdx,V_ext,T,n_KS):
 
     # Calculate density and cost function
     n_KS[0,:]=0
+    E_KS = 0.0
     for i in range(pm.NE):
         n_KS[0,:]+=abs(Psi[i,0,:])**2 # Calculate the density from the single-particle wavefunctions
+        E_KS += K[i]
     cost_n_GS=sum(abs(n_MB[0,:]-n_KS[0,:]))*pm.deltax # Calculate the ground-state cost function 
-    return V_KS,n_KS,cost_n_GS,Psi
+    return V_KS,n_KS,cost_n_GS,Psi,E_KS
 
 # Function to load or force calculation of the ground-state potential
 def GroundState(V_KS,n_MB,mu,sqdx,V_ext,T,n_KS):
@@ -96,19 +98,19 @@ def GroundState(V_KS,n_MB,mu,sqdx,V_ext,T,n_KS):
     for i in range(pm.jmax):
         V_KS[0,i]=pm.well((i*pm.deltax-pm.xmax)) # Initial guess for KS potential
         V_ext[i]=pm.well((i*pm.deltax-pm.xmax))
-    V_KS,n_KS,cost_n_GS,U=CalculateGroundstate(V_KS,n_MB,0,sqdx,V_ext,T,n_KS)
+    V_KS,n_KS,cost_n_GS,U,E_KS=CalculateGroundstate(V_KS,n_MB,0,sqdx,V_ext,T,n_KS)
     print 'REV: initial guess electron density error = %s' % cost_n_GS
     while cost_n_GS>1e-13:
         cost_old = cost_n_GS
         string = 'REV: electron density error = ' + str(cost_old)
 	sprint.sprint(string,1,1,pm.msglvl)
 	sprint.sprint(string,2,1,pm.msglvl)
-        V_KS,n_KS,cost_n_GS,U=CalculateGroundstate(V_KS,n_MB,mu,sqdx,V_ext,T,n_KS)
+        V_KS,n_KS,cost_n_GS,U,E_KS=CalculateGroundstate(V_KS,n_MB,mu,sqdx,V_ext,T,n_KS)
 	if abs(cost_n_GS-cost_old)<1e-15 or cost_n_GS>cost_old:
 	    mu*=0.5
         if mu < 1e-15:
             break
-    return V_KS,n_KS,U,V_ext
+    return V_KS,n_KS,U,V_ext,E_KS
 
 # Function used in calculation of the Hatree potential
 def realspace(vector):
@@ -134,17 +136,30 @@ def momentumspace(func):
     vector[0]=vector[pm.jmax-1].conjugate()
     return vector
 
+# Function to calculate the Hartree potential
 def Hartree(density):                         
-   return dot(coulomb(),density)*pm.deltax           
+   U = np.zeros((pm.jmax,pm.jmax))
+   U = coulomb()
+   return np.dot(coulomb(),density)*pm.deltax, U           
                                               
 # Function to construct coulomb matrix        
-def coulomb():                                
+def coulomb():            
+   U = np.zeros((pm.jmax,pm.jmax))                    
    for i in range(pm.jmax):                        
-      xi = i*pm.deltax-xmax                         
+      xi = i*pm.deltax-pm.xmax                         
       for j in range(pm.jmax):                     
          xj = j*pm.deltax-pm.xmax                      
          U[i,j] = 1.0/(abs(xi-xj) + pm.acon)  
-   return U                                   
+   return U             
+
+# Function to calculate the exchange-correlation energy
+def xcenergy(approx,n,V_h,V_xc,E_KS):
+   file_name='outputs/' + str(pm.run_name) + '/data/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(approx) + '_E.dat'
+   E_MB = np.loadtxt(file_name)
+   E_xc = E_MB - E_KS
+   for i in range(pm.jmax):
+      E_xc += (n[0,i])*((0.50*V_h[0,i])+(V_xc[0,i]))*pm.deltax
+   return E_xc
 
 # Function to extrapolate the current density from regions of low density to the system's edges
 def ExtrapolateCD(J,j,n,n_MB,upper_bound):
@@ -375,13 +390,15 @@ def main(approx):
     U_KS=np.zeros((imax,pm.jmax),dtype='float')
     U_MB=np.zeros((imax,pm.jmax),dtype='float')
     petrb=np.zeros(pm.jmax,dtype='complex')
+    U = np.zeros((pm.jmax,pm.jmax))
 
     # Begin
     n_MB=ReadInput(approx,n_MB,0,imax) # Read in exact charge density obtained from code
-    V_KS,n_KS,Psi,V_ext=GroundState(V_KS,n_MB,mu,sqdx,V_ext,T,n_KS) # Calculate (or, if already obtained, check) ground-state KS potential
-    V_h[0,:]=Hartree(n_KS[0,:]) # Calculate the Hartree potential
+    V_KS,n_KS,Psi,V_ext,E_KS=GroundState(V_KS,n_MB,mu,sqdx,V_ext,T,n_KS) # Calculate (or, if already obtained, check) ground-state KS potential
+    V_h[0,:],U=Hartree(n_KS[0,:]) # Calculate the Hartree potential
     V_Hxc[0,:]=V_KS[0,:]-V_ext[:] # Calculate the Hartree exhange-correlation potential
     V_xc[0,:]=V_Hxc[0,:]-V_h[0,:] # Calculate the exchange-correlation potential
+    E_xc=xcenergy(approx,n_KS,V_h,V_xc,E_KS) # Calculate the exchange-correlation energy
     f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(approx) + '_vks.db', 'w') # KS potential	
     pickle.dump(V_KS[0,:].real,f)				
     f.close()
@@ -390,6 +407,9 @@ def main(approx):
     f.close()
     f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(approx) + '_vxc.db', 'w') # XC potential	
     pickle.dump(V_xc[0,:].real,f)				
+    f.close()
+    f = open('outputs/' + str(pm.run_name) + '/data/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(approx) + '_Exc.dat', 'w') # XC energy       
+    f.write(str(E_xc.real))
     f.close()
     print
     if pm.TD==1:
@@ -407,7 +427,7 @@ def main(approx):
             for j in range(1,imax): # Propagate from the ground-state
                 n_KS,V_KS,J_KS,Apot,z=CalculateKS(V_KS,A_KS,J_KS,Psi,j,upper_bound,frac1,frac2,z,tol,n_MB,J_MB,cost_n,cost_J,A_min,n_KS,Apot,exp) # Calculate KS potential
                 U_KS[j,:]=J_KS[j,:]/n_KS[j,:] # Calculate KS velocity field
-                V_h[j,:]=Hartree(n_KS[j,:])
+                V_h[j,:],U=Hartree(n_KS[j,:])
                 V_Hxc[j,:]=V_KS[j,:]-(V_ext[:]+petrb[:])
                 V_xc[j,:]=V_KS[j,:]-(V_ext[:]+petrb[:]+V_h[j,:])
                 counter += 1

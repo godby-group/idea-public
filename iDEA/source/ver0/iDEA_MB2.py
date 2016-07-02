@@ -361,6 +361,11 @@ def CNsolveComplexTime():
 
         # Iterate
         i += 1
+    
+    # Total Energy
+    output_file = open('outputs/' + str(pm.run_name) + '/data/' + str(pm.run_name) + '_2gs_ext_E.dat','w')
+    output_file.write(str(Ev))
+    output_file.close()
 
     # Convert Psi
     Psi2Dcon = PsiConverterI(Psiarr[1,:],i)

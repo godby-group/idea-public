@@ -60,6 +60,7 @@ V_ext = zeros(jmax,dtype='complex') # External potential
 CNLHS = sparse.lil_matrix((jmax,jmax),dtype='complex') # Matrix for the left hand side of the Crank Nicholson method
 Mat = sparse.lil_matrix((jmax,jmax),dtype='complex')   
 Matin = sparse.lil_matrix((jmax,jmax),dtype='complex') # Inverted Matrix for the right hand side of the Crank Nicholson method 
+U = zeros((jmax,jmax))
 																		
 # Potential Generator
 def Potential(i,j): 
@@ -81,18 +82,21 @@ def TISE(V_KS,j):
             Psi[i,j,:] = U[:,i]/sqdx # Normalise
         # Calculate density and cost function
         n_x[j,:]=0
+        K_KS = 0.0
         for i in range(pm.NE):
              n_x[j,:]+=abs(Psi[i,j,:])**2 # Calculate the density from the single-particle wavefunctions				   
-        return n_x[j,:], Psi
- 
+             K_KS += K[i]
+        return n_x[j,:], Psi, K_KS
+
+# Calculate the Hartree potential 
 def Hartree(density):                 
    return dot(coulomb(),density)*dx             
                                         
-# Function to construct coulomb matrix  
+# Construct the Coulomb matrix  
 def coulomb():                          
-   for i in range(Nx):                  
+   for i in range(jmax):                  
       xi = i*dx-0.5*L                   
-      for j in range(Nx):               
+      for j in range(jmax):               
          xj = j*dx-0.5*L                
          U[i,j] = 1.0/(abs(xi-xj) + pm.acon)  
    return U                             
@@ -137,7 +141,7 @@ def Currentdensity(j, n):
 def XC(n): 
         V_xc = zeros(jmax)
         if (NE == 1):
-          V_xc[:] = ((-1.389 + 2.44*n[:] - 2.05*(n[:])**2)*n[:]**0.653) 
+          V_xc[:] = ((-1.315 + 2.16*n[:] - 1.71*(n[:])**2)*n[:]**0.638) 
         elif (NE == 2):
           V_xc[:] = ((-1.19 + 1.77*n[:] - 1.37*(n[:])**2)*n[:]**0.604) 
         else:
@@ -149,7 +153,7 @@ def EXC(n):
         E_xc_LDA = 0.0
         if (NE == 1):
           for i in range(jmax-1):
-              e_xc_LDA = ((-0.84 + 0.92*n[i] - 0.56*(n[i])**2)*n[i]**0.653) 
+              e_xc_LDA = ((-0.803 + 0.82*n[i] - 0.47*(n[i])**2)*n[i]**0.638) 
               Increase = (n[i])*(e_xc_LDA)*dx
               E_xc_LDA += Increase
         elif (NE == 2):
@@ -167,21 +171,21 @@ def EXC(n):
 # Error in the LDA approximation
 def error(E_xc_LDA, E_xc_Exact): 
         if (E_xc_Exact != 0):
-            #print 'XC energy (Exact): E_xc =', (round(E_xc_Exact, 4))
-            #print 'XC energy (LDA)  : E_xc_LDA =', (round(E_xc_LDA, 4))
+            print 'XC energy (Exact): E_xc =', (round(E_xc_Exact, 4))
+            print 'XC energy (LDA)  : E_xc_LDA =', (round(E_xc_LDA, 4))
             if (E_xc_LDA <= E_xc_Exact): 
                 LDA_error = E_xc_Exact - E_xc_LDA 
                 LDA_error = abs(LDA_error)
-                #print 'Absolute error   : dE_xc =', (round(LDA_error, 4))
+                print 'Absolute error   : dE_xc =', (round(LDA_error, 4))
                 LDA_error_percentage = LDA_error/E_xc_Exact
                 LDA_error_percentage = LDA_error_percentage*100
-                #print 'E_xc_LDA is', (round(LDA_error_percentage, 2)),'% too low' 
+                print 'E_xc_LDA is', (round(LDA_error_percentage, 2)),'% too low' 
             else:
                 LDA_error = E_xc_LDA - E_xc_Exact
-                #print 'Absolute error   : dE_xc =', (round(LDA_error, 4))
+                print 'Absolute error   : dE_xc =', (round(LDA_error, 4))
                 LDA_error_percentage = abs(LDA_error/E_xc_Exact)
                 LDA_error_percentage = LDA_error_percentage*100
-                #print 'E_xc_LDA is', (round(LDA_error_percentage, 2)),'% too high' 
+                print 'E_xc_LDA is', (round(LDA_error_percentage, 2)),'% too high' 
         else:
             print
             print 'LDA: exchange-correlation energy: ', (round(E_xc_LDA, 4))
@@ -223,7 +227,7 @@ def LHS(V_KS, j):
 def calculateCurrentDensity(total_td_density):
     current_density = []
     for i in range(0,len(total_td_density)-1):
-         string = 'LDA: computing time dependent current density t = ' + str(i*pm.deltat)
+         string = 'LDA: computing time-dependent current density t = ' + str(i*pm.deltat)
          sprint.sprint(string,1,1,pm.msglvl)
          J = zeros(pm.jmax)
          J = RE_Utilities.continuity_eqn(pm.jmax,pm.deltax,pm.deltat,total_td_density[i+1],total_td_density[i])
@@ -237,11 +241,12 @@ def calculateCurrentDensity(total_td_density):
 
 # Find groundstate values
 j = 0
+K_KS = 0.0
 for i in range(jmax): # Initial guess for V_KS (External Potential)
     V_KS[j,i] = Potential(i,j) 
     V_KS_old[j,i] = Potential(i,j)
 V_ext[:] = V_KS[j,:] 
-n_x[j,:], Psi = TISE(V_KS[j,:],j) # Solve Schrodinger Equation initially
+n_x[j,:], Psi, K_KS  = TISE(V_KS[j,:],j) # Solve Schrodinger Equation initially
 n_x_old[j,:] = n_x[j,:]
 while(Cost>tol):  
     V_h[j,:] = Hartree(n_x[j,:]) # Calculate Hartree, XC and KS potential
@@ -249,9 +254,9 @@ while(Cost>tol):
     V_hxc[j,:] = V_h[j,:] + V_xc[j,:]
     V_KS[j,:] = V_ext[:] + V_hxc[j,:]
     V_KS[j,:] = Mix*V_KS[j,:] + (1.0-Mix)*V_KS_old[j,:] # Mix KS potential
-    n_x[j,:], Psi = TISE(V_KS[j,:],j) # Solve Schrodinger Equation
+    n_x[j,:], Psi, K_KS = TISE(V_KS[j,:],j) # Solve Schrodinger Equation
     Cost = sum(abs(n_x[j,:]-n_x_old[j,:])*dx)
-    string = 'LDA: ground-state Kohn-Sham potential: run = ' + str(Run) + ', convergence = ' + str(Cost)
+    string = 'LDA: computing ground-state Kohn-Sham potential: run = ' + str(Run) + ', convergence = ' + str(Cost)
     PS(string)
     n_x_old[j,:] = n_x[j,:]
     V_KS_old[j,:] = V_KS[j,:]
@@ -261,6 +266,12 @@ V_xc[j,:] = XC(n_x[j,:])
 V_hxc[j,:] = V_h[j,:] + V_xc[j,:]
 E_xc_LDA = EXC(n_x[j,:]) 
 error(E_xc_LDA, E_xc_Exact)
+E_Total = 0.0
+E_Total += E_xc_LDA + K_KS
+for i in range(jmax):
+    E_Total -= n_x[0,i]*(0.50*V_h[0,i] + V_xc[0,i])*dx
+print 'Energy total =', E_Total
+
 f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_vks.db', 'w') # KS potential	
 pickle.dump(V_KS[0,:],f)				
 f.close()
@@ -272,6 +283,12 @@ pickle.dump(V_xc[0,:],f)
 f.close()
 f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_den.db', 'w') # Density	
 pickle.dump(n_x[0,:],f)				
+f.close()
+f = open('outputs/' + str(pm.run_name) + '/data/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_E.dat', 'w') # Total energy        
+f.write(str(E_Total))
+f.close()
+f = open('outputs/' + str(pm.run_name) + '/data/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_Exc.dat', 'w') # XC energy        
+f.write(str(E_xc_LDA))
 f.close()
 
 # Find realtime values

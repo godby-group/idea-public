@@ -136,6 +136,11 @@ for k in range(pm.NE):
          E_HF += -0.5*(conjugate(Psi[k,i])*F[i,j]*Psi[k,j])*dx
 print 'HF: hartree-fock energy = %s' % E_HF.real
 
+# Output ground state energy
+output_file = open('outputs/' + str(pm.run_name) + '/data/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_hf_E.dat','w')
+output_file.write(str(E_HF.real))
+output_file.close()
+
 # Output ground state density
 output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_hf_den.db','w')
 pickle.dump(n_x,output_file)
