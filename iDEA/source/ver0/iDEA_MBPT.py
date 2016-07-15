@@ -47,16 +47,16 @@ def constructK():
    return K
 
 # Function to construct the potential V
-def constructV(td):
-   xgrid = np.linspace(-pm.xmax,pm.xmax,pm.grid)
-   Vdiagonal = []
-   if(td == 0):
+def constructV():
+   if(pm.starting_orbitals == 'non'):
+      xgrid = np.linspace(-pm.xmax,pm.xmax,pm.grid)
+      Vdiagonal = []
       for i in range(0,len(xgrid)):
          Vdiagonal.append(pm.well(xgrid[i]))
-   if(td == 1):
-      for i in range(0,len(xgrid)):
-         Vdiagonal.append(pm.well(xgrid[i]) + pm.petrb(xgrid[i]))
-   V = sps.spdiags(Vdiagonal, 0, pm.grid, pm.grid, format='csr')
+      V = sps.spdiags(Vdiagonal, 0, pm.grid, pm.grid, format='csr')
+   else:
+      input_file=open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(pm.starting_orbitals) + '_vks.db','r')
+      V = pickle.load(input_file)
    return V
 
 # Function to construct the non-interacting green's function G0 in the time domain
@@ -239,7 +239,7 @@ def main():
    K = constructK()
 
    # Construct the potential
-   V = constructV(0)
+   V = constructV()
 
    # Constuct the hamiltonian
    H = K + V

@@ -60,7 +60,7 @@ def save_plot_gs(filename,dx,L):
       output_file.write(str(x) + ' ' + str(data[i]) + '\n')
    input_file.close()
    output_file.close()
-   script_file.write('set terminal png \n')
+   script_file.write('set terminal png size 1920,1080\n')
    script_file.write('set output "plots/' + str(filename) + '.png"\n')
    script_file.write("plot '" + str(filename) + ".dat'" + " w lines\n")
    script_file.close()
@@ -90,7 +90,7 @@ def save_plot_td(filename,dx,L,save_plot_timestep):
       output_file.write(str(x) + ' ' + str(data[i]) + '\n')
    input_file.close()
    output_file.close()
-   script_file.write('set terminal png \n')
+   script_file.write('set terminal png size 1920,1080\n')
    script_file.write('set output "plots/' + str(filename) + '_' + str(save_plot_timestep) + '.png"\n')
    script_file.write("plot '" + str(filename) + "_" + str(save_plot_timestep) + ".dat'" + " w lines\n")
    script_file.close()
@@ -112,7 +112,7 @@ def animate_mp4(filename,dx,L,step):
        for j in range(0,len(data)):
            x = -0.5*L + dx*float(j)
            output_file.write(str(x) + ' ' + str(data[j]) + '\n')
-       script_file.write('set terminal png \n')
+       script_file.write('set terminal png size 1920,1080 \n')
        frame_name = '_tmp%07d.png'%i
        script_file.write('set output "' + str(frame_name) + '"\n')
        script_file.write("plot '" + str(file_name) + "'" + " w lines\n")
@@ -141,7 +141,7 @@ def sprint(text, n, s, msglvl):
 run_name = pm.run_name
 NE = int(input('number of electrons: '))
 td = bool(input('is the data ground state or time dependant (gs=0,td=1): '))
-approx = int(input('enter which approximation to use (exact=0,NON=1,LDA=2,MLP=3,HF=4,MBPT=5): '))
+approx = int(input('enter which approximation to use (exact=0,NON=1,LDA=2,MLP=3,HF=4,MBPT=5,LAN=6): '))
 data = int(input('enter which quantity to plot (DEN=0,CUR=1,VXT=2,VKS=3,VH=4,VXC=5,ELF=6): '))
 N = pm.grid
 L = pm.xmax*2
@@ -163,6 +163,8 @@ if(approx == 4):
    filename = filename + 'hf_'
 if(approx == 5):
    filename = filename + 'mbpt_'
+if(approx == 6):
+   filename = filename + 'lan_'
 if(data == 0):
    filename = filename + 'den'
 if(data == 1):

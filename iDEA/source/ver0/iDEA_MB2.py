@@ -43,7 +43,9 @@ xmax = pm.xmax
 tmax = pm.ctmax
 deltax = pm.deltax
 deltat = pm.deltat
-imax = int((tmax/deltat))+1
+imax = pm.imax
+cimax = pm.cimax
+cdeltat = pm.cdeltat
 ctol = pm.ctol
 rtol = pm.rtol
 TD = pm.TD
@@ -96,21 +98,16 @@ def Matrixdef(i,r):
         k = 0
         while (k < kmax):
             jk = Gind(j,k)
-            a=0;b=0;c=0;d=0
             Mat[jk,jk] = 1.0 + (4.0*r) + (2.0*r*(deltax**2)*(Potential(i,j,k)))
             aa=Mat[jk,jk]          
             if (j < jmax - 1):
                 Mat[jk,Gind(j+1,k)] = - r
-                a=Mat[jk,Gind(j+1,k)]
             if (j > 0):
                 Mat[jk,Gind(j-1,k)] = - r
-                b=Mat[jk,Gind(j-1,k)]
             if (k < kmax - 1):
                 Mat[jk,Gind(j,k+1)] = - r
-                c=Mat[jk,Gind(j,k+1)]
             if (k > 0):
                 Mat[jk,Gind(j,k-1)] = - r
-                d=Mat[jk,Gind(j,k-1)]
             k = k + 1
         j = j + 1
     return Mat
@@ -300,11 +297,11 @@ def CNsolveComplexTime():
     C_RM = c_m*C*c_p
 
     # Perform iterations
-    while (i < imax):
+    while (i < cimax):
 
 	# Begin timing the iteration
         start = time.time()
-        string = 'complex time = ' + str(i*deltat)
+        string = 'complex time = ' + str(i*cdeltat)
 	sprint.sprint(string,2,0,msglvl)
         
 	# Reduce the wavefunction
@@ -342,7 +339,7 @@ def CNsolveComplexTime():
 	wf_con = np.linalg.norm(Psiarr[0,:]-Psiarr[1,:])
 	string = 'wave function convergence: ' + str(wf_con)
 	sprint.sprint(string,2,0,msglvl)
-	string = 'many body complex time: ' + 't = ' + str(i*deltat) + ', convergence = ' + str(wf_con)
+	string = 'many body complex time: ' + 't = ' + str(i*cdeltat) + ', convergence = ' + str(wf_con)
         sprint.sprint(string,1,1,msglvl)
 	if(i>1):
 	    e_con = old_energy - Ev
@@ -354,7 +351,7 @@ def CNsolveComplexTime():
 		sprint.sprint(string,1,0,msglvl)
                 string = 'ground state converged' 
 		sprint.sprint(string,2,0,msglvl)
-	        i = imax
+	        i = cimax
 	old_energy = copy.copy(Ev)
         string = '---------------------------------------------------'
 	sprint.sprint(string,2,0,msglvl)
@@ -510,7 +507,7 @@ def main():
     Mat = sparse.lil_matrix((jmax**2,jmax**2),dtype = np.cfloat)
     Rhv2 = np.zeros((jmax**2), dtype = np.cfloat)
     Psi2D = np.zeros((jmax,kmax), dtype = np.cfloat)
-    r = 0.0 + (1.0)*(deltat/(4.0*(deltax**2))) 
+    r = 0.0 + (1.0)*(cdeltat/(4.0*(deltax**2))) 
 
     # Evolve throught complex time
     wavefunction = CNsolveComplexTime() 

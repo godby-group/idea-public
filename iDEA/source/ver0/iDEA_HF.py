@@ -16,18 +16,15 @@
 ######################################################################################
 
 # Library imports
-from math import *
-from numpy import *
-from scipy.linalg import eig_banded, solve
-from scipy import linalg as la
-from scipy import special
-from scipy import sparse
-import scipy as scipy
-from scipy.sparse import linalg as spla
-import parameters as pm
-import pickle
 import sys
+import math
+import copy
 import sprint
+import pickle
+import numpy as np
+import scipy as sp
+import parameters as pm
+import scipy.linalg as spl
 
 # Import parameters
 msglvl = pm.msglvl
@@ -35,21 +32,21 @@ Nx = pm.jmax
 Nt = pm.imax
 L = 2*pm.xmax
 dx = L/(Nx-1)
-sqdx = sqrt(dx)
+sqdx = math.sqrt(dx)
 c = pm.acon
 nu = pm.nu
 
 # Initialise matrices
-T = zeros((Nx,Nx), dtype='complex')	# Kinetic energy matrix
-n_x = zeros(Nx)				# Charge density
-n_old = zeros(Nx)			# Charge density
-n_MB = zeros(Nx)			# Many-body charge density
-V = zeros(Nx)				# Matrix for the Kohn-Sham potential
-F = zeros((Nx,Nx),dtype='complex')      # Fock operator
-V_H = zeros(Nx)
-V_ext = zeros(Nx)
-V_add = zeros(Nx)
-U = zeros((Nx,Nx))
+T = np.zeros((Nx,Nx), dtype='complex')	# Kinetic energy matrix
+n_x = np.zeros(Nx)			# Charge density
+n_old = np.zeros(Nx)			# Charge density
+n_MB = np.zeros(Nx)			# Many-body charge density
+V = np.zeros(Nx)			# Matrix for the Kohn-Sham potential
+F = np.zeros((Nx,Nx),dtype='complex')   # Fock operator
+V_H = np.zeros(Nx)
+V_ext = np.zeros(Nx)
+V_add = np.zeros(Nx)
+U = np.zeros((Nx,Nx))
 
 # Costruct the kinetic energy matrix
 for i in range(Nx):
@@ -61,7 +58,7 @@ for i in range(Nx):
 
 # Function to add the hartree potential in the time domain
 def hartree(U,density):
-   return dot(U,density)*dx
+   return np.dot(U,density)*dx
 
 # Function to construct coulomb matrix
 def coulomb():
@@ -78,20 +75,21 @@ def Fock(Psi, U):
    for k in range(pm.NE):
       for j in range(Nx):
          for i in range(Nx):
-            F[i,j] += -(conjugate(Psi[k,i])*U[i,j]*Psi[k,j])*dx
+            F[i,j] += -(np.conjugate(Psi[k,i])*U[i,j]*Psi[k,j])*dx
    return F
 
 # Compute ground-state
-def Groundstate(V, F):	 						
-   HGS = copy(T)	
+def Groundstate(V, F, nu):	 						
+   HGS = copy.copy(T)	
    for i in range(Nx):
       HGS[i,i] += V[i]
-   HGS[:,:] += F[:,:]
-   K, U = scipy.linalg.eigh(HGS)
-   Psi = zeros((pm.NE,Nx), dtype='complex')
+   if pm.fock == 1:
+      HGS[:,:] += F[:,:]
+   K, U = spl.eigh(HGS)
+   Psi = np.zeros((pm.NE,Nx), dtype='complex')
    for i in range(pm.NE):
       Psi[i,:] = U[:,i]/sqdx 
-   n_x[:]=0
+   n_x[:] = 0
    for i in range(pm.NE):
       n_x[:]+=abs(Psi[i,:])**2 
    return n_x, Psi, V, K
@@ -101,7 +99,7 @@ for i in range(Nx):
    x = i*dx-0.5*L
    V[i] = pm.well(x)
 V_ext[:] = V[:] 
-n_x, Psi, V, K = Groundstate(V, F)
+n_x, Psi, V, K = Groundstate(V, F, nu)
 con = 1
 
 # Construct coulomb matrix
@@ -118,7 +116,7 @@ while con > pm.hf_con:
       V[i] = V[2]
    for i in range(Nx-2,Nx):
       V[i] = V[Nx-2]
-   n_x, Psi, V, K = Groundstate(V, F)
+   n_x, Psi, V, K = Groundstate(V, F, nu)
    con = sum(abs(n_x[:]-n_old[:]))
    string = 'HF: computing ground-state density, convergence = ' + str(con)
    sprint.sprint(string,1,1,msglvl)
@@ -133,7 +131,7 @@ for i in range(Nx):
 for k in range(pm.NE):
    for i in range(Nx):
       for j in range(Nx):
-         E_HF += -0.5*(conjugate(Psi[k,i])*F[i,j]*Psi[k,j])*dx
+         E_HF += -0.5*(np.conjugate(Psi[k,i])*F[i,j]*Psi[k,j])*dx
 print 'HF: hartree-fock energy = %s' % E_HF.real
 
 # Output ground state energy

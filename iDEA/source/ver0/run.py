@@ -22,7 +22,9 @@ import SPiDEA
 import iDEA_MB2
 import iDEA_MB3
 import iDEA_NON
+import iDEA_LDA
 import iDEA_MBPT
+import iDEA_LAN
 import parameters as pm
 
 # Draw splash to screen
@@ -57,7 +59,7 @@ if(pm.NON_RE == 1):
       import iDEA_RE
       iDEA_RE.main('non')
 if(pm.LDA == 1):
-      import iDEA_LDA
+      iDEA_LDA.main()
 if(pm.MLP == 1):
       import iDEA_MLP
 if(pm.HF == 1):
@@ -70,6 +72,8 @@ if(pm.MBPT == 1):
 if(pm.MBPT_RE == 1):
       import iDEA_RE
       iDEA_RE.main('mbpt')
+if(pm.LAN == 1):
+      iDEA_LAN.main()
 
 # All jobs done
 string = 'all jobs done \n'
