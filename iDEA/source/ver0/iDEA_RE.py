@@ -108,10 +108,10 @@ def CalculateGroundstate(V,n_T,mu,sqdx,T_s,n):
    return V,n,cost_n_GS,Psi,E_KS
 
 # Function to load or force calculation of the ground-state potential
-def GroundState(n_T,mu,sqdx,T_s,n):
+def GroundState(n_T,mu,sqdx,T_s,n,approx):
    V_KS = np.zeros((imax,pm.jmax),dtype='complex')
    V_ext = np.zeros(pm.jmax,dtype='complex')
-   print 'REV: calculating ground-state Kohn-Sham potential'
+   print 'REV: calculating ground-state Kohn-Sham potential for the ' + str(approx) + ' density'
    for i in range(pm.jmax):
       V_KS[0,i] = pm.well((i*pm.deltax-pm.xmax)) # Initial guess for KS potential
       V_ext[i] = pm.well((i*pm.deltax-pm.xmax))
@@ -154,10 +154,8 @@ def momentumspace(func):
    return vector
 
 # Function to calculate the Hartree potential
-def Hartree(density,j):                         
-   V_coulomb = np.zeros((pm.jmax,pm.jmax))
-   V_coulomb = coulomb()
-   return np.dot(coulomb(),density[j,:])*pm.deltax         
+def Hartree(density,coulomb,j):                         
+   return np.dot(coulomb,density[j,:])*pm.deltax         
                                               
 # Function to construct coulomb matrix        
 def coulomb():            
@@ -171,11 +169,14 @@ def coulomb():
 
 # Function to calculate the exchange-correlation energy
 def xcenergy(approx,n,V_h,V_xc,E_KS):
-   file_name = 'outputs/' + str(pm.run_name) + '/data/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(approx) + '_E.dat'
-   E_MB = np.loadtxt(file_name)
-   E_xc = E_MB - E_KS
-   for i in range(pm.jmax):
-      E_xc += (n[0,i])*((0.50*V_h[0,i])+(V_xc[0,i]))*pm.deltax
+   try:
+      file_name = 'outputs/' + str(pm.run_name) + '/data/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(approx) + '_E.dat'
+      E_MB = np.loadtxt(file_name)
+      E_xc = E_MB - E_KS
+      for i in range(pm.jmax):
+         E_xc += (n[0,i])*((0.50*V_h[0,i])+(V_xc[0,i]))*pm.deltax
+   except:
+      E_xc = 0.0
    return E_xc
 
 # Function to extrapolate the current density from regions of low density to the system's edges
@@ -272,13 +273,13 @@ def SolveKSE(V,A,Wavefunction,j,frac1,frac2,z):
 # Function to calculate the current density
 def CalculateCurrentDensity(n,n_MB,upper_bound,j):
    J = RE_Utilities.continuity_eqn(pm.jmax,pm.deltax,pm.deltat,n[j,:],n[j-1,:])
-   if pm.im==1:
-      for j in range(pm.jmax):
-         for k in range(j+1):
+   if pm.im == 1:
+      for j in xrange(pm.jmax):
+         for k in xrange(j+1):
             x = k*pm.deltax-pm.xmax
             J[j] -= abs(pm.im_petrb(x))*n[j,k]*pm.deltax
    else:
-      J=ExtrapolateCD(J,j,n,n_MB,upper_bound)
+      J = ExtrapolateCD(J,j,n,n_MB,upper_bound)
    return J
 
 # Function to calculate the KS vector (and finally scalar) potential
@@ -368,11 +369,12 @@ def main(approx):
    frac2 = 1.0/24.0
    n_KS = np.zeros((imax,pm.jmax),dtype='float')
    n_MB = ReadInput(approx,0,imax) # Read in exact charge density obtained from code
-   V_KS,n_KS,Psi,V_ext,E_KS = GroundState(n_MB,mu,sqdx,T,n_KS) # Calculate (or, if already obtained, check) ground-state KS potential
-   V_h[0,:] = Hartree(n_KS,0) # Calculate the Hartree potential
+   V_coulomb = coulomb()
+   V_KS,n_KS,Psi,V_ext,E_KS = GroundState(n_MB,mu,sqdx,T,n_KS,approx) # Calculate (or, if already obtained, check) ground-state KS potential
+   V_h[0,:] = Hartree(n_KS,V_coulomb,0) # Calculate the Hartree potential
    V_Hxc[0,:] = V_KS[0,:]-V_ext[:] # Calculate the Hartree exhange-correlation potential
    V_xc[0,:] = V_Hxc[0,:]-V_h[0,:] # Calculate the exchange-correlation potential
-   E_xc=xcenergy(approx,n_KS,V_h,V_xc,E_KS) # Calculate the exchange-correlation energy
+   E_xc = xcenergy(approx,n_KS,V_h,V_xc,E_KS) # Calculate the exchange-correlation energy
    f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(approx) + '_vks.db', 'w') # KS potential	
    pickle.dump(V_KS[0,:].real,f)				
    f.close()
@@ -385,6 +387,13 @@ def main(approx):
    f = open('outputs/' + str(pm.run_name) + '/data/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(approx) + '_Exc.dat', 'w') # XC energy
    f.write(str(E_xc.real))
    f.close()
+   v_hxc = np.zeros(pm.jmax,dtype='float')
+   v_hxc[:] = (V_xc[0,:]+V_h[0,:]).real
+   f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(approx) + '_hxc.db', 'w') # KS potential	
+   pickle.dump(v_hxc[:],f)				
+   f.close()
+   if(approx != 'non')
+      print
    if pm.TD==1: # Time-dependence
       J_KS = np.zeros((imax,pm.jmax),dtype='float')
       n_MB = ReadInput(approx,1,imax) # Read in exact charge density obtained from code

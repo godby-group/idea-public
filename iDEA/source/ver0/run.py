@@ -1,5 +1,5 @@
 ######################################################################################
-# Name: RUN                                                                          #
+# Name: Run                                                                          #
 ######################################################################################
 # Author(s): Jack Wetherell                                                          #
 ######################################################################################
@@ -19,10 +19,11 @@ import os
 import splash
 import sprint
 import SPiDEA
-import iDEA_MB2
-import iDEA_MB3
+import iDEA_EXT2
+import iDEA_EXT3
 import iDEA_NON
 import iDEA_LDA
+import iDEA_MLP
 import iDEA_MBPT
 import iDEA_LAN
 import parameters as pm
@@ -33,26 +34,26 @@ print('run name: ' + str(pm.run_name))
 
 # Execute required jobs
 if(pm.NE==1):
-   if(pm.MB == 1):
+   if(pm.EXT == 1):
       SPiDEA.main()
-   if(pm.MB_RE == 1):
+   if(pm.EXT_RE == 1):
       import iDEA_RE
       iDEA_RE.main('ext')
 if(pm.NE==2):
-   if(pm.MB == 1):
-      iDEA_MB2.main()
-   if(pm.MB_RE == 1):
+   if(pm.EXT == 1):
+      iDEA_EXT2.main()
+   if(pm.EXT_RE == 1):
       import iDEA_RE
       iDEA_RE.main('ext')
 if(pm.NE==3):
-   if(pm.MB == 1):
-      iDEA_MB3.main()
-   if(pm.MB_RE == 1):
+   if(pm.EXT == 1):
+      iDEA_EXT3.main()
+   if(pm.EXT_RE == 1):
       import iDEA_RE
       iDEA_RE.main('ext')
 if(pm.NE >= 4):
-   if(pm.MB == 1):
-      print('many body: cannot run many body with more than 3 electrons')
+   if(pm.EXT == 1):
+      print('EXT: cannot run exact with more than 3 electrons')
 if(pm.NON == 1):
       iDEA_NON.main()
 if(pm.NON_RE == 1):
@@ -61,7 +62,7 @@ if(pm.NON_RE == 1):
 if(pm.LDA == 1):
       iDEA_LDA.main()
 if(pm.MLP == 1):
-      import iDEA_MLP
+      iDEA_MLP.main()
 if(pm.HF == 1):
       import iDEA_HF
 if(pm.HF_RE == 1):

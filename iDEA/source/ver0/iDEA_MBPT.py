@@ -33,7 +33,7 @@ class SpaceTime:
       self.tau_grid = np.append(np.linspace(0,pm.tau_max,pm.tau_N+1),np.linspace(-pm.tau_max,-float(pm.tau_max)/float(pm.tau_N),pm.tau_N)) # Zero first time ordering
       self.x1_grid = np.linspace(-pm.xmax,pm.xmax,pm.grid)
       self.x2_grid = np.linspace(-pm.xmax,pm.xmax,pm.grid)
-      self.tau_N = pm.tau_N # Number of total imaginary time points at EITHER SIDE OF ZERO
+      self.tau_N = pm.tau_N # Number of total imaginary time points at either side of zero
       self.tau_N_total = len(self.tau_grid) # Total number of imaginary time points
       self.x_N = len(self.x1_grid)
       self.switch_point = pm.tau_N+1 # Grid point with first negative imaginary time point
@@ -55,8 +55,9 @@ def constructV():
          Vdiagonal.append(pm.well(xgrid[i]))
       V = sps.spdiags(Vdiagonal, 0, pm.grid, pm.grid, format='csr')
    else:
-      input_file=open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(pm.starting_orbitals) + '_vks.db','r')
-      V = pickle.load(input_file)
+      input_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(pm.starting_orbitals) + '_vks.db','r')
+      Vdiagonal = pickle.load(input_file).real
+      V = sps.spdiags(Vdiagonal, 0, pm.grid, pm.grid, format='csr')
    return V
 
 # Function to construct the non-interacting green's function G0 in the time domain
@@ -113,8 +114,6 @@ def coulomb_interaction(st):
 
 # Function to calculate the irreducible polarizability P in the time domain
 def irreducible_polarizability(st,G,Ga,iteration):
-   string = 'MBPT: performing self-consistency (iteration=' + str(iteration+1) + '): P'
-   sprint.sprint(string,1,1,pm.msglvl)
    P = np.zeros((st.tau_N_total,st.x_N,st.x_N), dtype='complex')
    for k in range(1,st.tau_N_total):
       for i in range(0,st.x_N):
@@ -127,8 +126,6 @@ def irreducible_polarizability(st,G,Ga,iteration):
 
 # Function to calculate the screened interaction W_f in the frequency domain
 def screened_interaction(st,v_f,P_f,iteration):
-   string = 'MBPT: performing self-consistency (iteration=' + str(iteration+1) + '): P, W'
-   sprint.sprint(string,1,1,pm.msglvl)
    W_f = np.zeros((st.tau_N_total,st.x_N,st.x_N), dtype='complex')
    W_f_slice = np.zeros((st.x_N,st.x_N), dtype='complex')
    P_f_slice = np.zeros((st.x_N,st.x_N), dtype='complex')
@@ -142,8 +139,6 @@ def screened_interaction(st,v_f,P_f,iteration):
 
 # Function to calculate the self energy S in the time domain
 def self_energy(st,G,W,iteration):
-   string = 'MBPT: performing self-consistency (iteration=' + str(iteration+1) + '): P, W, S'
-   sprint.sprint(string,1,1,pm.msglvl)
    S = np.zeros((st.tau_N_total,st.x_N,st.x_N), dtype='complex')
    for k in range(0,st.tau_N_total):
       for i in range(0,st.x_N):
@@ -151,13 +146,14 @@ def self_energy(st,G,W,iteration):
             S[k,i,j] = 1.0j*G[k,i,j]*W[k,i,j] # GW approximation
    return S
 
-# Function to add the hartree potential in the time domain
-def add_hartree(st,S,v,density):
-   v_slice = np.zeros((st.x_N,st.x_N), dtype='complex')
-   v_slice[:,:] = v[0,:,:]
-   V_h = np.dot(v_slice,density)*st.dx
+# Function to remove V_xc(approx) in the time domain
+def remove_xc(st,S,v,density):
+   if(pm.starting_orbitals == 'non'):
+      V_xc = -1.0*np.dot(v[0,:,:],density)*st.dx
+   else:
+      V_xc = pickle.load(open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(pm.starting_orbitals) + '_vxc.db','r'))
    for i in range(0,st.x_N):
-      S[0,i,i] = S[0,i,i] + V_h[i]/(st.dx)
+      S[0,i,i] = S[0,i,i] - V_xc[i]/(st.dx)
    return S
 
 # Function to perfrom the hedin shift in the frequency domain
@@ -177,8 +173,6 @@ def hedin_shift(st,S_f,occupied,empty):
 
 # Function to solve the dyson equation in the frequency domain to update G
 def dyson_equation(st,G0_f,S_f,iteration):
-   string = 'MBPT: performing self-consistency (iteration=' + str(iteration+1) + '): P, W, S, G'
-   sprint.sprint(string,1,1,pm.msglvl)
    G_f = np.zeros((st.tau_N_total,st.x_N,st.x_N), dtype='complex') # Greens function in the frequency domain
    G_f_slice = np.zeros((st.x_N,st.x_N), dtype='complex')
    G0_f_slice = np.zeros((st.x_N,st.x_N), dtype='complex')
@@ -207,7 +201,7 @@ def extract_density(st,G):
 # Function to test for convergence
 def has_converged(density_new, density_old, iteration):
    convergence = abs(npl.norm(density_new-density_old))
-   string = 'MBPT: performing self-consistency (iteration=' + str(iteration+1) + '): P, W, S, G. convergence = ' + str(convergence)
+   string = 'MBPT: performing self-consistency (iteration=' + str(iteration+1) + '): convergence = ' + str(convergence)
    sprint.sprint(string,1,1,pm.msglvl)
    if(convergence < pm.tollerance):
       return True
@@ -246,7 +240,7 @@ def main():
 
    # Compute all wavefunctions
    print 'MBPT: computing eigenstates of single particle hamiltonian'
-   solution = spla.eigsh(H, k=pm.grid-2, which='SA', maxiter=1000000)
+   solution = spla.eigsh(H, k=pm.grid-3, which='SA', maxiter=1000000)
    energies = solution[0] 
    wavefunctions = solution[1]
 
@@ -309,22 +303,20 @@ def main():
       max_iterations = pm.max_iterations
 
    # GW self-consistency loop
+   print 'MBPT: performing first iteration (one-shot)'
    while(iteration < max_iterations and converged == False):
       if(iteration == 0 or pm.update_w == 1):
-         if(pm.screening == 0):
-            P = np.zeros((st.tau_N_total,st.x_N,st.x_N), dtype='complex') # Hartree-Fock Approximation
-         else:
-            P = irreducible_polarizability(st,G,Ga,iteration) # Calculate P in the time domain
+         P = irreducible_polarizability(st,G,Ga,iteration) # Calculate P in the time domain
          P_f = fourier(st,P,0) # Fourier transform to get P in the frequency domain
          W_f = screened_interaction(st,v_f,P_f,iteration) # Calculate W in the frequency domain
          W = fourier(st,W_f,1) # Fourier transform to get W in the time domain
       S = self_energy(st,G,W,iteration) # Calculate S in the time domain
-      S = add_hartree(st,S,v,extract_density(st,G)) # Add the hartree potential to S in the time domain 
+      S = remove_xc(st,S,v,extract_density(st,G)) # Add the hartree potential to S in the time domain 
       S_f = fourier(st,S,0) # Fourier transform to get S in the frequency domain
       S_f = hedin_shift(st,S_f,occupied,empty) # Apply the hedin shift to S in the frequency domain
-      if(pm.screening == 1 and pm.self_consistent == 1 and pm.update_w == 1): # Perform update of alternate G
+      if(pm.self_consistent == 1 and pm.update_w == 1): # Perform update of alternate G
          Sa = self_energy(st,Ga,W,iteration) # Calculate S in the time domain
-         Sa = add_hartree(st,Sa,v,extract_density(st,G)) # Add the hartree potential to S in the time domain 
+         Sa = remove_xc(st,Sa,v,extract_density(st,G)) # Add the hartree potential to S in the time domain 
          Sa_f = fourier(st,Sa,0) # Fourier transform to get S in the frequency domain
          Sa_f = hedin_shift(st,Sa_f,occupied,empty) # Apply the hedin shift to S in the frequency domain
          Ga_f = dyson_equation(st,Ga0_f,Sa_f,iteration) # Solve the dyson equation in the frequency domain for the alternate green's function
@@ -337,7 +329,8 @@ def main():
       iteration += 1
 
    # Extract the ground-state density from G
-   print
+   if(pm.self_consistent == 1):
+      print
    print 'MBPT: computing density from the greens function G'
    density = extract_density(st,G)
 
