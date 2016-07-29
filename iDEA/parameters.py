@@ -3,10 +3,10 @@ import math
 
 # Define run parameters
 run_name = 'run_name'           # Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
-code_version = 0                # Version of iDEA to use (0: As downloaded off the git) (Global: 1.7.0)
+code_version = 0                # Version of iDEA to use (0: As downloaded off the git) (Global: 1.8.0)
 NE = 2                          # Number of electrons
 TD = 0                          # Time dependance
-MB = 1                          # Run Exact Many-Body calculation 
+EXT = 1                         # Run Exact Many-Body calculation
 NON = 1                         # Run Non-Interacting approximation
 LDA = 0                         # Run LDA approximation
 MLP = 0                         # Run MLP approximation
@@ -14,30 +14,32 @@ HF = 0                          # Run Hartree-Fock approximation
 MBPT = 0                        # Run Many-body pertubation theory
 LAN = 0                         # Run Landauer approximation
 
-# Many-Body parameters
+# Exact parameters
 par = 0                         # Use parallelised solver and multiplication (0: serial, 1: parallel) Note: Recommend using parallel for large runs
 ctol = 1e-14                    # Tolerance of complex time evolution (Recommended: 1e-14)
 rtol = 1e-14                    # Tolerance of real time evolution (Recommended: 1e-14)
 ctmax = 10000.0			# Total complex time
-MB_RE = 0                       # Reverse engineer many-body density
+EXT_RE = 0                      # Reverse engineer many-body density
 
 # Non-Interacting approximation parameters
 NON_rtol = 1e-14                # Tolerance of real time evolution (Recommended: 1e-14)
 NON_RE = 0                      # Reverse engineer non-interacting density
 
 # LDA parameters
-LDA_NE = 3                      # Number of electrons used in construction of the LDA
-LDA_mix = 0.01                  # Self consistent mixing parameter
-LDA_tol = 1e-10                 # Tollerance of self consistency
+LDA_NE = 2                      # Number of electrons used in construction of the LDA
+LDA_mix = 0.0                   # Self consistent mixing parameter (default 0, only use if doesn't converge)
+LDA_tol = 1e-12                 # Self-consistent convergence tollerance
 
 # MLP parameters
-f=0.25                          # f mixing parameter (if f='e' the weight is optimzed with the elf)
-cost=0                          # Calculate cost function (must have exact density)
+f = 'e'                         # f mixing parameter (if f='e' the weight is optimzed with the elf)
+MLP_tol = 1e-12                 # Self-consistent convergence tollerance
+MLP_mix = 0.0                   # Self consistent mixing parameter (default 0, only use if doesn't converge)
+refernce_potential = 'lda'      # Choice of refernce potential for mixing with the SOA
 
 # HF parameters
-fock = 0                        # Include Fock term (0 = Hartree approximation, 1 = Hartree-Fock approximation)
+fock = 1                        # Include Fock term (0 = Hartree approximation, 1 = Hartree-Fock approximation)
 hf_con = 1e-12                  # Tollerance
-nu = 0.75                       # Mixing term
+nu = 0.9                        # Mixing term
 HF_RE = 0                       # Reverse engineer hf density
 
 # MBPT parameters
@@ -46,10 +48,9 @@ tau_max = 90.0                  # Maximum value of imaginary time
 tau_N = 200                     # Number of imaginary time points at either side of zero
 number = 53                     # Number of unoccupied orbitals to use
 self_consistent = 0             # (0 = one-shot, 1 = fully self-consistent)
+update_w = 1                    # (0 = do not update w, 1 = do update w)
 tollerance = 1e-12              # Tollerance of the self-consistent algorithm
 max_iterations = 100            # Maximum number of iterations in full self-consistency
-update_w = 1                    # (0 = do not update w, 1 = do update w)
-screening = 1                   # (0 = Hartree-Fock approximation, 1 = GW approximation)
 MBPT_RE = 0                     # Reverse engineer mbpt density
 
 # LAN parameters
@@ -59,11 +60,11 @@ lan_start = 'non'               # Ground-state Kohn-Sham potential to be perturb
 grid = 201                      # Number of grid points (must be an odd number)
 xmax = 10.0 			# Size of the system
 tmax = 10.0 			# Total real time
-imax = 5001			# Number of real time iterations
+imax = 1001			# Number of real time iterations
 
 #Definition of initial external potential
 def well(x):
-    return (0.5)*(0.25**2)*(x**2)
+    return 0.5*(0.25**2)*(x**2)
 
 # Defination of the perturbation potential begining at t=0
 im = 0 # Use imaginary potentials
