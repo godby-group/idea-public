@@ -392,7 +392,7 @@ def main(approx):
    f = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(approx) + '_hxc.db', 'w') # KS potential	
    pickle.dump(v_hxc[:],f)				
    f.close()
-   if(approx != 'non')
+   if(approx != 'non'):
       print
    if pm.TD==1: # Time-dependence
       J_KS = np.zeros((imax,pm.jmax),dtype='float')
