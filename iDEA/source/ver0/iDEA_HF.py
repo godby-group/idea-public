@@ -69,7 +69,7 @@ def coulomb():
          U[i,j] = 1.0/(abs(xi-xj) + pm.acon)
    return U
 
-# COnstruct fock operator
+# Construct fock operator
 def Fock(Psi, U):
    F[:,:] = 0
    for k in range(pm.NE):

@@ -141,17 +141,21 @@ def main():
 
    print
    print 'LDA: ground-state xc energy: %s' % (EXC(n))
+   v_h = Hartree(n,U)
    v_xc = XC(n)
    if pm.TD == 0: # Output results
       file1 = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_vks.db', 'w') # KS potential
       pickle.dump(v_s[:],file1)
       file1.close()
-      file2 = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_vxc.db', 'w') # xc potential
-      pickle.dump(v_xc[:],file2)
+      file2 = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_vh.db', 'w') # H potential
+      pickle.dump(v_h[:],file2)
       file2.close()
-      file3 = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_den.db', 'w') # density
-      pickle.dump(n[:],file3)
+      file3 = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_vxc.db', 'w') # xc potential
+      pickle.dump(v_xc[:],file3)
       file3.close()
+      file4 = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_lda_den.db', 'w') # density
+      pickle.dump(n[:],file4)
+      file4.close()
 
    if pm.TD == 1:
       for i in range(pm.NE):

@@ -170,7 +170,7 @@ def PsiInverter(Psi2D,i):
 def Energy(Psi):
     a = np.linalg.norm(Psi[0,:])
     b = np.linalg.norm(Psi[1,:])
-    return -(np.log(b/a))/deltat
+    return -(np.log(b/a))/cdeltat
 
 # Function to construct the real matrix Af 
 def ConstructAf(A):

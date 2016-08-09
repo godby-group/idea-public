@@ -146,14 +146,16 @@ def self_energy(st,G,W,iteration):
             S[k,i,j] = 1.0j*G[k,i,j]*W[k,i,j] # GW approximation
    return S
 
-# Function to remove V_xc(approx) in the time domain
-def remove_xc(st,S,v,density):
-   if(pm.starting_orbitals == 'non'):
-      V_xc = -1.0*np.dot(v[0,:,:],density)*st.dx
-   else:
-      V_xc = pickle.load(open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(pm.starting_orbitals) + '_vxc.db','r'))
+# Function to correct diagrams of sigmal in the time domain
+def correct_diagrams(st,S,v,density):
+   V_h = np.dot(v[0,:,:]*(-1.0j*st.dtau),density)*st.dx
+   V_hxc0 = np.zeros(st.x_N, dtype='complex')
+   if(pm.starting_orbitals != 'non'):
+      V_h0 = pickle.load(open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(pm.starting_orbitals) + '_vh.db','r'))
+      V_xc0 = pickle.load(open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(pm.starting_orbitals) + '_vxc.db','r'))
+      V_hxc0 = V_h0 + V_xc0 
    for i in range(0,st.x_N):
-      S[0,i,i] = S[0,i,i] - V_xc[i]/(st.dx)
+      S[0,i,i] += (V_h[i] - V_hxc0[i])*1.0j/(st.dx*st.dtau)
    return S
 
 # Function to perfrom the hedin shift in the frequency domain
@@ -311,12 +313,12 @@ def main():
          W_f = screened_interaction(st,v_f,P_f,iteration) # Calculate W in the frequency domain
          W = fourier(st,W_f,1) # Fourier transform to get W in the time domain
       S = self_energy(st,G,W,iteration) # Calculate S in the time domain
-      S = remove_xc(st,S,v,extract_density(st,G)) # Add the hartree potential to S in the time domain 
+      S = correct_diagrams(st,S,v,extract_density(st,G)) # Correct diagrams to S in the time domain 
       S_f = fourier(st,S,0) # Fourier transform to get S in the frequency domain
       S_f = hedin_shift(st,S_f,occupied,empty) # Apply the hedin shift to S in the frequency domain
       if(pm.self_consistent == 1 and pm.update_w == 1): # Perform update of alternate G
          Sa = self_energy(st,Ga,W,iteration) # Calculate S in the time domain
-         Sa = remove_xc(st,Sa,v,extract_density(st,G)) # Add the hartree potential to S in the time domain 
+         Sa = correct_diagrams(st,Sa,v,extract_density(st,G)) # Add the hartree potential to S in the time domain 
          Sa_f = fourier(st,Sa,0) # Fourier transform to get S in the frequency domain
          Sa_f = hedin_shift(st,Sa_f,occupied,empty) # Apply the hedin shift to S in the frequency domain
          Ga_f = dyson_equation(st,Ga0_f,Sa_f,iteration) # Solve the dyson equation in the frequency domain for the alternate green's function
@@ -335,6 +337,7 @@ def main():
    density = extract_density(st,G)
 
    # Normalise the density
+   print 'MBPT: normalising density by ' + str(float(pm.NE)/(np.sum(density)*st.dx))
    density[:] = (density[:]*float(pm.NE))/(np.sum(density)*st.dx)
 
    # Output ground state density
@@ -343,4 +346,4 @@ def main():
    output_file.close()
 
    # Output all hedin quantities
-   #output_quantities(G0,P,W_f,S_f,G) # Uncomment this to save all hedin quantities to pickle files
+   #output_quantities(G0,P,W_f,S,G) # Uncomment this to save all hedin quantities to pickle files
