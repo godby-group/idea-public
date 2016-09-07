@@ -3,7 +3,7 @@ import math
 
 # Define run parameters
 run_name = 'run_name'           # Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
-code_version = 0                # Version of iDEA to use (0: As downloaded off the git) (Global: 1.8.1)
+code_version = 0                # Version of iDEA to use (0: As downloaded off the git) (Global: 1.9.0)
 NE = 2                          # Number of electrons
 TD = 0                          # Time dependance
 EXT = 1                         # Run Exact Many-Body calculation
@@ -45,7 +45,7 @@ HF_RE = 0                       # Reverse engineer hf density
 # MBPT parameters
 starting_orbitals = 'non'       # Orbitals to constuct G0 from
 tau_max = 40.0                  # Maximum value of imaginary time
-tau_N = 200                     # Number of imaginary time points at either side of zero
+tau_N = 800                     # Number of imaginary time points (must be even)
 number = 33                     # Number of unoccupied orbitals to use
 self_consistent = 0             # (0 = one-shot, 1 = fully self-consistent)
 update_w = 1                    # (0 = do not update w, 1 = do update w)
@@ -57,10 +57,10 @@ MBPT_RE = 0                     # Reverse engineer mbpt density
 lan_start = 'non'               # Ground-state Kohn-Sham potential to be perturbed
 
 # Define grid parameters
-grid = 201                      # Number of grid points (must be an odd number)
+grid = 201                      # Number of grid points (must be odd)
 xmax = 10.0 			# Size of the system
-tmax = 2.0 			# Total real time
-imax = 1001			# Number of real time iterations
+tmax = 10.0 			# Total real time
+imax = 5001			# Number of real time iterations
 
 #Definition of initial external potential
 def well(x):

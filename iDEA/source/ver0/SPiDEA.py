@@ -28,6 +28,7 @@ import cmath
 import pickle
 import numpy as np
 import scipy as sp
+import RE_Utilities
 import parameters as pm
 import scipy.sparse as sps
 import scipy.sparse.linalg as spla
@@ -93,7 +94,7 @@ def calculateCurrentDensity(total_td_density):
     current_density = []
     for i in range(0,len(total_td_density)-1):
          string = 'MB: computing time dependent current density t = ' + str(i*pm.deltat)
-         sprint.sprint(string,1,1,pm.msglvl)
+         sprint(string)
          J = np.zeros(pm.jmax)
          J = RE_Utilities.continuity_eqn(pm.jmax,pm.deltax,pm.deltat,total_td_density[i+1],total_td_density[i])
          if pm.im == 1:

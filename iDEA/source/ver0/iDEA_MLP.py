@@ -35,29 +35,19 @@ def SOA(den):
    return v
 
 # Given n returns SOA potential
-def SOA_TD(den,cur,j,exp,exp2):
+def SOA_TD(den,cur,j,exp):
    pot = np.zeros(pm.jmax,dtype='float')
    vel_int = np.zeros(pm.jmax,dtype='float')
    vel = np.zeros(pm.jmax,dtype='float')
    vel0 = np.zeros(pm.jmax,dtype='float')
    pot[:] = 0.25*(np.gradient(np.gradient(np.log(den[j,:]),pm.deltax),pm.deltax))+0.125*np.gradient(np.log(den[j,:]),pm.deltax)**2
-   edge = int(0.2*pm.xmax)
+   edge = int((0.01*pm.xmax)/pm.deltax)
    for i in range(1,edge):
       pot[-i] = pot[-edge]
    for i in range(0,edge):
       pot[i] = pot[15]
    vel[:] = cur[j,:]/den[j,:]
    vel0[:] = cur[j-1,:]/den[j-1,:]
-   for i in range(1,edge):
-      vel[-i] = vel[-edge]
-      vel0[-i] = vel[-edge]
-   for i in range(0,edge):
-      vel[i] = vel[edge]
-      vel0[i] = vel[edge]
-   for i in xrange(pm.jmax):
-      for k in xrange(i+1):
-         vel_int[i] -= (vel[k]-vel0[k])*pm.deltax/pm.deltat
-   vel_int = Filter(vel_int,j,exp2) # Remove high frequencies from vector potential
    pot[:] -= 0.5*vel[:]**2
    pot = Filter(pot,j,exp) # Remove high frequencies from vector potential
    return pot
@@ -136,8 +126,8 @@ def CalculateCurrentDensity(n,j):
    return J
 
 # Solve the Crank Nicolson equation
-def CrankNicolson(v,Psi,n,j): 
-   Mat = LHS(v,j)
+def CrankNicolson(v,Psi,n,j,A): 
+   Mat = LHS(v,j,A)
    Mat = Mat.tocsr()
    Matin = -(Mat-sps.identity(pm.jmax,dtype='complex'))+sps.identity(pm.jmax,dtype='complex')
    for i in range(pm.NE):
@@ -149,14 +139,20 @@ def CrankNicolson(v,Psi,n,j):
    return n,Psi
 
 # Left hand side of the Crank Nicolson method
-def LHS(v,j):	
+def LHS(v,j,A):
+   frac1 = 1.0/3.0
+   frac2 = 1.0/24.0
    CNLHS = sps.lil_matrix((pm.jmax,pm.jmax),dtype='complex') # Matrix for the left hand side of the Crank Nicholson method
-   for i in xrange(pm.jmax):
-      CNLHS[i,i] = 1.0+0.5j*pm.deltat*(1.0/pm.deltax**2+v[j,i])
-      if i < pm.jmax-1:
-         CNLHS[i,i+1] = -0.5j*pm.deltat*(0.5/pm.deltax**2)
-      if i > 0:
-         CNLHS[i,i-1] = -0.5j*pm.deltat*(0.5/pm.deltax**2)
+   for i in range(pm.jmax):
+      CNLHS[i,i] = 1.0+0.5j*pm.deltat*(1.0/pm.deltax**2+0.5*A[j,i]**2+v[j,i])
+   for i in range(pm.jmax-1):
+      CNLHS[i,i+1] = -0.5j*pm.deltat*(0.5/pm.deltax-(frac1)*1.0j*A[j,i+1]-(frac1)*1.0j*A[j,i])/pm.deltax
+   for i in range(1,pm.jmax):
+      CNLHS[i,i-1] = -0.5j*pm.deltat*(0.5/pm.deltax+(frac1)*1.0j*A[j,i-1]+(frac1)*1.0j*A[j,i])/pm.deltax
+   for i in range(pm.jmax-2):	
+      CNLHS[i,i+2] = -0.5j*pm.deltat*(1.0j*A[j,i+2]+1.0j*A[j,i])*(frac2)/pm.deltax
+   for i in range(2,pm.jmax):
+      CNLHS[i,i-2] = 0.5j*pm.deltat*(1.0j*A[j,i-2]+1.0j*A[j,i])*(frac2)/pm.deltax
    return CNLHS
 
 # Function used in calculation of the Hatree potential
@@ -203,12 +199,12 @@ def ExtrapolateCD(J,j,n,upper_bound):
    # Extraplorate the density for the low density regions
    for i in range(imaxl+1):
       l = imaxl-i
-      if n[j,l]<1e-2:
+      if n[j,l]<1e-6:
          dUdx[:] = np.gradient(U[:],pm.deltax)
          U[l] = 8*U[l+1]-8*U[l+3]+U[l+4]+dUdx[l+2]*12.0*pm.deltax
    for i in range(int(0.5*(pm.jmax-1)-imaxr+1)):
       l = int(0.5*(pm.jmax-1)+imaxr+i)
-      if n[j,l]<1e-2:
+      if n[j,l]<1e-6:
          dUdx[:] = np.gradient(U[:],pm.deltax)
          U[l] = 8*U[l-1]-8*U[l-3]+U[l-4]-dUdx[l-2]*12.0*pm.deltax
    J[:] = n[j,:]*U[:]							
@@ -278,39 +274,43 @@ def main():
          print
    print
    if pm.TD == 1:
-      if str(pm.f)=='e':
-         print "MLP: MLP does not support time-dependent ELF (do not use f='e')"
-      else:
-         for i in range(pm.NE):
-            Psi[i,0,:] = waves[:,i]/math.sqrt(pm.deltax)
-         v_s_t = np.zeros((pm.imax,pm.jmax),dtype='float')
-         v_xc_t = np.zeros((pm.imax,pm.jmax),dtype='float')
-         current = np.zeros((pm.imax,pm.jmax),dtype='float')
-         n_t = np.zeros((pm.imax,pm.jmax),dtype='float')
-         v_s_t[0,:] = v_s[:]
-         n_t[0,:] = n[:]
-         exp = np.zeros(pm.jmax,dtype='float')
-         exp2 = np.zeros(pm.jmax,dtype='float')
-         for i in xrange(pm.jmax): 
-            v_s_t[1,i] = v_s[i]+pm.petrb((i*pm.deltax-pm.xmax))  
-            v_ext[i] += pm.petrb((i*pm.deltax-pm.xmax))
-            exp[i] = math.exp(-0.1*(i*pm.deltax-pm.xmax)**2)
-            exp2[i] = math.exp(-0.5*(i*pm.deltax-pm.xmax)**2)
-         for j in range(1,pm.imax): 
-            string = 'MLP: evolving through real time: t = ' + str(j*pm.deltat) 
-            sprint.sprint(string,1,1,pm.msglvl)
-            sprint.sprint(string,2,1,pm.msglvl)
-            n_t,Psi = CrankNicolson(v_s_t,Psi,n_t,j)
-            current[j,:] = CalculateCurrentDensity(n_t,j)
-            if j != pm.imax-1:
-               if pm.refernce_potential=='lda':
-                  v_s_t[j+1,:] = (1-pm.f)*(v_ext[:]+Hartree(n_t[j,:],U)+lda.XC(n_t[j,:]))+pm.f*SOA_TD(n_t,current,j,exp,exp2)
-               if pm.refernce_potential=='non':
-                  v_s_t[j+1,:] = (1-pm.f)*v_ext[:]+pm.f*SOA_TD(n_t,current,j,exp,exp2)
-         file3 = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_mlp_den.db', 'w') # density
-         pickle.dump(n_t,file3)
-         file3.close()
-         file3 = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_mlp_vks.db', 'w') # density
-         pickle.dump(v_s_t,file3)
-         file3.close()
+      for i in range(pm.NE):
+         Psi[i,0,:] = waves[:,i]/math.sqrt(pm.deltax)
+      v_s_t = np.zeros((pm.imax,pm.jmax),dtype='float')
+      v_xc_t = np.zeros((pm.imax,pm.jmax),dtype='float')
+      current = np.zeros((pm.imax,pm.jmax),dtype='float')
+      n_t = np.zeros((pm.imax,pm.jmax),dtype='float')
+      v_s_t[0,:] = v_s[:]
+      n_t[0,:] = n[:]
+      exp = np.zeros(pm.jmax,dtype='float')
+      for i in xrange(pm.jmax): 
+         v_s_t[1,i] = v_s[i]+pm.petrb((i*pm.deltax-pm.xmax))  
+         v_ext[i] += pm.petrb((i*pm.deltax-pm.xmax))
+         exp[i] = math.exp(-0.1*(i*pm.deltax-pm.xmax)**2)
+      A = np.zeros((pm.imax,pm.jmax),dtype='float')
+      for j in range(1,pm.imax): 
+         string = 'MLP: evolving through real time: t = ' + str(j*pm.deltat) 
+         sprint.sprint(string,1,1,pm.msglvl)
+         sprint.sprint(string,2,1,pm.msglvl)
+         n_t,Psi = CrankNicolson(v_s_t,Psi,n_t,j,A)
+         current[j,:] = CalculateCurrentDensity(n_t,j)
+         if j != pm.imax-1:
+            A[j+1,:] = -pm.f*current[j,:]/n_t[j,:]
+            A[j+1,:] = Filter(A[j+1,:],j,exp)
+            if pm.refernce_potential=='lda':
+               v_s_t[j+1,:] = (1-pm.f)*(v_ext[:]+Hartree(n_t[j,:],U)+lda.XC(n_t[j,:]))+pm.f*SOA_TD(n_t,current,j,exp)
+            if pm.refernce_potential=='non':
+               v_s_t[j+1,:] = (1-pm.f)*v_ext[:]+pm.f*SOA_TD(n_t,current,j,exp)
+
+      for j in xrange(pm.imax):
+         for i in range(pm.jmax):
+            for k in range(i+1):
+               v_s_t[j,i] += (A[j,k]-A[j-1,k])*pm.deltax/pm.deltat # Convert vector potential into scalar potential
+
+      file3 = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_mlp_den.db', 'w') # density
+      pickle.dump(n_t,file3)
+      file3.close()
+      file3 = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_mlp_vks.db', 'w') # Kohn-Sham potential
+      pickle.dump(v_s_t,file3)
+      file3.close()
    print

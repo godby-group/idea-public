@@ -35,6 +35,7 @@ from scipy import sparse
 from scipy import special
 from scipy.misc import factorial
 import scipy.sparse.linalg as spla
+import create_hamiltonian_coo as coo
 
 # Varaibale initialisation
 jmax = pm.jmax
@@ -52,13 +53,13 @@ TD = pm.TD
 par = pm.par
 msglvl = pm.msglvl
 c_m = 0
-c_p = 0 
+c_p = 0
 Nx_RM = 0
 
-# Takes every combination of the two electron indicies and creates a single unique index 
+# Takes every combination of the two electron indicies and creates a single unique index
 def Gind(j,k):
     return (k + j*jmax)
-    
+
 # Inverses the Gind operation. Takes the single index and returns the corresponding indices used to create it.
 def InvGind(jk):
     k = jk % jmax
@@ -84,33 +85,67 @@ def Potential(i,j,k):
     V = np.zeros((pm.jmax,pm.kmax), dtype = np.cfloat)
     xk = -pm.xmax + (k*pm.deltax)
     xj = -pm.xmax + (j*pm.deltax)
-    if (i == 0): 	
+    if (i == 0):
         V[j,k] = pm.well(xk) + pm.well(xj) + pm.inte*(1.0/(abs(xk-xj) + pm.acon))
     else:
         V[j,k] = pm.well(xk) + pm.well(xj) + pm.inte*(1.0/(abs(xk-xj) + pm.acon)) + pm.petrb(xk) + pm.petrb(xj)
     return V[j,k]
 
-# Builds the Cayley Matrix on the LHS (C1) of the matrix eigenproblem in Complex Time (t*=-it): C1=(I+H.dt/2)
-def Matrixdef(i,r):
-    j = 0
-    k = 0
-    while (j < jmax):
-        k = 0
-        while (k < kmax):
-            jk = Gind(j,k)
-            Mat[jk,jk] = 1.0 + (4.0*r) + (2.0*r*(deltax**2)*(Potential(i,j,k)))
-            aa=Mat[jk,jk]          
-            if (j < jmax - 1):
-                Mat[jk,Gind(j+1,k)] = - r
-            if (j > 0):
-                Mat[jk,Gind(j-1,k)] = - r
-            if (k < kmax - 1):
-                Mat[jk,Gind(j,k+1)] = - r
-            if (k > 0):
-                Mat[jk,Gind(j,k-1)] = - r
-            k = k + 1
-        j = j + 1
-    return Mat
+
+def create_hamiltonian_diagonals(i,r):
+    """Create array of diagonals for the construction of H the operator.
+
+    Evaluate the kinetic and potential values of the H operators diagonal, then
+    store these in an Fortran contiguous array. This array is then passed to the
+    Hamiltonian constructor create_hamiltonian_coo().
+
+        DEPENDENT FUNCTION (external): Potential() - Used for potential evaluation.
+
+    Args:
+       i (int): Perturbation status (0 = off, 1 = on).
+       r (float): Spatial location.
+
+    Returns:
+       H_diagonals (cfloat): Rank-1 array with bounds jmax**2; Diagonals of H
+       operator. The array must be Fortran contiguous.
+
+    """
+    hamiltonian_diagonals = np.zeros((pm.jmax**2), dtype=np.cfloat, order='F')
+    const = 2.0 * pm.deltax**2
+    for j in range(0, pm.jmax):
+        for k in range(0, pm.kmax):
+            jk = Gind(j, k)
+            hamiltonian_diagonals[jk] = 1.0 + (4.0*r)+ (const*r*(Potential(i, j, k)))
+    return hamiltonian_diagonals
+
+
+def COO_max_size(x):
+    """Estimate the number of non-sparse elements in H operator.
+
+    Return an estimate number for the total elements that exist in the
+    Hamiltonian operator (banded matrix) created by create_hamiltonian_coo().
+    This estimate, assuming n = spatial grid points, attempts to account for the
+    diagonal (x**2), the first diagonals (2*x**2 - 4) and the sub diagonals
+    (2*x**2 - 6); This will overestimate the number of elements, resulting in
+    an array size larger than the total number of elements, although these are
+    truncated at the point of creation thanks to the scipy.sparse.coo_matrix()
+    constructor used.
+
+    Args:
+        x (float): Number of spatial grid points.
+
+    Returns:
+        Self (int): Non-sparse elements estimate in H operator.
+
+    Raises:
+        String: Warns user that more grid points are required. Returns 0.
+
+    """
+    if x<=2:
+        print 'Warning: insufficient spatial grid points (Grid=>3).'
+        return 0
+    return int(((x**2)+(4*x**2)-10))
+
 
 # Imaginary Time Crank Nicholson initial condition
 def InitialconI():
@@ -172,7 +207,7 @@ def Energy(Psi):
     b = np.linalg.norm(Psi[1,:])
     return -(np.log(b/a))/cdeltat
 
-# Function to construct the real matrix Af 
+# Function to construct the real matrix Af
 def ConstructAf(A):
     A1_dat, A2_dat = mkl.mkl_split(A.data,len(A.data))
     A.data = A1_dat
@@ -183,7 +218,7 @@ def ConstructAf(A):
     return Af
 
 # Function to calculate the current density
-def CalculateCurrentDensity(n,i):	
+def CalculateCurrentDensity(n,i):
     J=np.zeros(pm.jmax)
     RE_Utilities.continuity_eqn(i+1,pm.jmax,pm.deltax,pm.deltat,n,J)
     return J
@@ -287,10 +322,29 @@ def CNsolveComplexTime():
     Psiarr[0,:] = InitialconI()
     Psiarr_RM = c_m*Psiarr[0,:]
 
-    # Construct the matrix A
-    A = Matrixdef(0,r)
-    A = A.tocsc()
-    A_RM = c_m*A*c_p
+    # Construct array of the diagonal elements of the Hamiltonian that will be
+    # passed to create_hamiltonian_coo().  The value i = 0 is passed to the
+    # function ensuring no perturbation is applied (see: potential()).
+    hamiltonian_diagonals = create_hamiltonian_diagonals(0, r)
+
+    # Estimate the number of non-sparse elements that will be in the matrix form
+    # of the systems hamiltonian, then initialize the sparse COOrdinate matrix
+    # holding arrays with this shape.
+    COO_size = COO_max_size(jmax)
+    COO_j = np.zeros((COO_size), dtype=int)
+    COO_k = np.zeros((COO_size), dtype=int)
+    COO_data = np.zeros((COO_size), dtype=np.cfloat)
+
+    # Pass the holding arrays and diagonals to the hamiltonian constructor, and
+    # populate the holding arrays with the coordinates and data, then convert
+    # these into a sparse COOrdinate matrix.  Finally convert this into a
+    # Compressed Sparse Column form for efficient arithmetic.
+    COO_j, COO_k, COO_data = coo.create_hamiltonian_coo(COO_j, COO_k, COO_data, hamiltonian_diagonals, r, jmax,kmax)
+    A = sparse.coo_matrix((COO_data, (COO_k,COO_j)), shape=(jmax**2, kmax**2))
+    A = sparse.csc_matrix(A)
+
+    # Construct reduction matrix of A
+    A_RM = c_m * A * c_p
 
     # Construct the matrix C
     C = -(A-sp.sparse.identity(jmax**2, dtype=np.cfloat))+sp.sparse.identity(jmax**2, dtype=np.cfloat)
@@ -303,7 +357,7 @@ def CNsolveComplexTime():
         start = time.time()
         string = 'complex time = ' + str(i*cdeltat)
 	sprint.sprint(string,2,0,msglvl)
-        
+
 	# Reduce the wavefunction
         if (i>=2):
             Psiarr[0,:]=Psiarr[1,:]
@@ -390,9 +444,27 @@ def CNsolveRealTime(wavefunction):
     PsiConverterR(Psiarr[0,:])
     Psiarr_RM = c_m*Psiarr[0,:]
 
-    # Construct the matrix A
-    A = Matrixdef(i,r)
-    A = A.tocsc()
+    # Construct array of the diagonal elements of the Hamiltonian that will
+    # passed to create_hamiltonian_coo().
+    hamiltonian_diagonals = create_hamiltonian_diagonals(i, r)
+
+    # Estimate the number of non-sparse elements that will be in the matrix form
+    # of the systems hamiltonian, then initialize the sparse COOrdinate matrix
+    # holding arrays with this shape.
+    COO_size = COO_max_size(jmax)
+    COO_j = np.zeros((COO_size), dtype=int)
+    COO_k = np.zeros((COO_size), dtype=int)
+    COO_data = np.zeros((COO_size), dtype=np.cfloat)
+
+    # Pass the holding arrays and diagonals to the hamiltonian constructor, and
+    # populate the holding arrays with the coordinates and data, then convert
+    # these into a sparse COOrdinate matrix.  Finally convert this into a
+    # Compressed Sparse Column form for efficient arithmetic.
+    COO_j, COO_k, COO_data = coo.create_hamiltonian_coo(COO_j, COO_k, COO_data, hamiltonian_diagonals, r, jmax,kmax)
+    A = sparse.coo_matrix((COO_data, (COO_k, COO_j)), shape=(jmax**2, kmax**2))
+    A = sparse.csc_matrix(A)
+
+    # Construct the reduction matrix
     A_RM = c_m*A*c_p
 
     # Construct the matrix Af if neccessary
@@ -494,7 +566,7 @@ def CNsolveRealTime(wavefunction):
 def main():
 
     # Use global variables
-    global jmax,kmax,xmax,tmax,deltax,deltat,imax,msglvl,Psiarr,Mat,Rhv2,Psi2D,r,Mat2,c_m,c_p,Nx_RM
+    global jmax,kmax,xmax,tmax,deltax,deltat,imax,msglvl,Psiarr,Rhv2,Psi2D,r,c_m,c_p,Nx_RM
 
     # Construct reduction and expansion matrices
     c_m, c_p, Nx_RM = antisym(jmax, True)
@@ -504,7 +576,6 @@ def main():
     sprint.sprint(string,2,0,msglvl)
     sprint.sprint(string,1,0,msglvl)
     Psiarr = np.zeros((2,jmax**2), dtype = np.cfloat)
-    Mat = sparse.lil_matrix((jmax**2,jmax**2),dtype = np.cfloat)
     Rhv2 = np.zeros((jmax**2), dtype = np.cfloat)
     Psi2D = np.zeros((jmax,kmax), dtype = np.cfloat)
     r = 0.0 + (1.0)*(cdeltat/(4.0*(deltax**2))) 
@@ -520,7 +591,6 @@ def main():
     Psiarr = np.zeros((2,jmax**2), dtype = np.cfloat)
     Psi2D = np.zeros((jmax,kmax), dtype = np.cfloat)
     Rhv2 = np.zeros((jmax**2), dtype = np.cfloat)
-    Mat2 = sparse.lil_matrix((jmax**2,jmax**2),dtype = np.cfloat)
 
     # Evolve throught real time
     if int(TD) == 1:
