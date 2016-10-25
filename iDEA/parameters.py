@@ -2,17 +2,17 @@
 import math
 
 # Define run parameters
-run_name = 'run_name'           # Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
+run_name = 'test1'              # Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
 code_version = 0                # Version of iDEA to use (0: As downloaded off the git) (Global: 1.9.0)
 NE = 2                          # Number of electrons
-TD = 0                          # Time dependance
+TD = 1                          # Time dependance
 EXT = 1                         # Run Exact Many-Body calculation
 NON = 1                         # Run Non-Interacting approximation
-LDA = 0                         # Run LDA approximation
+LDA = 1                         # Run LDA approximation
 MLP = 0                         # Run MLP approximation
-HF = 0                          # Run Hartree-Fock approximation
-MBPT = 0                        # Run Many-body pertubation theory
-LAN = 0                         # Run Landauer approximation
+HF = 1                          # Run Hartree-Fock approximation
+MBPT = 1                        # Run Many-body pertubation theory
+LAN = 1                         # Run Landauer approximation
 
 # Exact parameters
 par = 0                         # Use parallelised solver and multiplication (0: serial, 1: parallel) Note: Recommend using parallel for large runs
@@ -23,7 +23,7 @@ EXT_RE = 0                      # Reverse engineer many-body density
 
 # Non-Interacting approximation parameters
 NON_rtol = 1e-14                # Tolerance of real time evolution (Recommended: 1e-14)
-NON_RE = 0                      # Reverse engineer non-interacting density
+NON_RE = 1                      # Reverse engineer non-interacting density
 
 # LDA parameters
 LDA_NE = 2                      # Number of electrons used in construction of the LDA
@@ -46,7 +46,7 @@ HF_RE = 0                       # Reverse engineer hf density
 starting_orbitals = 'non'       # Orbitals to constuct G0 from
 tau_max = 40.0                  # Maximum value of imaginary time
 tau_N = 800                     # Number of imaginary time points (must be even)
-number = 33                     # Number of unoccupied orbitals to use
+number = 2                      # Number of unoccupied orbitals to use
 self_consistent = 0             # (0 = one-shot, 1 = fully self-consistent)
 update_w = 1                    # (0 = do not update w, 1 = do update w)
 tollerance = 1e-12              # Tollerance of the self-consistent algorithm
@@ -57,10 +57,10 @@ MBPT_RE = 0                     # Reverse engineer mbpt density
 lan_start = 'non'               # Ground-state Kohn-Sham potential to be perturbed
 
 # Define grid parameters
-grid = 201                      # Number of grid points (must be odd)
-xmax = 10.0 			# Size of the system
-tmax = 10.0 			# Total real time
-imax = 5001			# Number of real time iterations
+grid = 21                       # Number of grid points (must be odd)
+xmax = 2.0 			# Size of the system
+tmax = 0.1 			# Total real time
+imax = 100			# Number of real time iterations
 
 #Definition of initial external potential
 def well(x):
