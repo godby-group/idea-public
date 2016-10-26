@@ -21,7 +21,6 @@ import pickle
 import sprint
 import numpy as np
 import scipy as sp
-import parameters as pm
 import numpy.linalg as npl
 import scipy.sparse as sps
 import scipy.sparse.linalg as spsla
@@ -206,7 +205,9 @@ def output_quantities(G0,P,W,S,G):
    output_file.close()
 
 # Main function
-def main():
+def main(parameters):
+   global pm
+   pm = parameters
 
    # Construct space-time grid
    st = SpaceTime()

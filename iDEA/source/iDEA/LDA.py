@@ -18,14 +18,9 @@ import numpy as np
 import scipy as sp
 import copy as copy
 import RE_Utilities
-import parameters as pm
 import scipy.sparse as sps
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
-
-T = np.zeros((2,pm.sys.grid),dtype='float') # Kinetic Energy operator
-T[0,:] = np.ones(pm.sys.grid)/pm.sys.deltax**2 # Define kinetic energy operator							
-T[1,:] = -0.5*np.ones(pm.sys.grid)/pm.sys.deltax**2 
 
 # Solve ground-state KS equations
 def groundstate(v):
@@ -113,7 +108,16 @@ def LHS(v,j):
    return CNLHS
 
 # Main function
-def main():
+def main(parameters):
+   global pm, T
+   pm = parameters
+
+   T = np.zeros((2,pm.sys.grid),dtype='float') # Kinetic Energy operator
+   T[0,:] = np.ones(pm.sys.grid)/pm.sys.deltax**2 # Define kinetic energy operator							
+   T[1,:] = -0.5*np.ones(pm.sys.grid)/pm.sys.deltax**2 
+
+
+
    v_s = np.zeros(pm.sys.grid,dtype='float')
    v_ext = np.zeros(pm.sys.grid,dtype='float')
    Psi = np.zeros((pm.sys.NE,pm.sys.imax,pm.sys.grid), dtype='complex')

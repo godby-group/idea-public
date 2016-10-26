@@ -35,29 +35,6 @@ import scipy.misc as spmisc
 import scipy.special as spec
 import scipy.sparse as sps
 import scipy.sparse.linalg as spsla
-import parameters as pm
-
-# Variable initialisation
-jmax = pm.sys.grid
-kmax = pm.sys.grid
-lmax = pm.sys.grid
-imax = pm.sys.imax
-cimax = pm.ext.cimax
-xmax = pm.sys.xmax
-tmax = pm.sys.tmax
-ctmax = pm.ext.ctmax
-deltax = pm.sys.deltax
-deltat = tmax/(imax-1)
-cdeltat = ctmax/(cimax-1)
-ctol = pm.ext.ctol
-rtol = pm.ext.rtol
-TD = pm.run.time_dependence
-par = pm.ext.par
-verbosity = pm.run.verbosity
-gdstD = 0
-c_m = 0
-c_p = 0 
-Nx_RM = 0
 
 # Takes every combination of the two electron indicies and creates a single unique index 
 def Gind(k,j,l):
@@ -544,10 +521,39 @@ def CNsolveRealTime():
     return
 
 # Call this function to run iDEA-MB for 3 electrons
-def main():
+def main(parameters):
+    global jmax,kmax,lmax,imax, cimax,xmax,tmax,ctmax,deltax,deltat
+    global cdeltat, ctol, rtol, TD, par, verbosity,gdstD,c_m, c_p, Nx_RM
+    global Psiarr,Mat,Rhv2,Psi3D,r,Mat3
+    global pm
+
+    pm = parameters
+
+    # Variable initialisation
+    jmax = pm.sys.grid
+    kmax = pm.sys.grid
+    lmax = pm.sys.grid
+    imax = pm.sys.imax
+    cimax = pm.ext.cimax
+    xmax = pm.sys.xmax
+    tmax = pm.sys.tmax
+    ctmax = pm.ext.ctmax
+    deltax = pm.sys.deltax
+    deltat = tmax/(imax-1)
+    cdeltat = ctmax/(cimax-1)
+    ctol = pm.ext.ctol
+    rtol = pm.ext.rtol
+    TD = pm.run.time_dependence
+    par = pm.ext.par
+    verbosity = pm.run.verbosity
+    gdstD = 0
+    c_m = 0
+    c_p = 0 
+    Nx_RM = 0
+
+
 
     # Use global variables
-    global jmax,kmax,lmax,xmax,tmax,deltax,deltat,gdstD,imax,verbosity,Psiarr,Mat,Rhv2,Psi3D,r,Mat3,c_m,c_p
     string = 'EXT: constructing arrays'
     sprint.sprint(string,0,verbosity)
     sprint.sprint(string,1,verbosity)

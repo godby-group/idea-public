@@ -28,7 +28,6 @@ import pickle
 import numpy as np
 import scipy as sp
 import RE_Utilities
-import parameters as pm
 import scipy.sparse as sps
 import scipy.sparse.linalg as spsla
 
@@ -116,7 +115,9 @@ def sprint(text):
    sys.stdout.flush()
 
 # Main function
-def main():
+def main(parameters):
+   global pm
+   pm = parameters
 
    # Create the grid
    xgrid = np.linspace(-0.5*pm.sys.xmax,0.5*pm.sys.xmax,pm.sys.grid)

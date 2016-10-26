@@ -28,31 +28,12 @@ import sprint
 import numpy as np
 import scipy as sp
 import RE_Utilities
-import parameters as pm
+#import parameters as pm
 import scipy.sparse as sps
 import scipy.misc as spmisc
 import scipy.special as spec
 import scipy.sparse.linalg as spla
 import create_hamiltonian_coo as coo
-
-# Variable initialisation
-jmax = pm.sys.grid 
-kmax = pm.sys.grid
-xmax = pm.sys.xmax
-tmax = pm.ext.ctmax
-deltax = pm.sys.deltax
-deltat = pm.sys.deltat
-imax = pm.sys.imax
-cimax = pm.ext.cimax
-cdeltat = pm.ext.cdeltat
-ctol = pm.ext.ctol
-rtol = pm.ext.rtol
-TD = pm.run.time_dependence
-par = pm.ext.par
-verbosity = pm.run.verbosity
-c_m = 0
-c_p = 0
-Nx_RM = 0
 
 # Takes every combination of the two electron indicies and creates a single unique index
 def Gind(j,k):
@@ -563,10 +544,33 @@ def CNsolveRealTime(wavefunction):
     return
 
 # Call this function to run iDEA-MB for 2 electrons
-def main():
-
+def main(parameters):
     # Use global variables
     global jmax,kmax,xmax,tmax,deltax,deltat,imax,verbosity,Psiarr,Rhv2,Psi2D,r,c_m,c_p,Nx_RM
+    global cimax,cdeltat,ctol,rtol,TD,par
+    global pm
+
+    pm = parameters
+
+    # Variable initialisation
+    jmax = pm.sys.grid 
+    kmax = pm.sys.grid
+    xmax = pm.sys.xmax
+    tmax = pm.ext.ctmax
+    deltax = pm.sys.deltax
+    deltat = pm.sys.deltat
+    imax = pm.sys.imax
+    cimax = pm.ext.cimax
+    cdeltat = pm.ext.cdeltat
+    ctol = pm.ext.ctol
+    rtol = pm.ext.rtol
+    TD = pm.run.time_dependence
+    par = pm.ext.par
+    verbosity = pm.run.verbosity
+    c_m = 0
+    c_p = 0
+    Nx_RM = 0
+
 
     # Construct reduction and expansion matrices
     c_m, c_p, Nx_RM = antisym(jmax, True)

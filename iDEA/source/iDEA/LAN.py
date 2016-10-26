@@ -19,33 +19,11 @@ import pickle
 import sprint
 import numpy as np
 import RE_Utilities
-import parameters as pm
 
 import scipy.linalg as spla
 import scipy.sparse as sps
 import scipy.special as spec
 import scipy.sparse.linalg as spsla
-
-# Constants used in the code
-sqdx=np.sqrt(pm.sys.deltax)								
-upper_bound = int((pm.sys.grid-1)/2.0)						
-mu=1.0                                                 # Mixing for the ground-state KS algorithm
-z=0
-alpha=1                                                # Strength of noise control
-frac1=1.0/3.0
-frac2=1.0/24.0
-
-# Initalise matrices
-T = np.zeros((2,pm.sys.grid),dtype='complex')
-T[0,:] = np.ones(pm.sys.grid,dtype='complex')/pm.sys.deltax**2									
-T[1,:] = -0.5*np.ones(pm.sys.grid,dtype='float')/pm.sys.deltax**2									
-J_LAN = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')		
-CNRHS = np.zeros(pm.sys.grid, dtype='complex')					
-CNLHS = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')					
-Mat = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')					
-Matin = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')				
-V_ext = np.zeros(pm.sys.grid,dtype='complex')
-petrb = np.zeros(pm.sys.grid,dtype='complex')
 
 # Function to read inputs
 def ReadInput(approx):
@@ -130,7 +108,35 @@ def CalculateCurrentDensity(n,upper_bound,j):
    return J
 
 # Main function
-def main():
+def main(parameters):
+   global sqdx, upper_bound, mu, z, alpha, frac1, frac2
+   global T, J_LAN, CNRHS, CNLHS, Mat, Matin, V_ext, petrb
+
+   global pm
+   pm = parameters
+
+   # Constants used in the code
+   sqdx=np.sqrt(pm.sys.deltax)								
+   upper_bound = int((pm.sys.grid-1)/2.0)						
+   mu=1.0                                                 # Mixing for the ground-state KS algorithm
+   z=0
+   alpha=1                                                # Strength of noise control
+   frac1=1.0/3.0
+   frac2=1.0/24.0
+   
+   # Initalise matrices
+   T = np.zeros((2,pm.sys.grid),dtype='complex')
+   T[0,:] = np.ones(pm.sys.grid,dtype='complex')/pm.sys.deltax**2									
+   T[1,:] = -0.5*np.ones(pm.sys.grid,dtype='float')/pm.sys.deltax**2									
+   J_LAN = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')		
+   CNRHS = np.zeros(pm.sys.grid, dtype='complex')					
+   CNLHS = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')					
+   Mat = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')					
+   Matin = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')				
+   V_ext = np.zeros(pm.sys.grid,dtype='complex')
+   petrb = np.zeros(pm.sys.grid,dtype='complex')
+
+
    z = 0
    V_lan = ReadInput(pm.lan.start)                        # Read in exact vks obtained from code
    n_LAN,Psi=CalculateGroundstate(V_lan,sqdx,T)

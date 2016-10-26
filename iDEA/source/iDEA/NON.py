@@ -26,7 +26,6 @@ import sprint
 import numpy as np
 import scipy as sp
 import RE_Utilities
-import parameters as pm
 import scipy.sparse as sps
 import scipy.sparse.linalg as spsla
 
@@ -93,7 +92,9 @@ def addDensities(densities):
    return density
 
 # Main function
-def main():
+def main(parameters):
+   global pm
+   pm = parameters
 
    # Construct the kinetic energy
    K = constructK()

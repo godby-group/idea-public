@@ -19,15 +19,10 @@ import math as math
 import copy as copy
 import RE_Utilities
 import LDA
-import parameters as pm
 import scipy.sparse as sps
 
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
-
-T = np.zeros((2,pm.sys.grid),dtype='float') # Kinetic Energy operator
-T[0,:] = np.ones(pm.sys.grid)/pm.sys.deltax**2 # Define kinetic energy operator							
-T[1,:] = -0.5*np.ones(pm.sys.grid)/pm.sys.deltax**2 
 
 # Given n returns SOA potential
 def SOA(den):
@@ -212,7 +207,15 @@ def ExtrapolateCD(J,j,n,upper_bound):
    return J
 
 # Main function
-def main():
+def main(parameters):
+   global T, pm
+   pm = parameters
+
+   T = np.zeros((2,pm.sys.grid),dtype='float') # Kinetic Energy operator
+   T[0,:] = np.ones(pm.sys.grid)/pm.sys.deltax**2 # Define kinetic energy operator							
+   T[1,:] = -0.5*np.ones(pm.sys.grid)/pm.sys.deltax**2 
+
+
    v_s = np.zeros(pm.sys.grid,dtype='float')
    v_ext = np.zeros(pm.sys.grid,dtype='float')
    v_ref = np.zeros(pm.sys.grid,dtype='float')

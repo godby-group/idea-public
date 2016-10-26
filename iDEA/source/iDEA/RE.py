@@ -30,38 +30,9 @@ import pickle
 import sprint
 import numpy as np
 import RE_Utilities
-import parameters as pm
 import scipy.sparse as sps
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
-
-# Constants used in the code
-sqdx = math.sqrt(pm.sys.deltax)		
-upper_bound = int((pm.sys.grid-1)/2.0)
-imax = pm.sys.imax+1
-if pm.run.time_dependence == False:
-   imax = 1
-# Initialise matrices
-T = np.zeros((2,pm.sys.grid),dtype='complex')
-T[0,:] = np.ones(pm.sys.grid,dtype='complex')/pm.sys.deltax**2		
-T[1,:] = -0.5*np.ones(pm.sys.grid,dtype='float')/pm.sys.deltax**2
-J_MB = np.zeros((imax,pm.sys.grid),dtype='float')
-cost_n = np.zeros(imax,dtype='float')	
-cost_J = np.zeros(imax,dtype='float')
-exp = np.zeros(pm.sys.grid,dtype='float')
-CNRHS = np.zeros(pm.sys.grid, dtype='complex')
-CNLHS = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')
-Mat = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')
-Matin = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')
-V_h = np.zeros((imax,pm.sys.grid),dtype='float')
-V_xc = np.zeros((imax,pm.sys.grid),dtype='complex')
-V_Hxc = np.zeros((imax,pm.sys.grid),dtype='complex')
-A_KS = np.zeros((imax,pm.sys.grid),dtype='complex')
-A_min = np.zeros(pm.sys.grid,dtype='complex')
-U_KS = np.zeros((imax,pm.sys.grid),dtype='float')
-U_MB = np.zeros((imax,pm.sys.grid),dtype='float')
-petrb = np.zeros(pm.sys.grid,dtype='complex')
-U = np.zeros((pm.sys.grid,pm.sys.grid))
 
 # Function to read inputs -- needs some work!
 def ReadInput(approx,GS,imax):
@@ -356,7 +327,42 @@ def CalculateKS(V_KS,A_KS,J,Psi,j,upper_bound,frac1,frac2,z,tol,n_T,J_T,cost_n,c
    return n_KS,V_KS,J,Apot,z
 
 # Main control function
-def main(approx):
+def main(parameters,approx):
+   global sqdx, upper_bound, imax, T, J_MB, cost_n, cost_J, exp, CNRHS, CNLHS
+   global Mat, Matin, V_h, V_xc, V_Hxc, A_KS, A_min, U_KS, U_MB, petrb, U
+   global pm
+
+   pm = parameters
+
+   # Constants used in the code
+   sqdx = math.sqrt(pm.sys.deltax)		
+   upper_bound = int((pm.sys.grid-1)/2.0)
+   imax = pm.sys.imax+1
+   if pm.run.time_dependence == False:
+      imax = 1
+   # Initialise matrices
+   T = np.zeros((2,pm.sys.grid),dtype='complex')
+   T[0,:] = np.ones(pm.sys.grid,dtype='complex')/pm.sys.deltax**2		
+   T[1,:] = -0.5*np.ones(pm.sys.grid,dtype='float')/pm.sys.deltax**2
+   J_MB = np.zeros((imax,pm.sys.grid),dtype='float')
+   cost_n = np.zeros(imax,dtype='float')	
+   cost_J = np.zeros(imax,dtype='float')
+   exp = np.zeros(pm.sys.grid,dtype='float')
+   CNRHS = np.zeros(pm.sys.grid, dtype='complex')
+   CNLHS = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')
+   Mat = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')
+   Matin = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')
+   V_h = np.zeros((imax,pm.sys.grid),dtype='float')
+   V_xc = np.zeros((imax,pm.sys.grid),dtype='complex')
+   V_Hxc = np.zeros((imax,pm.sys.grid),dtype='complex')
+   A_KS = np.zeros((imax,pm.sys.grid),dtype='complex')
+   A_min = np.zeros(pm.sys.grid,dtype='complex')
+   U_KS = np.zeros((imax,pm.sys.grid),dtype='float')
+   U_MB = np.zeros((imax,pm.sys.grid),dtype='float')
+   petrb = np.zeros(pm.sys.grid,dtype='complex')
+   U = np.zeros((pm.sys.grid,pm.sys.grid))
+
+
    z = 0
    mu = 1.0 # Mixing for the ground-state KS algorithm
    alpha = 1 # Strength of noise control
