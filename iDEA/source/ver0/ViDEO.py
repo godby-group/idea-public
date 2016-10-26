@@ -138,13 +138,13 @@ def sprint(text, n, s, msglvl):
             print(text)
 
 # Gather file information from user
-run_name = pm.run_name
+run_name = pm.run.name
 NE = int(input('number of electrons: '))
 td = bool(input('is the data ground state or time dependant (gs=0,td=1): '))
 approx = int(input('enter which approximation to use (exact=0,NON=1,LDA=2,MLP=3,HF=4,MBPT=5,LAN=6): '))
 data = int(input('enter which quantity to plot (DEN=0,CUR=1,VXT=2,VKS=3,VH=4,VXC=5,ELF=6): '))
-N = pm.grid
-L = pm.xmax*2
+N = pm.sys.grid
+L = pm.sys.xmax*2
 dx = float(L/(N-1))
 filename = str(run_name) + '_' + str(NE)
 if(td):

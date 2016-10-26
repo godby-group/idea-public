@@ -16,7 +16,6 @@
 ######################################################################################
 
 # Library imports
-import math
 import copy
 import pickle
 import sprint
@@ -25,18 +24,18 @@ import scipy as sp
 import parameters as pm
 import numpy.linalg as npl
 import scipy.sparse as sps
-import scipy.sparse.linalg as spla
+import scipy.sparse.linalg as spsla
 
 # Struct to define space-time grid
 class SpaceTime:
    def __init__(self):
-      self.tau_max = pm.tau_max
-      self.tau_N = pm.tau_N
-      self.dtau = float(2*pm.tau_max)/float(pm.tau_N-1)
+      self.tau_max = pm.mbpt.tau_max
+      self.tau_N = pm.mbpt.tau_N
+      self.dtau = float(2*pm.mbpt.tau_max)/float(pm.mbpt.tau_N-1)
       self.tau_grid = np.append(np.linspace(self.dtau/2.0,self.tau_max,self.tau_N/2),np.linspace(-self.tau_max,-self.dtau/2.0,self.tau_N/2))
-      self.x_max = pm.xmax
-      self.x_N = pm.grid
-      self.dx = float(2*pm.xmax)/float(pm.grid-1)
+      self.x_max = pm.sys.xmax
+      self.x_N = pm.sys.grid
+      self.dx = float(2*pm.sys.xmax)/float(pm.sys.grid-1)
       self.x_grid = np.linspace(-self.x_max,self.x_max,self.x_N)
 
 # Function to construct the kinetic energy K
@@ -46,13 +45,13 @@ def constructK(st):
 
 # Function to construct the potential V
 def constructV(st):
-   if(pm.starting_orbitals == 'non'):
+   if(pm.mbpt.starting_orbitals == 'non'):
       Vdiagonal = []
       for i in xrange(0,len(st.x_grid)):
-         Vdiagonal.append(pm.well(st.x_grid[i]))
+         Vdiagonal.append(pm.sys.v_ext(st.x_grid[i]))
       V = sps.spdiags(Vdiagonal, 0, st.x_N, st.x_N, format='csr')
    else:
-      input_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(pm.starting_orbitals) + '_vks.db','r')
+      input_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_' + str(pm.mbpt.starting_orbitals) + '_vks.db','r')
       Vdiagonal = pickle.load(input_file).real
       V = sps.spdiags(Vdiagonal, 0, st.x_N, st.x_N, format='csr')
    return V
@@ -60,18 +59,18 @@ def constructV(st):
 # Function to construct the non-interacting green's function G0 in the time domain
 def non_interacting_greens_function(st, occupied, occupied_energies, empty, empty_energies):
    G0 = np.zeros((st.tau_N,st.x_N,st.x_N), dtype='complex')
-   occupied_tensor = np.zeros((pm.NE,st.x_N,st.x_N), dtype='complex') 
+   occupied_tensor = np.zeros((pm.sys.NE,st.x_N,st.x_N), dtype='complex') 
    for i in xrange(0, st.x_N):
       for j in xrange(0, st.x_N):
          occupied_tensor[:,i,j] = occupied[i,:]*np.conjugate(occupied[j,:]) # phi_n(x_1)phi_n*(x_2) for occupied states
-   empty_tensor = np.zeros((pm.number,st.x_N,st.x_N), dtype='complex') 
+   empty_tensor = np.zeros((pm.mbpt.number_empty,st.x_N,st.x_N), dtype='complex') 
    for i in xrange(0, st.x_N):
       for j in xrange(0, st.x_N):
          empty_tensor[:,i,j] = empty[i,:]*np.conjugate(empty[j,:]) # phi_n(x_1)phi_n*(x_2) for empty states
    for k in xrange(0,st.tau_N):
       tau = st.tau_grid[k]
       string = 'MBPT: computing non-interacting greens function G0, tau = ' + str(tau)
-      sprint.sprint(string,1,1,pm.msglvl)
+      sprint.sprint(string,1,1,pm.run.msglvl)
       if(tau > 0.0): # Construct G0 for positive imaginary time
          for i in xrange(0,st.x_N):
             for j in xrange(0,st.x_N):
@@ -88,7 +87,7 @@ def coulomb_interaction(st):
    v_f = np.zeros((st.tau_N,st.x_N,st.x_N), dtype='complex')
    for i in xrange(0,st.x_N):
       for j in xrange(0,st.x_N):
-         v_f[:,i,j] = 1.0/(abs(st.x_grid[j]-st.x_grid[i])+pm.acon) # Softened coulomb interaction
+         v_f[:,i,j] = 1.0/(abs(st.x_grid[j]-st.x_grid[i])+pm.sys.acon) # Softened coulomb interaction
    return v_f
 
 # Function to calculate the irreducible polarizability P in the time domain
@@ -117,9 +116,9 @@ def self_energy(st,G,W,iteration):
 def correct_diagrams(st,S_f,v_f,density):
    V_h = np.dot(v_f[0,:,:],density)*st.dx
    V_hxc0 = np.zeros(st.x_N, dtype='complex')
-   if(pm.starting_orbitals != 'non'):
-      V_h0 = pickle.load(open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(pm.starting_orbitals) + '_vh.db','r'))
-      V_xc0 = pickle.load(open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_' + str(pm.starting_orbitals) + '_vxc.db','r'))
+   if(pm.mbpt.starting_orbitals != 'non'):
+      V_h0 = pickle.load(open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_' + str(pm.mbpt.starting_orbitals) + '_vh.db','r'))
+      V_xc0 = pickle.load(open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_' + str(pm.mbpt.starting_orbitals) + '_vxc.db','r'))
       V_hxc0 = V_h0 + V_xc0 
    for i in xrange(0,st.x_N):
       S_f[:,i,i] += (V_h[i] - V_hxc0[i])/st.dx
@@ -148,7 +147,7 @@ def dyson_equation(st,G0_f,S_f,iteration):
 def generate_phase_factors(st):
    phase_factors = np.zeros(st.tau_N, dtype='complex')
    for n in xrange(0,st.tau_N):
-      phase_factors[n] = np.exp(-1.0j*math.pi*(n/st.tau_N))
+      phase_factors[n] = np.exp(-1.0j*np.pi*(n/st.tau_N))
    return phase_factors
 
 # Function to fourier transform a given quantity
@@ -182,27 +181,27 @@ def extract_density(st,G):
 def has_converged(density_new, density_old, iteration):
    convergence = abs(npl.norm(density_new-density_old))
    string = 'MBPT: performing self-consistency (iteration=' + str(iteration+1) + '): convergence = ' + str(convergence)
-   sprint.sprint(string,1,1,pm.msglvl)
-   if(convergence < pm.tollerance):
+   sprint.sprint(string,1,1,pm.run.msglvl)
+   if(convergence < pm.mbpt.tolerance):
       return True
    else:
       return False
 
 # Function to save all hedin quantities to pickle files
 def output_quantities(G0,P,W,S,G):
-   output_file = open('outputs/' + str(pm.run_name) + '/data/g0.db','w')
+   output_file = open('outputs/' + str(pm.run.name) + '/data/g0.db','w')
    pickle.dump(G0,output_file)
    output_file.close()
-   output_file = open('outputs/' + str(pm.run_name) + '/data/p.db','w')
+   output_file = open('outputs/' + str(pm.run.name) + '/data/p.db','w')
    pickle.dump(P,output_file)
    output_file.close()
-   output_file = open('outputs/' + str(pm.run_name) + '/data/w.db','w')
+   output_file = open('outputs/' + str(pm.run.name) + '/data/w.db','w')
    pickle.dump(W,output_file)
    output_file.close()
-   output_file = open('outputs/' + str(pm.run_name) + '/data/s.db','w')
+   output_file = open('outputs/' + str(pm.run.name) + '/data/s.db','w')
    pickle.dump(S,output_file)
    output_file.close()
-   output_file = open('outputs/' + str(pm.run_name) + '/data/g.db','w')
+   output_file = open('outputs/' + str(pm.run.name) + '/data/g.db','w')
    pickle.dump(G,output_file)
    output_file.close()
 
@@ -223,27 +222,27 @@ def main():
 
    # Compute all wavefunctions
    print 'MBPT: computing eigenstates of single particle hamiltonian'
-   solution = spla.eigsh(H, k=pm.grid-3, which='SA', maxiter=1000000)
+   solution = spsla.eigsh(H, k=pm.sys.grid-3, which='SA', maxiter=1000000)
    energies = solution[0] 
    wavefunctions = solution[1]
 
    # Normalise all wavefunctions
    length = len(wavefunctions[0,:])
    for i in xrange(0,length):
-      wavefunctions[:,i] = wavefunctions[:,i]/(np.linalg.norm(wavefunctions[:,i])*pm.deltax**0.5)
+      wavefunctions[:,i] = wavefunctions[:,i]/(np.linalg.norm(wavefunctions[:,i])*pm.sys.deltax**0.5)
 
    # Make array of occupied wavefunctions
-   occupied = np.zeros((pm.grid,pm.NE), dtype='complex')
-   occupied_energies = np.zeros(pm.NE)
-   for i in xrange(0,pm.NE):
+   occupied = np.zeros((pm.sys.grid,pm.sys.NE), dtype='complex')
+   occupied_energies = np.zeros(pm.sys.NE)
+   for i in xrange(0,pm.sys.NE):
       occupied[:,i] = wavefunctions[:,i]
       occupied_energies[i] = energies[i]
 
    # Make array of empty wavefunctions
-   empty = np.zeros((pm.grid,pm.number), dtype='complex')
-   empty_energies = np.zeros(pm.number)
-   for i in xrange(0,pm.number):
-      s = i + pm.NE
+   empty = np.zeros((pm.sys.grid,pm.mbpt.number_empty), dtype='complex')
+   empty_energies = np.zeros(pm.mbpt.number_empty)
+   for i in xrange(0,pm.mbpt.number_empty):
+      s = i + pm.sys.NE
       empty[:,i] = wavefunctions[:,s]
       empty_energies[i] = energies[s]
 
@@ -273,15 +272,15 @@ def main():
    # Determine level of self-consistency
    converged = False
    iteration = 0
-   if(pm.self_consistent == 0):
+   if(pm.mbpt.self_consistent == 0):
       max_iterations = 1
-   if(pm.self_consistent == 1):
-      max_iterations = pm.max_iterations
+   if(pm.mbpt.self_consistent == 1):
+      max_iterations = pm.mbpt.max_iterations
 
    # GW self-consistency loop
    print 'MBPT: performing first iteration (one-shot)'
    while(iteration < max_iterations and converged == False):
-      if(iteration == 0 or pm.update_w == 1):
+      if(iteration == 0 or pm.mbpt.update_w == True):
          P = irreducible_polarizability(st,G,iteration) # Calculate P in the time domain
          P_f = fourier(st,P,0,phase_factors) # Fourier transform to get P in the frequency domain
          W_f = screened_interaction(st,v_f,P_f,iteration) # Calculate W in the frequency domain
@@ -298,17 +297,17 @@ def main():
       iteration += 1
 
    # Extract the ground-state density from G
-   if(pm.self_consistent == 1):
+   if(pm.mbpt.self_consistent == 1):
       print
    print 'MBPT: computing density from the greens function G'
    density = extract_density(st,G)
 
    # Normalise the density
-   print 'MBPT: normalising density by ' + str(float(pm.NE)/(np.sum(density)*st.dx))
-   density[:] = (density[:]*float(pm.NE))/(np.sum(density)*st.dx)
+   print 'MBPT: normalising density by ' + str(float(pm.sys.NE)/(np.sum(density)*st.dx))
+   density[:] = (density[:]*float(pm.sys.NE))/(np.sum(density)*st.dx)
 
    # Output ground state density
-   output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_mbpt_den.db','w')
+   output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_mbpt_den.db','w')
    pickle.dump(density,output_file)
    output_file.close()
 

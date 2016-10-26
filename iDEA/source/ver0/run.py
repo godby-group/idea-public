@@ -15,68 +15,67 @@
 ######################################################################################
 
 # Library imports
-import os
 import splash
 import sprint
 import SPiDEA
-import iDEA_EXT2
-import iDEA_EXT3
-import iDEA_NON
-import iDEA_LDA
-import iDEA_MLP
-import iDEA_MBPT
-import iDEA_LAN
+import EXT2
+import EXT3
+import NON
+import LDA
+import MLP
+import MBPT
+import LAN
 import parameters as pm
 
 # Draw splash to screen
-splash.draw(pm.msglvl)
-print('run name: ' + str(pm.run_name))
+splash.draw(pm.run.msglvl)
+print('run name: ' + str(pm.run.name))
 
 # Execute required jobs
-if(pm.NE==1):
-   if(pm.EXT == 1):
+if(pm.sys.NE == 1):
+   if(pm.run.EXT == True):
       SPiDEA.main()
-   if(pm.EXT_RE == 1):
-      import iDEA_RE
-      iDEA_RE.main('ext')
-if(pm.NE==2):
-   if(pm.EXT == 1):
-      iDEA_EXT2.main()
-   if(pm.EXT_RE == 1):
-      import iDEA_RE
-      iDEA_RE.main('ext')
-if(pm.NE==3):
-   if(pm.EXT == 1):
-      iDEA_EXT3.main()
-   if(pm.EXT_RE == 1):
-      import iDEA_RE
-      iDEA_RE.main('ext')
-if(pm.NE >= 4):
-   if(pm.EXT == 1):
+   if(pm.ext.RE == True):
+      import RE
+      RE.main('ext')
+if(pm.sys.NE == 2):
+   if(pm.run.EXT == True):
+      EXT2.main()
+   if(pm.ext.RE == True):
+      import RE
+      RE.main('ext')
+if(pm.sys.NE == 3):
+   if(pm.run.EXT == True):
+      EXT3.main()
+   if(pm.ext.RE == True):
+      import RE
+      RE.main('ext')
+if(pm.sys.NE >= 4):
+   if(pm.run.EXT == True):
       print('EXT: cannot run exact with more than 3 electrons')
-if(pm.NON == 1):
-      iDEA_NON.main()
-if(pm.NON_RE == 1):
-      import iDEA_RE
-      iDEA_RE.main('non')
-if(pm.LDA == 1):
-      iDEA_LDA.main()
-if(pm.MLP == 1):
-      iDEA_MLP.main()
-if(pm.HF == 1):
-      import iDEA_HF
-if(pm.HF_RE == 1):
-      import iDEA_RE
-      iDEA_RE.main('hf')
-if(pm.MBPT == 1):
-      iDEA_MBPT.main()
-if(pm.MBPT_RE == 1):
-      import iDEA_RE
-      iDEA_RE.main('mbpt')
-if(pm.LAN == 1):
-      iDEA_LAN.main()
+if(pm.run.NON == True):
+      NON.main()
+if(pm.non.RE == True):
+      import RE
+      RE.main('non')
+if(pm.run.LDA == True):
+      LDA.main()
+if(pm.run.MLP == True):
+      MLP.main()
+if(pm.run.HF == True):
+      import HF
+if(pm.hf.RE == True):
+      import RE
+      RE.main('hf')
+if(pm.run.MBPT == True):
+      MBPT.main()
+if(pm.mbpt.RE == True):
+      import RE
+      RE.main('mbpt')
+if(pm.run.LAN == True):
+      LAN.main()
 
 # All jobs done
 string = 'all jobs done \n'
-sprint.sprint(string,2,0,pm.msglvl)
-sprint.sprint(string,1,0,pm.msglvl)
+sprint.sprint(string,2,0,pm.run.msglvl)
+sprint.sprint(string,1,0,pm.run.msglvl)

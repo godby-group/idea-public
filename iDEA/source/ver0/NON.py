@@ -21,10 +21,6 @@ if(__name__ == '__main__'):
 
 # Library imports
 import os
-import sys
-import math
-import copy
-import cmath
 import pickle
 import sprint
 import numpy as np
@@ -32,37 +28,37 @@ import scipy as sp
 import RE_Utilities
 import parameters as pm
 import scipy.sparse as sps
-import scipy.sparse.linalg as spla
+import scipy.sparse.linalg as spsla
 
 # Function to construct the kinetic energy K
 def constructK():
-   xgrid = np.linspace(-pm.xmax,pm.xmax,pm.grid)
-   K = -0.5*sps.diags([1, -2, 1],[-1, 0, 1], shape=(pm.grid,pm.grid), format='csr')/(pm.deltax**2)
+   xgrid = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
+   K = -0.5*sps.diags([1, -2, 1],[-1, 0, 1], shape=(pm.sys.grid,pm.sys.grid), format='csr')/(pm.sys.deltax**2)
    return K
 
 # Function to construct the potential V
 def constructV(td):
-   xgrid = np.linspace(-pm.xmax,pm.xmax,pm.grid)
+   xgrid = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
    Vdiagonal = []
    if(td == 0):
       for i in range(0,len(xgrid)):
-         Vdiagonal.append(pm.well(xgrid[i]))
+         Vdiagonal.append(pm.sys.v_ext(xgrid[i]))
    if(td == 1):
       for i in range(0,len(xgrid)):
-         Vdiagonal.append(pm.well(xgrid[i]) + pm.petrb(xgrid[i]))
-   V = sps.spdiags(Vdiagonal, 0, pm.grid, pm.grid, format='csr')
+         Vdiagonal.append(pm.sys.v_ext(xgrid[i]) + pm.sys.v_pert(xgrid[i]))
+   V = sps.spdiags(Vdiagonal, 0, pm.sys.grid, pm.sys.grid, format='csr')
    return V
 
 # Function to construct the matrix A from the hamiltonain H
 def constructA(H):
-   I = sps.identity(pm.grid)
-   A = I + 1.0j*(pm.deltat/2.0)*H
+   I = sps.identity(pm.sys.grid)
+   A = I + 1.0j*(pm.sys.deltat/2.0)*H
    return A
 
 # Function to construct the matrix C from the hamiltonain H
 def constructC(H):
-   I = sps.identity(pm.grid)
-   C = I - 1.0j*(pm.deltat/2.0)*H
+   I = sps.identity(pm.sys.grid)
+   C = I - 1.0j*(pm.sys.deltat/2.0)*H
    return C
 
 # Function the calculate the density for a given wavefunction
@@ -76,15 +72,15 @@ def calculateDensity(wavefunction):
 def calculateCurrentDensity(total_td_density):
     current_density = []
     for i in range(0,len(total_td_density)-1):
-         string = 'NON: computing time dependent current density t = ' + str(i*pm.deltat)
-         sprint.sprint(string,1,1,pm.msglvl)
-         J = np.zeros(pm.jmax)
-         J = RE_Utilities.continuity_eqn(pm.jmax,pm.deltax,pm.deltat,total_td_density[i+1],total_td_density[i])
-         if pm.im==1:
-             for j in range(pm.jmax):
+         string = 'NON: computing time dependent current density t = ' + str(i*pm.sys.deltat)
+         sprint.sprint(string,1,1,pm.run.msglvl)
+         J = np.zeros(pm.sys.grid)
+         J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,total_td_density[i+1],total_td_density[i])
+         if pm.sys.im==1:
+             for j in range(pm.sys.grid):
                  for k in range(j+1):
-                     x = k*pm.deltax-pm.xmax
-                     J[j] -= abs(pm.im_petrb(x))*total_td_density[i][k]*pm.deltax
+                     x = k*pm.sys.deltax-pm.sys.xmax
+                     J[j] -= abs(pm.sys.im_petrb(x))*total_td_density[i][k]*pm.sys.deltax
          current_density.append(J)
     return current_density
 
@@ -110,14 +106,14 @@ def main():
 
    # Compute first N wavefunctions
    print 'NON: computing ground state density'
-   solution = spla.eigs(H, k=pm.NE, which='SR', maxiter=1000000)
+   solution = spsla.eigs(H, k=pm.sys.NE, which='SR', maxiter=1000000)
    energies = solution[0] 
    wavefunctions = solution[1]
 
    # Normalise first N wavefunctions
    length = len(wavefunctions[0,:])
    for i in range(0,length):
-      wavefunctions[:,i] = wavefunctions[:,i]/(np.linalg.norm(wavefunctions[:,i])*pm.deltax**0.5)
+      wavefunctions[:,i] = wavefunctions[:,i]/(np.linalg.norm(wavefunctions[:,i])*pm.sys.deltax**0.5)
 
    # Compute first N densities
    densities = []
@@ -130,22 +126,22 @@ def main():
 
    # Compute ground state energy
    energy = 0.0
-   for i in range(0,pm.NE):
+   for i in range(0,pm.sys.NE):
       energy += energies[i]
    print('NON: ground state energy: ' + str(energy.real))
 
    # Save ground state energy to dat file
-   output_file = open('outputs/' + str(pm.run_name) + '/data/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_non_E.dat','w')
+   output_file = open('outputs/' + str(pm.run.name) + '/data/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_non_E.dat','w')
    output_file.write(str(energy.real))
    output_file.close()
 
    # Save ground state density to pickle file
-   output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_non_den.db','w')
+   output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_non_den.db','w')
    pickle.dump(density,output_file)
    output_file.close()
 
    # Perform real time iterations
-   if(pm.TD == 1):
+   if(pm.run.time_dependence == True):
 
       # Construct evolution matrices
       K = constructK()
@@ -158,17 +154,17 @@ def main():
       td_densities = []
       total_density_gs = []
       total_density_gs.append(density)
-      for n in range(0,pm.NE):
+      for n in range(0,pm.sys.NE):
          wavefunction = wavefunctions[:,n]
          densities = []
          i = 0
-         while(i < pm.imax):
+         while(i < pm.sys.imax):
 
             # Construct the vector b
             b = C*wavefunction   
 
             # Solve Ax=b
-            wavefunction, info = spla.cg(A,b,x0=wavefunction,tol=pm.NON_rtol)
+            wavefunction, info = spsla.cg(A,b,x0=wavefunction,tol=pm.non.rtol)
 
             # Calculate the density
             density = calculateDensity(wavefunction)
@@ -177,9 +173,9 @@ def main():
             densities.append(density)
 
             # Calculate the wavefunction normalisation
-            normalisation = (np.linalg.norm(wavefunction)*pm.deltax**0.5)
-            string = 'NON real time: N = ' + str(n+1) + ', t = ' + str(i*pm.deltat) + ', normalisation = ' + str(normalisation)
-      	    sprint.sprint(string,1,1,pm.msglvl)
+            normalisation = (np.linalg.norm(wavefunction)*pm.sys.deltax**0.5)
+            string = 'NON real time: N = ' + str(n+1) + ', t = ' + str(i*pm.sys.deltat) + ', normalisation = ' + str(normalisation)
+      	    sprint.sprint(string,1,1,pm.run.msglvl)
 
             # iterate
             i = i + 1
@@ -192,9 +188,9 @@ def main():
       print('NON: computing time dependent density')
       total_density = []
       i = 0
-      while(i < pm.imax):
+      while(i < pm.sys.imax):
          densities = []
-         for n in range(0,pm.NE):
+         for n in range(0,pm.sys.NE):
             single_density = td_densities[n]
             densities.append(single_density[i])
          density = addDensities(densities)
@@ -207,12 +203,12 @@ def main():
       print
 
       # Save time dependent data to pickle file (density)
-      output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_non_den.db','w')
+      output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'td_non_den.db','w')
       pickle.dump(np.asarray(total_density),output_file)
       output_file.close()
 
       # Save time dependent data to pickle file (current density)
-      output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'td_non_cur.db','w')
+      output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'td_non_cur.db','w')
       pickle.dump(np.asarray(current_density),output_file)
       output_file.close()
 

@@ -24,52 +24,51 @@ import os
 import sys
 import math
 import copy
-import cmath
 import pickle
 import numpy as np
 import scipy as sp
 import RE_Utilities
 import parameters as pm
 import scipy.sparse as sps
-import scipy.sparse.linalg as spla
+import scipy.sparse.linalg as spsla
 
 # Function to construct the potential V
 def constructV(time):
-   xgrid = np.linspace(-pm.xmax,pm.xmax,pm.grid)
+   xgrid = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
    V = []
    if(time =='i'):
       for i in range(0,len(xgrid)):
-         V.append(pm.well(xgrid[i]))
+         V.append(pm.sys.v_ext(xgrid[i]))
    if(time =='r'):
       for i in range(0,len(xgrid)):
-         V.append(pm.well(xgrid[i]) + pm.petrb(xgrid[i]))
+         V.append(pm.sys.v_ext(xgrid[i]) + pm.sys.v_pert(xgrid[i]))
    return V
 
 # Function to construct the hamiltonain H
 def constructH(time):
-   xgrid = np.linspace(-pm.xmax,pm.xmax,pm.grid)
-   K = -0.5*sps.diags([1, -2, 1],[-1, 0, 1],shape=(pm.grid,pm.grid))/(pm.deltax**2)
+   xgrid = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
+   K = -0.5*sps.diags([1, -2, 1],[-1, 0, 1],shape=(pm.sys.grid,pm.sys.grid))/(pm.sys.deltax**2)
    Vdiagonal = constructV(time)
-   V = sps.spdiags(Vdiagonal, 0, pm.grid, pm.grid, format='csr')
+   V = sps.spdiags(Vdiagonal, 0, pm.sys.grid, pm.sys.grid, format='csr')
    H = K + V
    return H
 
 # Function to construct the matrix A from the hamiltonain H
 def constructA(H,time):
-   I = sps.identity(pm.grid)
+   I = sps.identity(pm.sys.grid)
    if(time == 'i'):   
-      A = I + 1.0*(pm.cdeltat/2.0)*H
+      A = I + 1.0*(pm.ext.cdeltat/2.0)*H
    if(time =='r'):   
-      A = I + 1.0j*(pm.deltat/2.0)*H
+      A = I + 1.0j*(pm.sys.deltat/2.0)*H
    return A
 
 # Function to construct the matrix C from the hamiltonain H
 def constructC(H,time):
-   I = sps.identity(pm.grid)
+   I = sps.identity(pm.sys.grid)
    if(time == 'i'):   
-      C = I - 1.0*(pm.cdeltat/2.0)*H
+      C = I - 1.0*(pm.ext.cdeltat/2.0)*H
    if(time == 'r'):   
-      C = I - 1.0j*(pm.deltat/2.0)*H
+      C = I - 1.0j*(pm.sys.deltat/2.0)*H
    return C
 
 # Function to return the energy of a wavefunction given the hamiltonain H
@@ -93,15 +92,15 @@ def calculateDensity(wavefunction):
 def calculateCurrentDensity(total_td_density):
     current_density = []
     for i in range(0,len(total_td_density)-1):
-         string = 'MB: computing time dependent current density t = ' + str(i*pm.deltat)
+         string = 'MB: computing time dependent current density t = ' + str(i*pm.sys.deltat)
          sprint(string)
-         J = np.zeros(pm.jmax)
-         J = RE_Utilities.continuity_eqn(pm.jmax,pm.deltax,pm.deltat,total_td_density[i+1],total_td_density[i])
-         if pm.im == 1:
-             for j in range(pm.jmax):
+         J = np.zeros(pm.sys.grid)
+         J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,total_td_density[i+1],total_td_density[i])
+         if pm.sys.im == 1:
+             for j in range(pm.sys.grid):
                  for k in range(j+1):
-                     x = k*pm.deltax-pm.xmax
-                     J[j] -= abs(pm.im_petrb(x))*total_td_density[i][k]*pm.deltax
+                     x = k*pm.sys.deltax-pm.sys.xmax
+                     J[j] -= abs(pm.sys.im_petrb(x))*total_td_density[i][k]*pm.sys.deltax
          current_density.append(J)
     return current_density
 
@@ -120,7 +119,7 @@ def sprint(text):
 def main():
 
    # Create the grid
-   xgrid = np.linspace(-0.5*pm.xmax,0.5*pm.xmax,pm.grid)
+   xgrid = np.linspace(-0.5*pm.sys.xmax,0.5*pm.sys.xmax,pm.sys.grid)
 
    # Construct the potential
    V = constructV('i')
@@ -136,8 +135,8 @@ def main():
    # Perform complex time iterations until converged
    i = 0
    convergence = 1.0
-   cI = int(pm.ctmax/pm.cdeltat)
-   while(i < cI and convergence > pm.ctol):
+   cI = int(pm.ext.ctmax/pm.ext.cdeltat)
+   while(i < cI and convergence > pm.ext.ctol):
 
       # Construct the vector b
       b = C*wavefunction   
@@ -146,17 +145,17 @@ def main():
       old_wavefunction = wavefunction
 
       # Solve Ax=b
-      wavefunction, info = spla.cg(A,b,x0=wavefunction,tol=pm.ctol)
+      wavefunction, info = spsla.cg(A,b,x0=wavefunction,tol=pm.ext.ctol)
 
       # Normalise the wavefunction
-      wavefunction = wavefunction/(np.linalg.norm(wavefunction)*pm.deltax**0.5)
+      wavefunction = wavefunction/(np.linalg.norm(wavefunction)*pm.sys.deltax**0.5)
 
       # Calculate the density
       density = calculateDensity(wavefunction)
 
       # Calculate the wavefunction convergence
       convergence = np.linalg.norm(wavefunction-old_wavefunction)
-      sprint('many body complex time: t = ' + str(i*pm.cdeltat) + ', convergence = ' + str(convergence))
+      sprint('many body complex time: t = ' + str(i*pm.ext.cdeltat) + ', convergence = ' + str(convergence))
       
       # iterate
       i = i + 1
@@ -167,15 +166,15 @@ def main():
    print 'many body complex time: ground state energy =', energy
 
    # Save ground state energy to file
-   output_file = open('outputs/' + str(pm.run_name) + '/data/' + str(pm.run_name) + '_1gs_ext_E.dat','w')
+   output_file = open('outputs/' + str(pm.run.name) + '/data/' + str(pm.run.name) + '_1gs_ext_E.dat','w')
    output_file.write(str(energy))
    output_file.close()
 
    # Save ground state data to pickle file
-   output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_1gs_ext_den.db','w')
+   output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_1gs_ext_den.db','w')
    pickle.dump(density,output_file)
    output_file.close()
-   output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_1gs_ext_vxt.db','w')
+   output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_1gs_ext_vxt.db','w')
    pickle.dump(V,output_file)
    output_file.close()	
 
@@ -189,17 +188,17 @@ def main():
 
    # Perform real time iterations until completed
    i = 0
-   if(pm.TD != 1):
-      i = pm.imax
+   if(pm.run.time_dependence != True):
+      i = pm.sys.imax
    densities = []
    potentials = []
-   while(i < pm.imax):
+   while(i < pm.sys.imax):
 
       # Construct the vector b
       b = C*wavefunction   
 
       # Solve Ax=b
-      wavefunction, info = spla.bicgstab(A,b,x0=wavefunction,tol=pm.ctol)
+      wavefunction, info = spsla.bicgstab(A,b,x0=wavefunction,tol=pm.ext.ctol)
 
       # Calculate the density
       density = calculateDensity(wavefunction)
@@ -213,27 +212,27 @@ def main():
       potentials.append(Vout)
 
       # Calculate the wavefunction normalisation
-      normalisation = (np.linalg.norm(wavefunction)*pm.deltax**0.5)
-      sprint('many body real time: t = ' + str(i*pm.deltat) + ', normalisation = ' + str(normalisation))
+      normalisation = (np.linalg.norm(wavefunction)*pm.sys.deltax**0.5)
+      sprint('many body real time: t = ' + str(i*pm.sys.deltat) + ', normalisation = ' + str(normalisation))
 
       # iterate
       i = i + 1
 
    # Save time dependant data to pickle file
-   if(pm.TD == 1):
+   if(pm.run.time_dependence == True):
       current_density = calculateCurrentDensity(densities)
-      output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_1td_ext_den.db','w')
+      output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_1td_ext_den.db','w')
       pickle.dump(densities,output_file)
       output_file.close()
-      output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_1td_ext_cur.db','w')
+      output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_1td_ext_cur.db','w')
       pickle.dump(current_density,output_file)
       output_file.close()
-      output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_1td_ext_vxt.db','w')
+      output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_1td_ext_vxt.db','w')
       pickle.dump(potentials,output_file)
       output_file.close()
 
    # Program Complete
-   if(pm.TD == 1):
+   if(pm.run.time_dependence == True):
       print
    os.system('rm *.pyc')
 

@@ -20,10 +20,8 @@ if(__name__ == '__main__'):
     quit()
 
 # Library Imports
-import os
 import mkl
 import time
-import math
 import copy
 import pickle
 import sprint
@@ -31,64 +29,65 @@ import numpy as np
 import scipy as sp
 import RE_Utilities
 import parameters as pm
-from scipy import sparse
-from scipy import special
-from scipy.misc import factorial
+import scipy.sparse as sps
+import scipy.misc as spmisc
+import scipy.special as spec
 import scipy.sparse.linalg as spla
 import create_hamiltonian_coo as coo
 
-# Varaibale initialisation
-jmax = pm.jmax
-kmax = pm.kmax
-xmax = pm.xmax
-tmax = pm.ctmax
-deltax = pm.deltax
-deltat = pm.deltat
-imax = pm.imax
-cimax = pm.cimax
-cdeltat = pm.cdeltat
-ctol = pm.ctol
-rtol = pm.rtol
-TD = pm.TD
-par = pm.par
-msglvl = pm.msglvl
+# Variable initialisation
+jmax = pm.sys.grid 
+kmax = pm.sys.grid
+xmax = pm.sys.xmax
+tmax = pm.ext.ctmax
+deltax = pm.sys.deltax
+deltat = pm.sys.deltat
+imax = pm.sys.imax
+cimax = pm.ext.cimax
+cdeltat = pm.ext.cdeltat
+ctol = pm.ext.ctol
+rtol = pm.ext.rtol
+TD = pm.run.time_dependence
+par = pm.ext.par
+msglvl = pm.run.msglvl
 c_m = 0
 c_p = 0
 Nx_RM = 0
 
 # Takes every combination of the two electron indicies and creates a single unique index
 def Gind(j,k):
-    return (k + j*jmax)
+    return (k + j*pm.sys.grid)
 
 # Inverses the Gind operation. Takes the single index and returns the corresponding indices used to create it.
 def InvGind(jk):
-    k = jk % jmax
-    j = (jk - k)/jmax
+    k = jk % pm.sys.grid
+    j = (jk - k)/pm.sys.grid
     return j, k
 
 # Calculates the nth Energy Eigenfunction of the Harmonic Oscillator (~H(n)(x)exp(x^2/2))
 def EnergyEigenfunction(n):
     j = 0
     x = -xmax
-    Psi = np.zeros(jmax, dtype = np.cfloat)
+    Psi = np.zeros(pm.sys.grid, dtype = np.cfloat)
     while (x < xmax):
         factorial = np.arange(0, n+1, 1)
         fact = np.product(factorial[1:])
-        norm = (np.sqrt(1.0/((2.0**n)*fact)))*((1.0/math.pi)**0.25)
-        Psi[j] = complex(norm*(sp.special.hermite(n)(x))*(0.25)*np.exp(-0.5*(0.25)*(x**2)), 0.0)  
+        norm = (np.sqrt(1.0/((2.0**n)*fact)))*((1.0/np.pi)**0.25)
+        Psi[j] = complex(norm*(spec.hermite(n)(x))*(0.25)*np.exp(-0.5*(0.25)*(x**2)), 0.0)  
         j = j + 1
         x = x + deltax
     return Psi
 
 # Define potential array for all spacial points
 def Potential(i,j,k):
-    V = np.zeros((pm.jmax,pm.kmax), dtype = np.cfloat)
-    xk = -pm.xmax + (k*pm.deltax)
-    xj = -pm.xmax + (j*pm.deltax)
+    V = np.zeros((pm.sys.grid,pm.sys.grid), dtype = np.cfloat)
+    xk = -pm.sys.xmax + (k*pm.sys.deltax)
+    xj = -pm.sys.xmax + (j*pm.sys.deltax)
+    inte = pm.sys.interaction_strength
     if (i == 0):
-        V[j,k] = pm.well(xk) + pm.well(xj) + pm.inte*(1.0/(abs(xk-xj) + pm.acon))
+        V[j,k] = pm.sys.v_ext(xk) + pm.sys.v_ext(xj) + inte*(1.0/(abs(xk-xj) + pm.sys.acon))
     else:
-        V[j,k] = pm.well(xk) + pm.well(xj) + pm.inte*(1.0/(abs(xk-xj) + pm.acon)) + pm.petrb(xk) + pm.petrb(xj)
+        V[j,k] = pm.sys.v_ext(xk) + pm.sys.v_ext(xj) + inte*(1.0/(abs(xk-xj) + pm.sys.acon)) + pm.sys.v_pert(xk) + pm.sys.v_pert(xj)
     return V[j,k]
 
 
@@ -106,14 +105,14 @@ def create_hamiltonian_diagonals(i,r):
        r (float): Spatial location.
 
     Returns:
-       H_diagonals (cfloat): Rank-1 array with bounds jmax**2; Diagonals of H
+       H_diagonals (cfloat): Rank-1 array with bounds pm.sys.grid**2; Diagonals of H
        operator. The array must be Fortran contiguous.
 
     """
-    hamiltonian_diagonals = np.zeros((pm.jmax**2), dtype=np.cfloat, order='F')
-    const = 2.0 * pm.deltax**2
-    for j in range(0, pm.jmax):
-        for k in range(0, pm.kmax):
+    hamiltonian_diagonals = np.zeros((pm.sys.grid**2), dtype=np.cfloat, order='F')
+    const = 2.0 * pm.sys.deltax**2
+    for j in range(0, pm.sys.grid):
+        for k in range(0, pm.sys.grid):
             jk = Gind(j, k)
             hamiltonian_diagonals[jk] = 1.0 + (4.0*r)+ (const*r*(Potential(i, j, k)))
     return hamiltonian_diagonals
@@ -149,14 +148,14 @@ def COO_max_size(x):
 
 # Imaginary Time Crank Nicholson initial condition
 def InitialconI():
-    Psi1 = np.zeros(jmax,dtype = np.cfloat)
-    Psi2 = np.zeros(kmax,dtype = np.cfloat)
+    Psi1 = np.zeros(pm.sys.grid,dtype = np.cfloat)
+    Psi2 = np.zeros(pm.sys.grid,dtype = np.cfloat)
     Psi1 = EnergyEigenfunction(0)
     Psi2 = EnergyEigenfunction(1)
     j = 0
-    while (j < jmax):
+    while (j < pm.sys.grid):
         k = 0
-        while (k < kmax):
+        while (k < pm.sys.grid):
             Pair = Psi1[j]*Psi2[k] - Psi1[k]*Psi2[j]
             Psiarr[0,Gind(j,k)] = Pair
             k = k + 1
@@ -165,10 +164,10 @@ def InitialconI():
 
 # Define function to turn array of compressed indexes into seperated indexes
 def PsiConverterI(Psiarr,i):
-    Psi2D = np.zeros((jmax,kmax), dtype = np.cfloat)
-    mPsi2D = np.zeros((jmax,kmax))
+    Psi2D = np.zeros((pm.sys.grid,pm.sys.grid), dtype = np.cfloat)
+    mPsi2D = np.zeros((pm.sys.grid,pm.sys.grid))
     jk = 0
-    while (jk < jmax**2):
+    while (jk < pm.sys.grid**2):
         j, k = InvGind(jk)
         Psi2D[j,k] = Psiarr[jk]
         jk = jk + 1
@@ -177,10 +176,10 @@ def PsiConverterI(Psiarr,i):
 
 # Define function to turn array of compressed indexes into seperated indexes
 def PsiConverterR(Psiarr):
-    Psi2D = np.zeros((jmax,kmax), dtype = np.cfloat)
-    mPsi2D = np.zeros((jmax,kmax))
+    Psi2D = np.zeros((pm.sys.grid,pm.sys.grid), dtype = np.cfloat)
+    mPsi2D = np.zeros((pm.sys.grid,pm.sys.grid))
     jk = 0
-    while (jk < jmax**2):
+    while (jk < pm.sys.grid**2):
         j, k = InvGind(jk)
         Psi2D[j,k] = Psiarr[jk]
         jk = jk + 1
@@ -214,20 +213,20 @@ def ConstructAf(A):
     A1 = copy.copy(A)
     A.data = A2_dat
     A2 = copy.copy(A)
-    Af = sp.sparse.bmat([[A1,-A2],[A2,A1]]).tocsr()
+    Af = sps.bmat([[A1,-A2],[A2,A1]]).tocsr()
     return Af
 
 # Function to calculate the current density
 def CalculateCurrentDensity(n,i):
-    J=np.zeros(pm.jmax)
-    RE_Utilities.continuity_eqn(i+1,pm.jmax,pm.deltax,pm.deltat,n,J)
+    J=np.zeros(pm.sys.grid)
+    RE_Utilities.continuity_eqn(i+1,pm.sys.grid,pm.sys.deltax,pm.sys.deltat,n,J)
     return J
 
 # Conctruct grid for antisym matrices
 def gridz(N_x):
     N_e = 2
     Nxl = N_x**N_e
-    Nxs = np.prod(range(N_x,N_x+N_e))/int(factorial(N_e))
+    Nxs = np.prod(range(N_x,N_x+N_e))/int(spmisc.factorial(N_e))
     sgrid = np.zeros((N_x,N_x), dtype='int')
     count = 0
     for ix in range(N_x):
@@ -249,13 +248,13 @@ def gridz(N_x):
 def antisym(N_x, retsize=False):
     N_e = 2
     Nxl = N_x**N_e
-    Nxs = np.prod(range(N_x,N_x+N_e))/int(factorial(N_e))
+    Nxs = np.prod(range(N_x,N_x+N_e))/int(spmisc.factorial(N_e))
     sgrid, lgrid = gridz(N_x)
-    C_down = sparse.lil_matrix((Nxs,Nxl))
+    C_down = sps.lil_matrix((Nxs,Nxl))
     for ix in range(N_x):
         for jx in range(ix+1):
             C_down[sgrid[ix,jx],lgrid[ix,jx]] = 1.
-    C_up = sparse.lil_matrix((Nxl,Nxs))
+    C_up = sps.lil_matrix((Nxl,Nxs))
     for ix in range(N_x):
         for jx in range(N_x):
             il = lgrid[ix,jx]
@@ -274,24 +273,24 @@ def antisym(N_x, retsize=False):
 
 # Function to output the system's external potential
 def OutputPotential():
-    output_file1 = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_2gs_ext_vxt.db','w')
+    output_file1 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_2gs_ext_vxt.db','w')
     potential = []
     i = 0
-    while(i < pm.grid):
-        potential.append(pm.well(float((i*deltax)-pm.xmax)))
+    while(i < pm.sys.grid):
+        potential.append(pm.sys.v_ext(float((i*deltax)-pm.sys.xmax)))
         i = i + 1
     pickle.dump(potential,output_file1)
     output_file1.close()
-    if(pm.TD == 1):
+    if(pm.run.time_dependence == True):
         potential2 = []
         i = 0
-        while(i < pm.grid):
-        	potential2.append(pm.well(float((i*deltax)-pm.xmax)) + pm.petrb(float((i*deltax)-pm.xmax)))
+        while(i < pm.sys.grid):
+        	potential2.append(pm.sys.v_ext(float((i*deltax)-pm.sys.xmax)) + pm.sys.v_pert(float((i*deltax)-pm.sys.xmax)))
         	i = i + 1
-        output_file2 = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_2td_ext_vxt.db','w')
+        output_file2 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_2td_ext_vxt.db','w')
         TDP = []
         i = 0
-        while(i < pm.imax):
+        while(i < pm.sys.imax):
             TDP.append(potential2)
             i = i + 1
         pickle.dump(TDP,output_file2)
@@ -302,15 +301,15 @@ def OutputPotential():
 def calculateCurrentDensity(total_td_density):
     current_density = []
     for i in range(0,len(total_td_density)-1):
-         string = 'MB: computing time dependent current density t = ' + str(i*pm.deltat)
-         sprint.sprint(string,1,1,pm.msglvl)
-         J = np.zeros(pm.jmax)
-         J = RE_Utilities.continuity_eqn(pm.jmax,pm.deltax,pm.deltat,total_td_density[i+1],total_td_density[i])
-         if pm.im==1:
-             for j in range(pm.jmax):
+         string = 'MB: computing time dependent current density t = ' + str(i*pm.sys.deltat)
+         sprint.sprint(string,1,1,pm.run.msglvl)
+         J = np.zeros(pm.sys.grid)
+         J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,total_td_density[i+1],total_td_density[i])
+         if pm.sys.im==1:
+             for j in range(pm.sys.grid):
                  for k in range(j+1):
-                     x = k*pm.deltax-pm.xmax
-                     J[j] -= abs(pm.im_petrb(x))*total_td_density[i][k]*pm.deltax
+                     x = k*pm.sys.deltax-pm.sys.xmax
+                     J[j] -= abs(pm.sys.im_petrb(x))*total_td_density[i][k]*pm.sys.deltax
          current_density.append(J)
     return current_density
 
@@ -330,7 +329,7 @@ def CNsolveComplexTime():
     # Estimate the number of non-sparse elements that will be in the matrix form
     # of the systems hamiltonian, then initialize the sparse COOrdinate matrix
     # holding arrays with this shape.
-    COO_size = COO_max_size(jmax)
+    COO_size = COO_max_size(pm.sys.grid)
     COO_j = np.zeros((COO_size), dtype=int)
     COO_k = np.zeros((COO_size), dtype=int)
     COO_data = np.zeros((COO_size), dtype=np.cfloat)
@@ -339,15 +338,16 @@ def CNsolveComplexTime():
     # populate the holding arrays with the coordinates and data, then convert
     # these into a sparse COOrdinate matrix.  Finally convert this into a
     # Compressed Sparse Column form for efficient arithmetic.
-    COO_j, COO_k, COO_data = coo.create_hamiltonian_coo(COO_j, COO_k, COO_data, hamiltonian_diagonals, r, jmax,kmax)
-    A = sparse.coo_matrix((COO_data, (COO_k,COO_j)), shape=(jmax**2, kmax**2))
-    A = sparse.csc_matrix(A)
+    #CODE CRASHES HERE
+    COO_j, COO_k, COO_data = coo.create_hamiltonian_coo(COO_j, COO_k, COO_data, hamiltonian_diagonals, r, pm.sys.grid, pm.sys.grid)
+    A = sps.coo_matrix((COO_data, (COO_k,COO_j)), shape=(pm.sys.grid**2, pm.sys.grid**2))
+    A = sps.csc_matrix(A)
 
     # Construct reduction matrix of A
     A_RM = c_m * A * c_p
 
     # Construct the matrix C
-    C = -(A-sp.sparse.identity(jmax**2, dtype=np.cfloat))+sp.sparse.identity(jmax**2, dtype=np.cfloat)
+    C = -(A-sps.identity(pm.sys.grid**2, dtype=np.cfloat))+sps.identity(pm.sys.grid**2, dtype=np.cfloat)
     C_RM = c_m*C*c_p
 
     # Perform iterations
@@ -414,7 +414,7 @@ def CNsolveComplexTime():
         i += 1
     
     # Total Energy
-    output_file = open('outputs/' + str(pm.run_name) + '/data/' + str(pm.run_name) + '_2gs_ext_E.dat','w')
+    output_file = open('outputs/' + str(pm.run.name) + '/data/' + str(pm.run.name) + '_2gs_ext_E.dat','w')
     output_file.write(str(Ev))
     output_file.close()
 
@@ -425,7 +425,7 @@ def CNsolveComplexTime():
     density = np.sum(Psi2Dcon[:,:], axis=0)*deltax*2.0
 
     # Output ground state density
-    output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_2gs_ext_den.db','w')
+    output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_2gs_ext_den.db','w')
     pickle.dump(density,output_file)
     output_file.close()
     OutputPotential()
@@ -451,7 +451,7 @@ def CNsolveRealTime(wavefunction):
     # Estimate the number of non-sparse elements that will be in the matrix form
     # of the systems hamiltonian, then initialize the sparse COOrdinate matrix
     # holding arrays with this shape.
-    COO_size = COO_max_size(jmax)
+    COO_size = COO_max_size(pm.sys.grid)
     COO_j = np.zeros((COO_size), dtype=int)
     COO_k = np.zeros((COO_size), dtype=int)
     COO_data = np.zeros((COO_size), dtype=np.cfloat)
@@ -461,8 +461,8 @@ def CNsolveRealTime(wavefunction):
     # these into a sparse COOrdinate matrix.  Finally convert this into a
     # Compressed Sparse Column form for efficient arithmetic.
     COO_j, COO_k, COO_data = coo.create_hamiltonian_coo(COO_j, COO_k, COO_data, hamiltonian_diagonals, r, jmax,kmax)
-    A = sparse.coo_matrix((COO_data, (COO_k, COO_j)), shape=(jmax**2, kmax**2))
-    A = sparse.csc_matrix(A)
+    A = sps.coo_matrix((COO_data, (COO_k, COO_j)), shape=(jmax**2, kmax**2))
+    A = sps.csc_matrix(A)
 
     # Construct the reduction matrix
     A_RM = c_m*A*c_p
@@ -472,7 +472,7 @@ def CNsolveRealTime(wavefunction):
         Af = ConstructAf(A_RM)
 
     # Construct the matrix C
-    C = -(A-sp.sparse.identity(jmax**2, dtype=np.cfloat))+sp.sparse.identity(jmax**2, dtype=np.cfloat)
+    C = -(A-sps.identity(jmax**2, dtype=np.cfloat))+sps.identity(jmax**2, dtype=np.cfloat)
     C_RM = c_m*C*c_p
 
     # Perform iterations
@@ -549,11 +549,11 @@ def CNsolveRealTime(wavefunction):
     current_density = calculateCurrentDensity(TDD_GS)
 
     # Output time dependent density
-    output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_2td_ext_den.db','w')
+    output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_2td_ext_den.db','w')
     pickle.dump(TDD,output_file)
 
     # Output time dependent current density
-    output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_2td_ext_cur.db','w')
+    output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_2td_ext_cur.db','w')
     pickle.dump(current_density,output_file)
 
     # Dispose of matrices and terminate
@@ -584,7 +584,7 @@ def main():
     wavefunction = CNsolveComplexTime() 
 
     # Real Time array initialisations 
-    if(pm.TD == 1):
+    if(pm.run.time_dependence == True):
         string = 'EXT: constructing arrays'
         sprint.sprint(string,1,0,msglvl)
         sprint.sprint(string,2,0,msglvl)
@@ -593,14 +593,14 @@ def main():
     Rhv2 = np.zeros((jmax**2), dtype = np.cfloat)
 
     # Evolve throught real time
-    if int(TD) == 1:
-        tmax = pm.tmax
-        imax = pm.imax
+    if TD == True:
+        tmax = pm.sys.tmax
+        imax = pm.sys.imax
         deltat = tmax/(imax-1)
-        deltax = pm.deltax
+        deltax = pm.sys.deltax
         r = 0.0 + (1.0j)*(deltat/(4.0*(deltax**2)))
         CNsolveRealTime(wavefunction)
-    if int(TD) == 0:
+    if TD == False:
        tmax = 0.0
        imax = 1
        deltat = 0.0

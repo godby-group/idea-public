@@ -16,25 +16,23 @@
 ######################################################################################
 
 # Library imports
-import sys
-import math
 import copy
 import sprint
 import pickle
 import numpy as np
 import scipy as sp
 import parameters as pm
-import scipy.linalg as spl
+import scipy.linalg as spla
 
 # Import parameters
-msglvl = pm.msglvl
-Nx = pm.jmax
-Nt = pm.imax
-L = 2*pm.xmax
+msglvl = pm.run.msglvl
+Nx = pm.sys.grid
+Nt = pm.sys.imax
+L = 2*pm.sys.xmax
 dx = L/(Nx-1)
-sqdx = math.sqrt(dx)
-c = pm.acon
-nu = pm.nu
+sqdx = np.sqrt(dx)
+c = pm.sys.acon
+nu = pm.hf.nu
 
 # Initialise matrices
 T = np.zeros((Nx,Nx), dtype='complex')	# Kinetic energy matrix
@@ -66,13 +64,13 @@ def coulomb():
       xi = i*dx-0.5*L
       for j in range(Nx):
          xj = j*dx-0.5*L
-         U[i,j] = 1.0/(abs(xi-xj) + pm.acon)
+         U[i,j] = 1.0/(abs(xi-xj) + pm.sys.acon)
    return U
 
 # Construct fock operator
 def Fock(Psi, U):
    F[:,:] = 0
-   for k in range(pm.NE):
+   for k in range(pm.sys.NE):
       for j in range(Nx):
          for i in range(Nx):
             F[i,j] += -(np.conjugate(Psi[k,i])*U[i,j]*Psi[k,j])*dx
@@ -83,21 +81,21 @@ def Groundstate(V, F, nu):
    HGS = copy.copy(T)	
    for i in range(Nx):
       HGS[i,i] += V[i]
-   if pm.fock == 1:
+   if pm.hf.fock == 1:
       HGS[:,:] += F[:,:]
-   K, U = spl.eigh(HGS)
-   Psi = np.zeros((pm.NE,Nx), dtype='complex')
-   for i in range(pm.NE):
+   K, U = spla.eigh(HGS)
+   Psi = np.zeros((pm.sys.NE,Nx), dtype='complex')
+   for i in range(pm.sys.NE):
       Psi[i,:] = U[:,i]/sqdx 
    n_x[:] = 0
-   for i in range(pm.NE):
+   for i in range(pm.sys.NE):
       n_x[:]+=abs(Psi[i,:])**2 
    return n_x, Psi, V, K
 
 # Construct external potential
 for i in range(Nx):
    x = i*dx-0.5*L
-   V[i] = pm.well(x)
+   V[i] = pm.sys.v_ext(x)
 V_ext[:] = V[:] 
 n_x, Psi, V, K = Groundstate(V, F, nu)
 con = 1
@@ -106,7 +104,7 @@ con = 1
 U = coulomb()
 
 # Calculate ground state density
-while con > pm.hf_con:
+while con > pm.hf.con:
    n_old[:] = n_x[:]
    V_H = hartree(U,n_x)
    F = Fock(Psi, U)
@@ -124,22 +122,22 @@ print
 
 # Calculate ground state energy
 E_HF = 0
-for i in range(pm.NE):
+for i in range(pm.sys.NE):
    E_HF += K[i]
 for i in range(Nx):
    E_HF += -0.5*(n_x[i]*V_H[i])*dx
-for k in range(pm.NE):
+for k in range(pm.sys.NE):
    for i in range(Nx):
       for j in range(Nx):
          E_HF += -0.5*(np.conjugate(Psi[k,i])*F[i,j]*Psi[k,j])*dx
 print 'HF: hartree-fock energy = %s' % E_HF.real
 
 # Output ground state energy
-output_file = open('outputs/' + str(pm.run_name) + '/data/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_hf_E.dat','w')
+output_file = open('outputs/' + str(pm.run.name) + '/data/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_hf_E.dat','w')
 output_file.write(str(E_HF.real))
 output_file.close()
 
 # Output ground state density
-output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_' + str(pm.NE) + 'gs_hf_den.db','w')
+output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_hf_den.db','w')
 pickle.dump(n_x,output_file)
 output_file.close()

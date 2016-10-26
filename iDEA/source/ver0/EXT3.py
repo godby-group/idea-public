@@ -20,43 +20,40 @@ if(__name__ == '__main__'):
     quit()
 
 # Library Imports
-import sys
 import mkl
 import time
 import math
 import copy
-import cPickle  
 import pickle
 import sprint
 import numpy as np
 import scipy as sp
-import os as os
+import os
 import RE_Utilities
-from scipy.misc import factorial
-from scipy import linalg as la
-from scipy import special
-from scipy import sparse
-from scipy.sparse import linalg as spla
+
+import scipy.misc as spmisc
+import scipy.special as spec
+import scipy.sparse as sps
+import scipy.sparse.linalg as spsla
 import parameters as pm
 
 # Variable initialisation
-jmax = pm.jmax
-kmax = pm.kmax
-lmax = pm.lmax
-imax = pm.imax
-cimax = pm.cimax
-xmax = pm.xmax
-tmax = pm.tmax
-ctmax = pm.ctmax
-deltax = pm.deltax
+jmax = pm.sys.grid
+kmax = pm.sys.grid
+lmax = pm.sys.grid
+imax = pm.sys.imax
+cimax = pm.ext.cimax
+xmax = pm.sys.xmax
+tmax = pm.sys.tmax
+ctmax = pm.ext.ctmax
+deltax = pm.sys.deltax
 deltat = tmax/(imax-1)
 cdeltat = ctmax/(cimax-1)
-antifact = pm.antifact
-ctol = pm.ctol
-rtol = pm.rtol
-TD = pm.TD
-par = pm.par
-msglvl = pm.msglvl
+ctol = pm.ext.ctol
+rtol = pm.ext.rtol
+TD = pm.run.time_dependence
+par = pm.ext.par
+msglvl = pm.run.msglvl
 gdstD = 0
 c_m = 0
 c_p = 0 
@@ -82,21 +79,22 @@ def EnergyEigenfunction(n):
         factorial = np.arange(0, n+1, 1)
         fact = np.product(factorial[1:])
         norm = (np.sqrt(1.0/((2.0**n)*fact)))*((1.0/math.pi)**0.25)
-        Psi[j] = complex(norm*(sp.special.hermite(n)(x))*(1**2)*np.exp(-0.5*(x**2)*(1**2)), 0.0)
+        Psi[j] = complex(norm*(spec.hermite(n)(x))*(1**2)*np.exp(-0.5*(x**2)*(1**2)), 0.0)
         j = j + 1
         x = x + deltax
     return Psi
 
 # Define potential array for all spacial points (3 electron)
 def Potential3(i,k,j,l):
-    V = np.zeros((pm.jmax,pm.kmax,pm.lmax))
-    xk = -pm.xmax + (k*pm.deltax)
-    xj = -pm.xmax + (j*pm.deltax)
-    xl = -pm.xmax + (l*pm.deltax)
+    V = np.zeros((pm.sys.grid,pm.sys.grid,pm.sys.grid))
+    xk = -pm.sys.xmax + (k*pm.sys.deltax)
+    xj = -pm.sys.xmax + (j*pm.sys.deltax)
+    xl = -pm.sys.xmax + (l*pm.sys.deltax)
+    inte = pm.sys.interaction_strength
     if (i == 0): 	
-        V[k,j,l] = pm.well(xk) + pm.well(xj) + pm.well(xl) + pm.inte*(1.0/(np.abs(xk-xj) + pm.acon)) + pm.inte*(1.0/(np.abs(xl-xj) + pm.acon)) + pm.inte*(1.0/(np.abs(xk-xl) + pm.acon))
+        V[k,j,l] = pm.sys.v_ext(xk) + pm.sys.v_ext(xj) + pm.sys.v_ext(xl) + inte*(1.0/(np.abs(xk-xj) + pm.sys.acon)) + inte*(1.0/(np.abs(xl-xj) + pm.sys.acon)) + inte*(1.0/(np.abs(xk-xl) + pm.sys.acon))
     else:
-	V[k,j,l] = pm.well(xk) + pm.well(xj) + pm.well(xl) + pm.inte*(1.0/(np.abs(xk-xj) + pm.acon)) + pm.inte*(1.0/(np.abs(xl-xj) + pm.acon)) + pm.inte*(1.0/(np.abs(xk-xl) + pm.acon)) + pm.petrb(xk) + pm.petrb(xj) + pm.petrb(xl)
+	V[k,j,l] = pm.sys.v_ext(xk) + pm.sys.v_ext(xj) + pm.sys.v_ext(xl) + inte*(1.0/(np.abs(xk-xj) + pm.sys.acon)) + inte*(1.0/(np.abs(xl-xj) + pm.sys.acon)) + inte*(1.0/(np.abs(xk-xl) + pm.sys.acon)) + pm.sys.v_pert(xk) + pm.sys.v_pert(xj) + pm.sys.v_pert(xl)
     return V[k,j,l]
 
 # Builds the Cayley Matrix on the LHS (C1) of the matrix eigenproblem in Complex Time (t*=-it): C1=(I+H.dt/2)
@@ -203,7 +201,7 @@ def PsiConverterI(Psiarr,i):
 def gridz(N_x):# Construct the H matrix given the potential
     N_e = 3
     Nxl = N_x**N_e
-    Nxs = np.prod(range(N_x,N_x+N_e))/int(factorial(N_e))
+    Nxs = np.prod(range(N_x,N_x+N_e))/int(spmisc.factorial(N_e))
     sgrid = np.zeros((N_x,N_x,N_x), dtype='int')
     count = 0
     for ix in range(N_x):
@@ -224,14 +222,14 @@ def gridz(N_x):# Construct the H matrix given the potential
 def antisym(N_x):
     N_e = 3
     Nxl = N_x**N_e
-    Nxs = np.prod(range(N_x,N_x+N_e))/int(factorial(N_e))
+    Nxs = np.prod(range(N_x,N_x+N_e))/int(spmisc.factorial(N_e))
     sgrid, lgrid = gridz(N_x)
-    C_down = sparse.lil_matrix((Nxs,Nxl))
+    C_down = sps.lil_matrix((Nxs,Nxl))
     for ix in range(N_x):
         for jx in range(ix+1):
             for kx in range(jx+1):
                 C_down[sgrid[ix,jx,kx],lgrid[ix,jx,kx]] = 1.
-    C_up = sparse.lil_matrix((Nxl,Nxs))
+    C_up = sps.lil_matrix((Nxl,Nxs))
     for ix in range(N_x):
         for jx in range(ix+1):
             for kx in range(jx+1):
@@ -291,24 +289,24 @@ def Energy(Psi):
 
 # Function to output the system's external potential
 def OutputPotential():
-    output_file1 = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_3gs_ext_vxt.db','w')
+    output_file1 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_3gs_ext_vxt.db','w')
     potential = []
     i = 0
-    while(i < pm.grid):
-        potential.append(pm.well(float((i*deltax)-pm.xmax)))
+    while(i < pm.sys.grid):
+        potential.append(pm.sys.v_ext(float((i*deltax)-pm.sys.xmax)))
         i = i + 1
     pickle.dump(potential,output_file1)
     output_file1.close()
-    if(pm.TD == 1):
+    if(pm.run.time_dependence == True):
         potential2 = []
         i = 0
-        while(i < pm.grid):
-        	potential2.append(pm.well(float((i*deltax)-pm.xmax)) + pm.petrb(float((i*deltax)-pm.xmax)))
+        while(i < pm.sys.grid):
+        	potential2.append(pm.sys.v_ext(float((i*deltax)-pm.sys.xmax)) + pm.sys.v_pert(float((i*deltax)-pm.sys.xmax)))
         	i = i + 1
-        output_file2 = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_3td_ext_vxt.db','w')
+        output_file2 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_3td_ext_vxt.db','w')
         TDP = []
         i = 0
-        while(i < pm.imax):
+        while(i < pm.sys.imax):
             TDP.append(potential2)
             i = i + 1
         pickle.dump(TDP,output_file2)
@@ -317,8 +315,8 @@ def OutputPotential():
 
 # Function to calculate the current density
 def CalculateCurrentDensity(n,i):	
-    J=np.zeros(pm.jmax)
-    RE_Utilities.continuity_eqn(i+1,pm.jmax,pm.deltax,pm.deltat,n,J)
+    J=np.zeros(pm.sys.grid)
+    RE_Utilities.continuity_eqn(i+1,pm.sys.grid,pm.sys.deltax,pm.sys.deltat,n,J)
     return J
 
 # Function to construct the real matrix Af 
@@ -328,22 +326,22 @@ def ConstructAf(A):
     A1 = copy.copy(A)
     A.data = A2_dat
     A2 = copy.copy(A)
-    Af = sp.sparse.bmat([[A1,-A2],[A2,A1]]).tocsr()
+    Af = sps.bmat([[A1,-A2],[A2,A1]]).tocsr()
     return Af
 
 # Function to calculate the current density
 def calculateCurrentDensity(total_td_density):
     current_density = []
     for i in range(0,len(total_td_density)-1):
-         string = 'MB: computing time dependent current density t = ' + str(i*pm.deltat)
-         sprint.sprint(string,1,1,pm.msglvl)
-         J = np.zeros(pm.jmax)
-         J = RE_Utilities.continuity_eqn(pm.jmax,pm.deltax,pm.deltat,total_td_density[i+1],total_td_density[i])
-         if pm.im==1:
-             for j in range(pm.jmax):
+         string = 'MB: computing time dependent current density t = ' + str(i*pm.sys.deltat)
+         sprint.sprint(string,1,1,pm.run.msglvl)
+         J = np.zeros(pm.sys.grid)
+         J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,total_td_density[i+1],total_td_density[i])
+         if pm.sys.im==1:
+             for j in range(pm.sys.grid):
                  for k in range(j+1):
-                     x = k*pm.deltax-pm.xmax
-                     J[j] -= abs(pm.im_petrb(x))*total_td_density[i][k]*pm.deltax
+                     x = k*pm.sys.deltax-pm.sys.xmax
+                     J[j] -= abs(pm.sys.im_petrb(x))*total_td_density[i][k]*pm.sys.deltax
          current_density.append(J)
     return current_density
 
@@ -361,7 +359,7 @@ def CNsolveComplexTime():
     A_RM = c_m*A*c_p
 
     # Construct the matrix C
-    C = -(A-sp.sparse.identity(jmax**3, dtype=np.cfloat))+sp.sparse.identity(jmax**3, dtype=np.cfloat)
+    C = -(A-sps.identity(jmax**3, dtype=np.cfloat))+sps.identity(jmax**3, dtype=np.cfloat)
     C_RM = c_m*C*c_p
 
     # Perform iterations
@@ -385,7 +383,7 @@ def CNsolveComplexTime():
 	    b_RM = mkl.mkl_mvmultiply_c(C_RM.data,C_RM.indptr+1,C_RM.indices+1,1,Psiarr_RM,C_RM.shape[0],C_RM.indices.size)
 
 	# Solve Ax=b
-	Psiarr_RM,info = spla.minres(A_RM,b_RM,x0=Psiarr_RM,tol=ctol)
+	Psiarr_RM,info = spsla.minres(A_RM,b_RM,x0=Psiarr_RM,tol=ctol)
         
 	# Expand the wavefunction
         Psiarr[1,:] = c_p*Psiarr_RM
@@ -437,7 +435,7 @@ def CNsolveComplexTime():
         i += 1
 
     # Total Energy
-    f = open('outputs/' + str(pm.run_name) + '/data/' + str(pm.run_name) + '_3gs_ext_E.db','w')
+    f = open('outputs/' + str(pm.run.name) + '/data/' + str(pm.run.name) + '_3gs_ext_E.db','w')
     E_MB = str(Ev)
     f.write(E_MB)
     f.close()
@@ -449,7 +447,7 @@ def CNsolveComplexTime():
     density = 3.0*np.sum(np.sum(abs(Psi3Dcon[:,:,:])**2, axis=0), axis=0)*deltax**2
 
     # Output ground state density
-    output_file = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_2gs_ext_den.db','w')
+    output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_2gs_ext_den.db','w')
     pickle.dump(density,output_file)
     output_file.close()
     OutputPotential()
@@ -479,7 +477,7 @@ def CNsolveRealTime():
         Af = ConstructAf(A_RM)
 
     # Construct the matrix C
-    C = -(A-sp.sparse.identity(jmax**3, dtype=np.cfloat))+sp.sparse.identity(jmax**3, dtype=np.cfloat)
+    C = -(A-sps.identity(jmax**3, dtype=np.cfloat))+sps.identity(jmax**3, dtype=np.cfloat)
     C_RM = c_m*C*c_p
     while (i < imax):
 	# Begin timing the iteration
@@ -499,7 +497,7 @@ def CNsolveRealTime():
         
 	# Solve Ax=b
 	if(par == 0):
-	    Psiarr_RM,info = spla.lgmres(A_RM,b_RM,x0=Psiarr_RM,tol=rtol)
+	    Psiarr_RM,info = spsla.lgmres(A_RM,b_RM,x0=Psiarr_RM,tol=rtol)
 	else:
 	    b1, b2 = mkl.mkl_split(b_RM,len(b_RM))
 	    bf = np.append(b1,b2)
@@ -559,8 +557,8 @@ def main():
 
     # Complex Crank Nicholoson Array Initialisations
     Psiarr = np.zeros((2,jmax**3), dtype = np.cfloat)   
-    Mat = sparse.lil_matrix((jmax**3,jmax**3),dtype = np.cfloat)	
-    Mat3 = sparse.lil_matrix((jmax**3,jmax**3),dtype = np.cfloat)  
+    Mat = sps.lil_matrix((jmax**3,jmax**3),dtype = np.cfloat)	
+    Mat3 = sps.lil_matrix((jmax**3,jmax**3),dtype = np.cfloat)  
     Rhv2 = np.zeros((jmax**3), dtype = np.cfloat)      
     Psi3D = np.zeros((kmax,jmax,lmax), dtype = np.cfloat)  
     r = 0.0 + (1.0)*(deltat/(4.0*(deltax**2))) 
@@ -569,19 +567,19 @@ def main():
     ground = CNsolveComplexTime()
 
     # Real Time CN array initialisations
-    if int(TD) == 1:
+    if TD == True:
         string = 'EXT: constructing arrays'
         sprint.sprint(string,1,0,msglvl)
         sprint.sprint(string,2,0,msglvl)
         Psiarr = np.zeros((2,jmax**3), dtype = np.cfloat)	     
         Rhv2 = np.zeros((jmax**3), dtype = np.cfloat)     
-        Mat2 = sparse.lil_matrix((jmax**3,jmax**3),dtype = np.cfloat)
+        Mat2 = sps.lil_matrix((jmax**3,jmax**3),dtype = np.cfloat)
         r = 0.0 + (1.0j)*(deltat/(4.0*(deltax**2)))
 
     current_density = []
 
     # Evolve throught real time
-    if int(TD) == 1:
+    if TD == True:
     	CNsolveRealTime()
         Den = np.zeros((imax,jmax))
         for i in range(imax):     
@@ -592,17 +590,17 @@ def main():
         print   
 
         ground = Den.tolist().pop(0)
-        ProbPsiFile = open('outputs/' + str(pm.run_name) + '/' + 'raw/' + str(pm.run_name) + '_3td_ext_den.db','w')
+        ProbPsiFile = open('outputs/' + str(pm.run.name) + '/' + 'raw/' + str(pm.run.name) + '_3td_ext_den.db','w')
         pickle.dump(Den, ProbPsiFile)
         ProbPsiFile.close()
-        current_File = open('outputs/' + str(pm.run_name) + '/' + 'raw/' + str(pm.run_name) + '_3td_ext_cur.db','w')
+        current_File = open('outputs/' + str(pm.run.name) + '/' + 'raw/' + str(pm.run.name) + '_3td_ext_cur.db','w')
         pickle.dump(current_density, current_File)
         current_File.close()
     imax = 1
     CNsolveRealTime()
     os.system('rm *.npy')
     os.system('rm *.txt') 
-    ProbPsiFile = open('outputs/' + str(pm.run_name) + '/' + 'raw/' + str(pm.run_name) + '_3gs_ext_den.db','w')
+    ProbPsiFile = open('outputs/' + str(pm.run.name) + '/' + 'raw/' + str(pm.run.name) + '_3gs_ext_den.db','w')
     pickle.dump(ground, ProbPsiFile)
     ProbPsiFile.close()
     OutputPotential()
