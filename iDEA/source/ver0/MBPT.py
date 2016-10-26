@@ -70,7 +70,7 @@ def non_interacting_greens_function(st, occupied, occupied_energies, empty, empt
    for k in xrange(0,st.tau_N):
       tau = st.tau_grid[k]
       string = 'MBPT: computing non-interacting greens function G0, tau = ' + str(tau)
-      sprint.sprint(string,1,1,pm.run.msglvl)
+      sprint.sprint(string,1,pm.run.verbosity,newline=False)
       if(tau > 0.0): # Construct G0 for positive imaginary time
          for i in xrange(0,st.x_N):
             for j in xrange(0,st.x_N):
@@ -181,7 +181,7 @@ def extract_density(st,G):
 def has_converged(density_new, density_old, iteration):
    convergence = abs(npl.norm(density_new-density_old))
    string = 'MBPT: performing self-consistency (iteration=' + str(iteration+1) + '): convergence = ' + str(convergence)
-   sprint.sprint(string,1,1,pm.run.msglvl)
+   sprint.sprint(string,1,pm.run.verbosity,newline=False)
    if(convergence < pm.mbpt.tolerance):
       return True
    else:

@@ -8,10 +8,10 @@ class InputSection():
 
 ### run parameters
 run = InputSection()
-run.name = 'test2'           # Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
-run.code_version = 0                # Version of iDEA to use (0: As downloaded off the git) (Global: 1.9.0)
-run.time_dependence = True                      # whether to run time-dependent calculation
-run.msglvl = 1                            # change output verbosity (currently only level 1 available)
+run.name = 'test5'           # Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
+run.code_version = 0         # Version of iDEA to use (0: As downloaded off the git) (Global: 1.9.0)
+run.time_dependence = True   # whether to run time-dependent calculation
+run.verbosity = 'default'       # output verbosity ('low', 'default', 'high')
 
 run.EXT = True                      # Run Exact Many-Body calculation
 run.NON = True                      # Run Non-Interacting approximation

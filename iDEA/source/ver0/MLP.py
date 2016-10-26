@@ -250,8 +250,7 @@ def main():
       convergence = np.sum(abs(n-n_old))*pm.sys.deltax
       n_old[:] = n[:]
       string = 'MLP: electron density convergence = ' + str(convergence)
-      sprint.sprint(string,1,1,pm.run.msglvl)
-      sprint.sprint(string,2,1,pm.run.msglvl)
+      sprint.sprint(string,1,pm.run.verbosity,newline=False)
 
    v_xc = np.zeros(pm.sys.grid,dtype='float')
    v_xc[:]=v_s[:]-v_ext[:]-Hartree(n,U)
@@ -291,8 +290,7 @@ def main():
       A = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
       for j in range(1,pm.sys.imax): 
          string = 'MLP: evolving through real time: t = ' + str(j*pm.sys.deltat) 
-         sprint.sprint(string,1,1,pm.run.msglvl)
-         sprint.sprint(string,2,1,pm.run.msglvl)
+         sprint.sprint(string,1,pm.run.verbosity,newline=False)
          n_t,Psi = CrankNicolson(v_s_t,Psi,n_t,j,A)
          current[j,:] = CalculateCurrentDensity(n_t,j)
          if j != pm.sys.imax-1:

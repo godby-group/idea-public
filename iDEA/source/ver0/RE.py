@@ -116,8 +116,7 @@ def GroundState(n_T,mu,sqdx,T_s,n,approx):
    while cost_n_GS>1e-13:
       cost_old = cost_n_GS
       string = 'REV: electron density error = ' + str(cost_old)
-      sprint.sprint(string,1,1,pm.run.msglvl)
-      sprint.sprint(string,2,1,pm.run.msglvl)
+      sprint.sprint(string,1,pm.run.verbosity,newline=False)
       V_KS,n,cost_n_GS,U,E_KS = CalculateGroundstate(V_KS,n_T,mu,sqdx,T_s,n)
       if abs(cost_n_GS-cost_old)<1e-15 or cost_n_GS>cost_old:
          mu *= 0.5
@@ -347,7 +346,7 @@ def CalculateKS(V_KS,A_KS,J,Psi,j,upper_bound,frac1,frac2,z,tol,n_T,J_T,cost_n,c
           z = z*(-1)+1 # Only save two times at any point
           break
    string='REV: t = ' + str(j*pm.sys.deltat) + ', tol = ' + str(tol) + ', current error = ' + str(cost_J[j]) + ', density error = ' + str(cost_n[j])
-   sprint.sprint(string,1,1,pm.run.msglvl)
+   sprint.sprint(string,1,pm.run.verbosity,newline=False)
    Apot[:]=0 # Change guage so only have scalar potential
    for i in range(pm.sys.grid): # Calculate full KS scalar potential
       for k in range(i+1):

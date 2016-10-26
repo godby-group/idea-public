@@ -49,7 +49,7 @@ ctol = pm.ext.ctol
 rtol = pm.ext.rtol
 TD = pm.run.time_dependence
 par = pm.ext.par
-msglvl = pm.run.msglvl
+verbosity = pm.run.verbosity
 c_m = 0
 c_p = 0
 Nx_RM = 0
@@ -302,7 +302,7 @@ def calculateCurrentDensity(total_td_density):
     current_density = []
     for i in range(0,len(total_td_density)-1):
          string = 'MB: computing time dependent current density t = ' + str(i*pm.sys.deltat)
-         sprint.sprint(string,1,1,pm.run.msglvl)
+         sprint.sprint(string,1,pm.run.verbosity,newline=False)
          J = np.zeros(pm.sys.grid)
          J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,total_td_density[i+1],total_td_density[i])
          if pm.sys.im==1:
@@ -356,7 +356,7 @@ def CNsolveComplexTime():
 	# Begin timing the iteration
         start = time.time()
         string = 'complex time = ' + str(i*cdeltat)
-	sprint.sprint(string,2,0,msglvl)
+	sprint.sprint(string,0,verbosity)
 
 	# Reduce the wavefunction
         if (i>=2):
@@ -378,7 +378,7 @@ def CNsolveComplexTime():
 	# Calculate the energy
         Ev = Energy(Psiarr)
 	string = 'energy = ' + str(Ev)
-	sprint.sprint(string,2,0,msglvl)
+	sprint.sprint(string,0,verbosity)
 
 	# Normalise the wavefunction
 	mag = (np.linalg.norm(Psiarr[1,:])*deltax)
@@ -387,28 +387,28 @@ def CNsolveComplexTime():
 	# Stop timing the iteration
 	finish = time.time()
         string = 'time to Complete Step: ' + str(finish-start)
-	sprint.sprint(string,2,0,msglvl)
+	sprint.sprint(string,0,verbosity)
 
 	# Test for convergance
 	wf_con = np.linalg.norm(Psiarr[0,:]-Psiarr[1,:])
 	string = 'wave function convergence: ' + str(wf_con)
-	sprint.sprint(string,2,0,msglvl)
+	sprint.sprint(string,0,verbosity)
 	string = 'EXT: ' + 't = ' + str(i*cdeltat) + ', convergence = ' + str(wf_con)
-        sprint.sprint(string,1,1,msglvl)
+        sprint.sprint(string,1,verbosity,newline=False)
 	if(i>1):
 	    e_con = old_energy - Ev
 	    string = 'energy convergence: ' + str(e_con)
-	    sprint.sprint(string,2,0,msglvl)
+	    sprint.sprint(string,0,verbosity)
 	    if(e_con < ctol*10.0 and wf_con < ctol*10.0):
 		print
 	        string = 'EXT: ground state converged' 
-		sprint.sprint(string,1,0,msglvl)
+		sprint.sprint(string,1,verbosity)
                 string = 'ground state converged' 
-		sprint.sprint(string,2,0,msglvl)
+		sprint.sprint(string,0,verbosity)
 	        i = cimax
 	old_energy = copy.copy(Ev)
         string = '---------------------------------------------------'
-	sprint.sprint(string,2,0,msglvl)
+	sprint.sprint(string,0,verbosity)
 
         # Iterate
         i += 1
@@ -489,7 +489,7 @@ def CNsolveRealTime(wavefunction):
 	# Begin timing the iteration
         start = time.time()
 	string = 'real time = ' + str(i*deltat) + '/' + str((imax-1)*deltat)
-	sprint.sprint(string,2,0,msglvl)
+	sprint.sprint(string,0,verbosity)
 
 	# Reduce the wavefunction
         if (i>=2):
@@ -529,18 +529,18 @@ def CNsolveRealTime(wavefunction):
 	# Stop timing the iteration
 	finish = time.time()
         string = 'Time to Complete Step: ' + str(finish-start)
-	sprint.sprint(string,2,0,msglvl)
+	sprint.sprint(string,0,verbosity)
 
 	# Print to screen
         string = 'residual: ' + str(np.linalg.norm(A*Psiarr[1,:]-b))
-	sprint.sprint(string,2,0,msglvl)
+	sprint.sprint(string,0,verbosity)
 	normal = np.sum(np.absolute(Psiarr[1,:])**2)*(deltax**2)
         string = 'normalisation: ' + str(normal)
-	sprint.sprint(string,2,0,msglvl)
+	sprint.sprint(string,0,verbosity)
 	string = 'EXT: ' + 't = ' + str(i*deltat) + ', normalisation = ' + str(normal)
-        sprint.sprint(string,1,1,msglvl)
+        sprint.sprint(string,1,verbosity,newline=False)
         string = '---------------------------------------------------'
-	sprint.sprint(string,2,0,msglvl)
+	sprint.sprint(string,0,verbosity)
 
 	# Iterate
         i += 1
@@ -559,22 +559,22 @@ def CNsolveRealTime(wavefunction):
     # Dispose of matrices and terminate
     A = 0
     C = 0
-    sprint.sprint(' ',1,0,msglvl)
+    sprint.sprint(' ',1,verbosity)
     return
 
 # Call this function to run iDEA-MB for 2 electrons
 def main():
 
     # Use global variables
-    global jmax,kmax,xmax,tmax,deltax,deltat,imax,msglvl,Psiarr,Rhv2,Psi2D,r,c_m,c_p,Nx_RM
+    global jmax,kmax,xmax,tmax,deltax,deltat,imax,verbosity,Psiarr,Rhv2,Psi2D,r,c_m,c_p,Nx_RM
 
     # Construct reduction and expansion matrices
     c_m, c_p, Nx_RM = antisym(jmax, True)
 
     # Complex Time array initialisations 
     string = 'EXT: constructing arrays'
-    sprint.sprint(string,2,0,msglvl)
-    sprint.sprint(string,1,0,msglvl)
+    sprint.sprint(string,0,verbosity)
+    sprint.sprint(string,1,verbosity)
     Psiarr = np.zeros((2,jmax**2), dtype = np.cfloat)
     Rhv2 = np.zeros((jmax**2), dtype = np.cfloat)
     Psi2D = np.zeros((jmax,kmax), dtype = np.cfloat)
@@ -586,8 +586,7 @@ def main():
     # Real Time array initialisations 
     if(pm.run.time_dependence == True):
         string = 'EXT: constructing arrays'
-        sprint.sprint(string,1,0,msglvl)
-        sprint.sprint(string,2,0,msglvl)
+        sprint.sprint(string,1,verbosity)
     Psiarr = np.zeros((2,jmax**2), dtype = np.cfloat)
     Psi2D = np.zeros((jmax,kmax), dtype = np.cfloat)
     Rhv2 = np.zeros((jmax**2), dtype = np.cfloat)

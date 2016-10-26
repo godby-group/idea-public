@@ -25,7 +25,7 @@ import parameters as pm
 import scipy.linalg as spla
 
 # Import parameters
-msglvl = pm.run.msglvl
+verbosity = pm.run.verbosity
 Nx = pm.sys.grid
 Nt = pm.sys.imax
 L = 2*pm.sys.xmax
@@ -117,7 +117,7 @@ while con > pm.hf.con:
    n_x, Psi, V, K = Groundstate(V, F, nu)
    con = sum(abs(n_x[:]-n_old[:]))
    string = 'HF: computing ground-state density, convergence = ' + str(con)
-   sprint.sprint(string,1,1,msglvl)
+   sprint.sprint(string,1,verbosity,newline=False)
 print
 
 # Calculate ground state energy

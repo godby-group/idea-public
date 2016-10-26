@@ -140,8 +140,7 @@ def main():
       V_lan[:,:]=V_lan[0,:]+petrb[:]                      # Add the perturbing field to the external potential and the KS potential
       for j in range(1,pm.sys.imax):                          # Propagate from the ground-state
          string = 'LAN: computing density and current density, time = ' + str(j*pm.sys.deltat)
-	 sprint.sprint(string,1,1,pm.run.msglvl)
-         sprint.sprint(string,2,1,pm.run.msglvl)
+	 sprint.sprint(string,1,pm.run.verbosity,newline=False)
          Psi,z=SolveKSE(V_lan,Psi,j,frac1,frac2,z)
          n_LAN[j,:]=0
          z=z*(-1)+1

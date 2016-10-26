@@ -28,7 +28,7 @@ import LAN
 import parameters as pm
 
 # Draw splash to screen
-splash.draw(pm.run.msglvl)
+splash.draw(pm.run.verbosity)
 print('run name: ' + str(pm.run.name))
 
 # Execute required jobs
@@ -77,5 +77,4 @@ if(pm.run.LAN == True):
 
 # All jobs done
 string = 'all jobs done \n'
-sprint.sprint(string,2,0,pm.run.msglvl)
-sprint.sprint(string,1,0,pm.run.msglvl)
+sprint.sprint(string,1,pm.run.verbosity)

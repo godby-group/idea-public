@@ -135,8 +135,7 @@ def main():
       convergence = np.sum(abs(n-n_old))*pm.sys.deltax
       n_old[:] = n[:]
       string = 'LDA: electron density convergence = ' + str(convergence)
-      sprint.sprint(string,1,1,pm.run.msglvl)
-      sprint.sprint(string,2,1,pm.run.msglvl)
+      sprint.sprint(string,1,pm.run.verbosity,newline=False)
 
    print
    print 'LDA: ground-state xc energy: %s' % (EXC(n))
@@ -170,8 +169,7 @@ def main():
          v_ext[i] += pm.sys.v_pert((i*pm.sys.deltax-pm.sys.xmax)) 
       for j in range(1,pm.sys.imax): 
          string = 'LDA: evolving through real time: t = ' + str(j*pm.sys.deltat) 
-         sprint.sprint(string,1,1,pm.run.msglvl)
-         sprint.sprint(string,2,1,pm.run.msglvl)
+         sprint.sprint(string,1,pm.run.verbosity,newline=False)
          n_t,Psi = CrankNicolson(v_s_t,Psi,n_t,j)
          if j != pm.sys.imax-1:
             v_s_t[j+1,:] = v_ext[:]+Hartree(n_t[j,:],U)+XC(n_t[j,:])

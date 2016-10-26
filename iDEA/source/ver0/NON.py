@@ -73,7 +73,7 @@ def calculateCurrentDensity(total_td_density):
     current_density = []
     for i in range(0,len(total_td_density)-1):
          string = 'NON: computing time dependent current density t = ' + str(i*pm.sys.deltat)
-         sprint.sprint(string,1,1,pm.run.msglvl)
+         sprint.sprint(string,1,pm.run.verbosity,newline=False)
          J = np.zeros(pm.sys.grid)
          J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,total_td_density[i+1],total_td_density[i])
          if pm.sys.im==1:
@@ -175,7 +175,7 @@ def main():
             # Calculate the wavefunction normalisation
             normalisation = (np.linalg.norm(wavefunction)*pm.sys.deltax**0.5)
             string = 'NON real time: N = ' + str(n+1) + ', t = ' + str(i*pm.sys.deltat) + ', normalisation = ' + str(normalisation)
-      	    sprint.sprint(string,1,1,pm.run.msglvl)
+      	    sprint.sprint(string,1,pm.run.verbosity,newline=False)
 
             # iterate
             i = i + 1
