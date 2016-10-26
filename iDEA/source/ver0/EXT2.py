@@ -559,7 +559,7 @@ def CNsolveRealTime(wavefunction):
     # Dispose of matrices and terminate
     A = 0
     C = 0
-    sprint.sprint(' ',1,verbosity)
+    sprint.sprint('',1,verbosity)
     return
 
 # Call this function to run iDEA-MB for 2 electrons
