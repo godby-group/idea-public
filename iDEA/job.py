@@ -134,7 +134,7 @@ class Job(object):
 
         # Copy parameters file and ViDEO script to output folder
         shutil.copy2(self.pm.filename,self.pm.output_dir)
-        shutil.copy2('source/iDEA/ViDEO.py',self.pm.output_dir)
+        shutil.copy2('iDEA/ViDEO.py',self.pm.output_dir)
         
         ### Remove temporary code
         ##os.system('mv outputs/' + str(pm.run.name) + '/parameters.py outputs/' + str(pm.run.name) + '/parameters.temp')

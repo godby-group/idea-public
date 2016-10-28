@@ -1,5 +1,5 @@
-from source.iDEA.input import Input
-from source.iDEA.job import Job
+from iDEA.input import Input
+from iDEA.job import Job
 
 # read parameters file
 inp = Input.from_python_file('parameters.py')
