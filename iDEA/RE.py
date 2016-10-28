@@ -33,21 +33,23 @@ import RE_Utilities
 import scipy.sparse as sps
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
+import results as rs
 
 # Function to read inputs -- needs some work!
 def ReadInput(approx,GS,imax):
    n = np.zeros((imax,pm.sys.grid),dtype='float')
    # Read in the ground-state first
-   file_name = 'outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_' + str(approx) + '_den.db'
-   input_file = open(file_name,'r')
-   data = pickle.load(input_file)
+
+   results = rs.Results()
+   name = 'gs_{}_den'.format(approx)
+   data = results.read(name, pm.output_dir+'/raw',pm.run.verbosity)
+   
    n[0,:] = data
    if pm.run.time_dependence == True:
       Read_n = np.zeros(((imax-1),pm.sys.grid),dtype='float')
       # Then read im the time-dependent density
-      file_name = 'outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'td_' + str(approx) + '_den.db'
-      input_file = open(file_name,'r')
-      data = pickle.load(input_file)
+      name = 'td_{}_den'.format(approx)
+      data = results.read(name, pm.output_dir+'/raw',pm.run.verbosity)
       Read_n[:,:] = data
       for k in range(1,imax):
          n[k,:] = Read_n[k-1,:] # Accounts for the difference in convention between MB and RE (for RE t=0 is the ground-state)
@@ -376,25 +378,21 @@ def main(parameters,approx):
    V_Hxc[0,:] = V_KS[0,:]-V_ext[:] # Calculate the Hartree exhange-correlation potential
    V_xc[0,:] = V_Hxc[0,:]-V_h[0,:] # Calculate the exchange-correlation potential
    E_xc = xcenergy(approx,n_KS,V_h,V_xc,E_KS) # Calculate the exchange-correlation energy
-   f = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_' + str(approx) + '_vks.db', 'w') # KS potential	
-   pickle.dump(V_KS[0,:].real,f)				
-   f.close()
-   f = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_' + str(approx) + '_vh.db', 'w') # H potential
-   pickle.dump(V_h[0,:],f)
-   f.close()
-   f = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_' + str(approx) + '_vxc.db', 'w') # XC potential
-   pickle.dump(V_xc[0,:].real,f)
-   f.close()
-   f = open('outputs/' + str(pm.run.name) + '/data/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_' + str(approx) + '_Exc.dat', 'w') # XC energy
-   f.write(str(E_xc.real))
-   f.close()
+
+   # Store results
+   results = rs.Results()
+   results.add(V_KS[0,:].real,'gs_{}_vks'.format(approx))
+   results.add(V_h[0,:], 'gs_{}_vh'.format(approx))
+   results.add(V_xc[0,:].real, 'gs_{}_vxc'.format(approx))
+   results.add(E_xc.real, 'gs_{}_Exc'.format(approx))
+
    v_hxc = np.zeros(pm.sys.grid,dtype='float')
    v_hxc[:] = (V_xc[0,:]+V_h[0,:]).real
-   f = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_' + str(approx) + '_hxc.db', 'w') # KS potential	
-   pickle.dump(v_hxc[:],f)				
-   f.close()
+   results.add(v_hxc[:],'gs_{}_hxc'.format(approx))
+   results.save(pm.output_dir+'/raw')
+
    if(approx != 'non'):
-      print
+      sprint.sprint('',1,pm.run.verbosity)
    if pm.run.time_dependence==True: # Time-dependence
       J_KS = np.zeros((imax,pm.sys.grid),dtype='float')
       n_MB = ReadInput(approx,1,imax) # Read in exact charge density obtained from code
@@ -413,14 +411,14 @@ def main(parameters,approx):
             V_xc[j,:] = V_KS[j,:]-(V_ext[:]+petrb[:]+V_h[j,:])
             counter += 1
       except:
-         print
-         print 'REV: Stopped at timestep ' + str(counter) + '! Outputing all quantities'
-      file_name=open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'td_' + str(approx) + '_vks.db', 'w') # KS potential
-      pickle.dump(V_KS[:,:].real,file_name)
-      file_name.close()
-      file_name=open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'td_' + str(approx) + '_vh.db', 'w') # H potential
-      pickle.dump(V_h[:,:],file_name)		
-      file_name.close()
-      file_name=open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'td_' + str(approx) + '_vxc.db', 'w') # xc potential
-      pickle.dump(V_xc[:,:].real,file_name)	
-      file_name.close()
+         sprint.sprint('',1,pm.run.verbosity)
+         sprint.sprint('REV: Stopped at timestep ' + str(counter) + '! Outputing all quantities',1,pm.run.verbosity)
+
+      results.add( V_KS[:,:].real, 'gs_{}_vks'.format(approx)) 
+      results.add(V_h[:,:], 'gs_{}_vh'.format(approx)) 
+      results.add( V_xc[:,:].real, 'gs_{}_vxc'.format(approx))
+      # No need to save previous results again
+      l = ['gs_{}_vks'.format(approx),'gs_{}_vh'.format(approx),'gs_{}_vxc'.format(approx)]
+      results.save(pm.output_dir+'/raw', list=l)
+
+   return results

@@ -310,12 +310,10 @@ def main(parameters):
 
    # Output ground state density
    results = rs.Results()
-   results.add(density,name='{}gs_mbpt_den'.format(pm.sys.NE))
+   results.add(density,'gs_mbpt_den')
    if pm.run.save:
       results.save(pm.output_dir + '/raw',pm.run.verbosity)
-   #output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_mbpt_den.db','w')
-   #pickle.dump(density,output_file)
-   #output_file.close()
+
    return results
 
    # Output all hedin quantities

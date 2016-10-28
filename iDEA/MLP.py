@@ -20,9 +20,9 @@ import copy as copy
 import RE_Utilities
 import LDA
 import scipy.sparse as sps
-
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
+import results as rs
 
 # Given n returns SOA potential
 def SOA(den):
@@ -257,25 +257,24 @@ def main(parameters):
 
    v_xc = np.zeros(pm.sys.grid,dtype='float')
    v_xc[:]=v_s[:]-v_ext[:]-Hartree(n,U)
+
+   results = rs.Results()
+
    if pm.run.time_dependence == False: # Output results
-      file1 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_mlp_vks.db', 'w') # KS potential
-      pickle.dump(v_s[:],file1)
-      file1.close()
-      file2 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_mlp_vxc.db', 'w') # xc potential
-      pickle.dump(v_xc[:],file2)
-      file2.close()
-      file3 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_mlp_den.db', 'w') # density
-      pickle.dump(n[:],file3)
-      file3.close()
+      results.add(v_s,name='{}gs_mlp_vks'.format(pm.sys.NE))
+      results.add(v_xc,name='{}gs_mlp_vxc'.format(pm.sys.NE))
+      results.add(n,name='{}gs_mlp_den'.format(pm.sys.NE))
+
       if str(pm.mlp.f)=='e':
-         print
-         print 'MLP: optimal f = %s' % f_e
-         file4 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_mlp_elf.db' , 'w') # elf
-         pickle.dump(elf[:],file4)
-         file4.close()
+         sprint.sprint('\nMLP: optimal f = %s' % f_e,1,pm.run.verbosity)
+         results.add(elf,name='{}gs_mlp_elf'.format(pm.sys.NE))
       else:
-         print
-   print
+         sprint.sprint('',1,pm.run.verbosity)
+
+      results.save()
+
+
+   sprint.sprint('',1,pm.run.verbosity)
    if pm.run.time_dependence == True:
       for i in range(pm.sys.NE):
          Psi[i,0,:] = waves[:,i]/math.sqrt(pm.sys.deltax)
@@ -309,10 +308,14 @@ def main(parameters):
             for k in range(i+1):
                v_s_t[j,i] += (A[j,k]-A[j-1,k])*pm.sys.deltax/pm.sys.deltat # Convert vector potential into scalar potential
 
-      file3 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'td_mlp_den.db', 'w') # density
-      pickle.dump(n_t,file3)
-      file3.close()
-      file3 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'td_mlp_vks.db', 'w') # Kohn-Sham potential
-      pickle.dump(v_s_t,file3)
-      file3.close()
-   print
+
+      # Output ground state density
+      results.add(n_t,name='{}td_mlp_den'.format(pm.sys.NE))
+      results.add(v_s_t,name='{}td_mlp_vks'.format(pm.sys.NE))
+
+      if pm.run.save:
+         # no need to save ground state quantities again...
+         l = ['{}td_mlp_den'.format(pm.sys.NE), '{}td_mlp_vks'.format(pm.sys.NE)]
+         results.save(pm.output_dir + '/raw',verbosity=pm.run.verbosity,list=l)
+
+   sprint.sprint('',1,pm.run.verbosity)

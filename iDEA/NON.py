@@ -132,20 +132,11 @@ def main(parameters):
       energy += energies[i]
    print('NON: ground state energy: ' + str(energy.real))
 
-   # Save ground state energy to dat file
-   output_file = open('outputs/' + str(pm.run.name) + '/data/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_non_E.dat','w')
-   output_file.write(str(energy.real))
-   output_file.close()
-
-   # Save ground state density to pickle file
-   output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_non_den.db','w')
-   pickle.dump(density,output_file)
-   output_file.close()
-
    # Save ground state density and energy 
    results = rs.Results()
-   results.add(density,name='{}gs_non_den'.format(pm.sys.NE))
-   results.add(energy.real,name='{}gs_non_e'.format(pm.sys.NE))
+   results.add(density,'gs_non_den')
+   results.add(energy.real,'gs_non_e')
+
    if pm.run.save:
       results.save(pm.output_dir + '/raw', pm.run.verbosity)
 
@@ -211,25 +202,14 @@ def main(parameters):
       current_density = calculateCurrentDensity(total_density_gs)
       print
 
-      ## Save time dependent data to pickle file (density)
-      #output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'td_non_den.db','w')
-      #pickle.dump(np.asarray(total_density),output_file)
-      #output_file.close()
-
-      ## Save time dependent data to pickle file (current density)
-      #output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'td_non_cur.db','w')
-      #pickle.dump(np.asarray(current_density),output_file)
-      #output_file.close()
-
       # Save time-dependent density and current
-      results.add(density,name='{}td_non_den'.format(pm.sys.NE))
-      results.add(density,name='{}td_non_cur'.format(pm.sys.NE))
+      results.add(density,'td_non_den')
+      results.add(density,'td_non_cur')
 
-   if pm.run.save:
-      results.save(pm.output_dir + '/raw', pm.run.verbosity)
-   #output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_mbpt_den.db','w')
-   #pickle.dump(density,output_file)
-   #output_file.close()
+      if pm.run.save:
+         # no need to save previous results again
+         l = ['td_non_den', 'td_non_cur']
+         results.save(pm.output_dir + '/raw', pm.run.verbosity, list=l)
    return results
 
    # Program complete

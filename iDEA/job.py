@@ -5,6 +5,7 @@ import numpy as np
 import pickle
 import copy as cp
 import results as rs
+import sprint
 
 
 class Job(object):
@@ -76,21 +77,21 @@ class Job(object):
               SPiDEA.main(pm)
            if(pm.ext.RE == True):
               import RE
-              RE.main(pm,'ext')
+              results.add(RE.main(pm,'ext'), name='RE')
         elif(pm.sys.NE == 2):
            if(pm.run.EXT == True):
               import EXT2
               EXT2.main(pm)
            if(pm.ext.RE == True):
               import RE
-              RE.main(pm,'ext')
+              results.add(RE.main(pm,'ext'), name='RE')
         elif(pm.sys.NE == 3):
            if(pm.run.EXT == True):
               import EXT3
               EXT3.main(pm)
            if(pm.ext.RE == True):
               import RE
-              RE.main(pm,'ext')
+              results.add(RE.main(pm,'ext'), name='RE')
         elif(pm.sys.NE >= 4):
            if(pm.run.EXT == True):
               print('EXT: cannot run exact with more than 3 electrons')
@@ -100,7 +101,7 @@ class Job(object):
               results.add(NON.main(pm), name='NON')
         if(pm.non.RE == True):
               import RE
-              RE.main(pm,'non')
+              results.add(RE.main(pm,'non'), name='RE')
 
         if(pm.run.LDA == True):
               import LDA
@@ -114,13 +115,14 @@ class Job(object):
               import HF
         if(pm.hf.RE == True):
               import RE
-              RE.main(pm,'hf')
+              results.add(RE.main(pm,'hf'), name='RE')
 
         if(pm.run.MBPT == True):
               import MBPT
               results.add(MBPT.main(pm), name='MBPT')
         if(pm.mbpt.RE == True):
               import RE
+              results.add(RE.main(pm,'mbpt'), name='RE')
 
         if(pm.run.LAN == True):
               import LAN
@@ -139,6 +141,11 @@ class Job(object):
         vfile = 'iDEA/ViDEO.py'
         if os.path.isfile(vfile):
             shutil.copy2('iDEA/ViDEO.py',self.pm.output_dir)
+        else:
+            s  = "Warning: Unable to copy ViDEO.py since running iDEA as python module."
+            s += " Simply add the iDEA folder to your PATH variable to use ViDEO.py anywhere"
+            sprint.sprint(s)
+
  
         self.results = results
         return results

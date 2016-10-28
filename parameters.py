@@ -8,7 +8,7 @@ class InputSection():
 
 ### run parameters
 run = InputSection()
-run.name = 'test6'           # Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
+run.name = 'test8'           # Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
 run.code_version = 0         # Version of iDEA to use (0: As downloaded off the git) (Global: 1.9.0)
 run.time_dependence = True   # whether to run time-dependent calculation
 run.verbosity = 'default'     # output verbosity ('low', 'default', 'high')
@@ -17,7 +17,7 @@ run.save = True              # whether to save results to disk when they are gen
 run.EXT = False                     # Run Exact Many-Body calculation
 run.NON = True                      # Run Non-Interacting approximation
 run.LDA = False                    # Run LDA approximation
-run.MLP = False                     # Run MLP approximation
+run.MLP = True                      # Run MLP approximation
 run.HF = False                     # Run Hartree-Fock approximation
 run.MBPT = True                    # Run Many-body pertubation theory
 run.LAN = False                    # Run Landauer approximation
@@ -88,7 +88,7 @@ lda.tol = 1e-12                 # Self-consistent convergence tolerance
 
 ### MLP parameters
 mlp = InputSection()
-mlp.f = 'e'                         # f mixing parameter (if f='e' the weight is optimzed with the elf)
+mlp.f = 0.2                         # f mixing parameter (if f='e' the weight is optimzed with the elf)
 mlp.tol = 1e-12                 # Self-consistent convergence tollerance
 mlp.mix = 0.0                   # Self consistent mixing parameter (default 0, only use if doesn't converge)
 mlp.reference_potential = 'non'      # Choice of refernce potential for mixing with the SOA
