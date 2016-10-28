@@ -19,6 +19,7 @@ import pickle
 import sprint
 import numpy as np
 import RE_Utilities
+import results as rs
 
 import scipy.linalg as spla
 import scipy.sparse as sps
@@ -140,6 +141,8 @@ def main(parameters):
    z = 0
    V_lan = ReadInput(pm.lan.start)                        # Read in exact vks obtained from code
    n_LAN,Psi=CalculateGroundstate(V_lan,sqdx,T)
+
+   results = rs.Results()
    if pm.run.time_dependence==1:
       for i in range(pm.sys.grid):
          petrb[i]=pm.sys.v_pert((i*pm.sys.deltax-pm.sys.xmax))
@@ -154,9 +157,9 @@ def main(parameters):
             n_LAN[j,:]+=abs(Psi[i,z,:])**2                 # Calculate the density from the single-particle wavefunctions
          J_LAN[j,:]=CalculateCurrentDensity(n_LAN,upper_bound,j)
       print
-      file_name=open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'td_lan_den.db', 'w')
-      pickle.dump(n_LAN[:,:].real,file_name)				
-      file_name.close()
-      file_name=open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'td_lan_cur.db', 'w')
-      pickle.dump(J_LAN[:,:].real,file_name)				
-      file_name.close()
+      results.add(n_LAN.real,'td_lan_den')
+      results.add(J_LAN.real,'td_lan_cur')
+      if pm.run.save:
+         results.save(pm.output_dir+'/raw')
+
+   return results

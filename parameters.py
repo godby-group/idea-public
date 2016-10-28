@@ -10,7 +10,7 @@ class InputSection():
 run = InputSection()
 run.name = 'test1'           # Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
 run.code_version = 0         # Version of iDEA to use (0: As downloaded off the git) (Global: 1.9.0)
-run.time_dependence = False  # whether to run time-dependent calculation
+run.time_dependence = True   # whether to run time-dependent calculation
 run.verbosity = 'default'     # output verbosity ('low', 'default', 'high')
 run.save = True              # whether to save results to disk when they are generated
 
@@ -18,9 +18,9 @@ run.EXT = False                     # Run Exact Many-Body calculation
 run.NON = True                      # Run Non-Interacting approximation
 run.LDA = False                    # Run LDA approximation
 run.MLP = True                      # Run MLP approximation
-run.HF = True                      # Run Hartree-Fock approximation
-run.MBPT = True                    # Run Many-body pertubation theory
-run.LAN = False                    # Run Landauer approximation
+run.HF = False                     # Run Hartree-Fock approximation
+run.MBPT = False                   # Run Many-body pertubation theory
+run.LAN = True                     # Run Landauer approximation
 
 
 
@@ -98,7 +98,7 @@ hf = InputSection()
 hf.fock = 1                        # Include Fock term (0 = Hartree approximation, 1 = Hartree-Fock approximation)
 hf.con = 1e-12                  # Tolerance
 hf.nu = 0.9                        # Mixing term
-hf.RE = True                        # Reverse engineer hf density
+hf.RE = False                       # Reverse engineer hf density
 
 ### MBPT parameters
 mbpt = InputSection()
@@ -110,7 +110,7 @@ mbpt.self_consistent = 0             # (0 = one-shot, 1 = fully self-consistent)
 mbpt.update_w = True                    # Update screening
 mbpt.tolerance = 1e-12              # Tolerance of the self-consistent algorithm
 mbpt.max_iterations = 100            # Maximum number of iterations in full self-consistency
-mbpt.RE = True                      # Reverse engineer mbpt density
+mbpt.RE = False                     # Reverse engineer mbpt density
 
 # LAN parameters
 lan = InputSection()

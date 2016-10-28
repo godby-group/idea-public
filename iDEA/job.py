@@ -127,7 +127,7 @@ class Job(object):
 
         if(pm.run.LAN == True):
               import LAN
-              LAN.main(pm)
+              results.add(LAN.main(pm), name='LAN')
 
         import sprint
         # All jobs done
