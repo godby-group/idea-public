@@ -389,7 +389,8 @@ def main(parameters,approx):
    v_hxc = np.zeros(pm.sys.grid,dtype='float')
    v_hxc[:] = (V_xc[0,:]+V_h[0,:]).real
    results.add(v_hxc[:],'gs_{}_hxc'.format(approx))
-   results.save(pm.output_dir+'/raw')
+   if pm.run.save:
+      results.save(pm.output_dir+'/raw')
 
    if(approx != 'non'):
       sprint.sprint('',1,pm.run.verbosity)
@@ -417,8 +418,9 @@ def main(parameters,approx):
       results.add( V_KS[:,:].real, 'gs_{}_vks'.format(approx)) 
       results.add(V_h[:,:], 'gs_{}_vh'.format(approx)) 
       results.add( V_xc[:,:].real, 'gs_{}_vxc'.format(approx))
-      # No need to save previous results again
-      l = ['gs_{}_vks'.format(approx),'gs_{}_vh'.format(approx),'gs_{}_vxc'.format(approx)]
-      results.save(pm.output_dir+'/raw', list=l)
+      if pm.run.save:
+         # No need to save previous results again
+         l = ['gs_{}_vks'.format(approx),'gs_{}_vh'.format(approx),'gs_{}_vxc'.format(approx)]
+         results.save(pm.output_dir+'/raw', list=l)
 
    return results

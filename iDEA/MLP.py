@@ -261,17 +261,18 @@ def main(parameters):
    results = rs.Results()
 
    if pm.run.time_dependence == False: # Output results
-      results.add(v_s,name='{}gs_mlp_vks'.format(pm.sys.NE))
-      results.add(v_xc,name='{}gs_mlp_vxc'.format(pm.sys.NE))
-      results.add(n,name='{}gs_mlp_den'.format(pm.sys.NE))
+      results.add(v_s,name='gs_mlp_vks')
+      results.add(v_xc,name='gs_mlp_vxc'
+      results.add(n,name='gs_mlp_den')
 
       if str(pm.mlp.f)=='e':
          sprint.sprint('\nMLP: optimal f = %s' % f_e,1,pm.run.verbosity)
-         results.add(elf,name='{}gs_mlp_elf'.format(pm.sys.NE))
+         results.add(elf,name='gs_mlp_elf')
       else:
          sprint.sprint('',1,pm.run.verbosity)
 
-      results.save()
+      if pm.run.save:
+         results.save()
 
 
    sprint.sprint('',1,pm.run.verbosity)
@@ -310,12 +311,12 @@ def main(parameters):
 
 
       # Output ground state density
-      results.add(n_t,name='{}td_mlp_den'.format(pm.sys.NE))
-      results.add(v_s_t,name='{}td_mlp_vks'.format(pm.sys.NE))
+      results.add(n_t,name='td_mlp_den')
+      results.add(v_s_t,name='td_mlp_vks')
 
       if pm.run.save:
          # no need to save ground state quantities again...
-         l = ['{}td_mlp_den'.format(pm.sys.NE), '{}td_mlp_vks'.format(pm.sys.NE)]
+         l = ['td_mlp_den', 'td_mlp_vks']
          results.save(pm.output_dir + '/raw',verbosity=pm.run.verbosity,list=l)
 
    sprint.sprint('',1,pm.run.verbosity)
