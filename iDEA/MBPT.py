@@ -24,6 +24,7 @@ import scipy as sp
 import numpy.linalg as npl
 import scipy.sparse as sps
 import scipy.sparse.linalg as spsla
+import results
 
 # Struct to define space-time grid
 class SpaceTime:
@@ -308,9 +309,14 @@ def main(parameters):
    density[:] = (density[:]*float(pm.sys.NE))/(np.sum(density)*st.dx)
 
    # Output ground state density
-   output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_mbpt_den.db','w')
-   pickle.dump(density,output_file)
-   output_file.close()
+   results = results.Results()
+   results.add(density,name='{}gs_mbpt_den'.format(pm.sys.NE))
+   if pm.run.save:
+      results.save(pm.output_dir + '/raw')
+   #output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_mbpt_den.db','w')
+   #pickle.dump(density,output_file)
+   #output_file.close()
+   return results
 
    # Output all hedin quantities
    #output_quantities(G0,P,W_f,S,G) # Uncomment this to save all hedin quantities to pickle files

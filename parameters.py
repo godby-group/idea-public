@@ -11,15 +11,16 @@ run = InputSection()
 run.name = 'test6'           # Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
 run.code_version = 0         # Version of iDEA to use (0: As downloaded off the git) (Global: 1.9.0)
 run.time_dependence = True   # whether to run time-dependent calculation
-run.verbosity = 'default'       # output verbosity ('low', 'default', 'high')
+run.verbosity = 'default'     # output verbosity ('low', 'default', 'high')
+run.save = True              # whether to save results to disk when they are generated
 
-run.EXT = True                      # Run Exact Many-Body calculation
-run.NON = True                      # Run Non-Interacting approximation
-run.LDA = True                     # Run LDA approximation
+run.EXT = False                     # Run Exact Many-Body calculation
+run.NON = False                     # Run Non-Interacting approximation
+run.LDA = False                    # Run LDA approximation
 run.MLP = False                     # Run MLP approximation
-run.HF = True                      # Run Hartree-Fock approximation
+run.HF = False                     # Run Hartree-Fock approximation
 run.MBPT = True                    # Run Many-body pertubation theory
-run.LAN = True                     # Run Landauer approximation
+run.LAN = False                    # Run Landauer approximation
 
 
 

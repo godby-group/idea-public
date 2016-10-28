@@ -4,6 +4,7 @@
 import numpy as np
 import pickle
 import copy as cp
+import results
 
 
 class Job(object):
@@ -67,7 +68,7 @@ class Job(object):
         print('run name: ' + str(pm.run.name))
 
         # Execute required jobs
-        results = Results()
+        results = results.Results()
         # Execute required jobs
         if(pm.sys.NE == 1):
            if(pm.run.EXT == True):
@@ -117,10 +118,10 @@ class Job(object):
 
         if(pm.run.MBPT == True):
               import MBPT
-              MBPT.main(pm)
+              r = MBPT.main(pm,'mbpt')
+              results.add(r, name='MBPT')
         if(pm.mbpt.RE == True):
               import RE
-              RE.main(pm,'mbpt')
 
         if(pm.run.LAN == True):
               import LAN
@@ -134,8 +135,12 @@ class Job(object):
 
         # Copy parameters file and ViDEO script to output folder
         shutil.copy2(self.pm.filename,self.pm.output_dir)
-        shutil.copy2('iDEA/ViDEO.py',self.pm.output_dir)
-        
+
+        # Note: this doesn't work, when using iDEA as a system module
+        vfile = 'iDEA/ViDEO.py'
+        if os.path.isfile(vfile):
+            shutil.copy2('iDEA/ViDEO.py',self.pm.output_dir)
+ 
         ### Remove temporary code
         ##os.system('mv outputs/' + str(pm.run.name) + '/parameters.py outputs/' + str(pm.run.name) + '/parameters.temp')
         ##os.system('mv outputs/' + str(pm.run.name) + '/ViDEO.py outputs/' + str(pm.run.name) + '/ViDEO.temp')
@@ -163,59 +168,3 @@ class Job(object):
         import ViDEO
 
         ViDEO.main(self.pm)
-
-class Results(object):
-    """Container for results.
-
-    At the moment, this class is simply a convenient container for the results
-    of a calculation. Additional functionality may be added at a later point.
-    """
-    method_dict = {
-        'non': 'non-interacting',
-        'ext': 'exact',
-        'hf': 'Hartree-Fock',
-        'lda': 'LDA',
-    }
-
-    quantity_dict = {
-        'den': r'$\rho$',
-        'vxt': r'$V_{ext}$',
-        'vh': r'$V_{H}$',
-        'vxc': r'$V_{xc}$',
-        'vks': r'$V_{KS}$',
-    }
-
-    @staticmethod
-    def label(shortname):
-        """returns full label for shortname of result.
-
-        This refers to shortnames used for 1d quantities
-        saved by iDEA.
-        E.g. 'non_den' => r'non-interacting $\rho$'
-        """
-        m, l = shortname.split('_')
-        s  = "{} ({})".format(Results.quantity_dict[l], Results.method_dict[m])
-
-        return s
-
-    def add(self,results,name):
-        """Add results to the container."""
-
-        ## If we are adding another Results instance, copy attributes
-        #if isinstance(results,Results):
-        #    self.__dict__.update(results.__dict__)
-        #else:
-        setattr(self, name, cp.deepcopy(results))
-
-    def save(self,dir):
-        """Save results to disk."""
-        for key,val in self.__dict__.iteritems():
-            if isinstance(val,Results):
-                val.save(dir)
-            else:
-                outname = "{}/{}.p".format(dir,key)
-                print("Saving {} to {}".format(key,outname))
-                f = open(outname, 'wb')
-                pickle.dump(val,f)
-                f.close()
-                #np.savetxt(outname, val)
