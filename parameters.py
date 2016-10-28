@@ -15,7 +15,7 @@ run.verbosity = 'default'     # output verbosity ('low', 'default', 'high')
 run.save = True              # whether to save results to disk when they are generated
 
 run.EXT = False                     # Run Exact Many-Body calculation
-run.NON = False                     # Run Non-Interacting approximation
+run.NON = True                      # Run Non-Interacting approximation
 run.LDA = False                    # Run LDA approximation
 run.MLP = False                     # Run MLP approximation
 run.HF = False                     # Run Hartree-Fock approximation

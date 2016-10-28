@@ -4,7 +4,7 @@
 import numpy as np
 import pickle
 import copy as cp
-import results
+import results as rs
 
 
 class Job(object):
@@ -68,7 +68,7 @@ class Job(object):
         print('run name: ' + str(pm.run.name))
 
         # Execute required jobs
-        results = results.Results()
+        results = rs.Results()
         # Execute required jobs
         if(pm.sys.NE == 1):
            if(pm.run.EXT == True):
@@ -97,7 +97,7 @@ class Job(object):
 
         if(pm.run.NON == True):
               import NON
-              NON.main(pm)
+              results.add(NON.main(pm), name='NON')
         if(pm.non.RE == True):
               import RE
               RE.main(pm,'non')
@@ -118,8 +118,7 @@ class Job(object):
 
         if(pm.run.MBPT == True):
               import MBPT
-              r = MBPT.main(pm,'mbpt')
-              results.add(r, name='MBPT')
+              results.add(MBPT.main(pm), name='MBPT')
         if(pm.mbpt.RE == True):
               import RE
 
@@ -141,27 +140,12 @@ class Job(object):
         if os.path.isfile(vfile):
             shutil.copy2('iDEA/ViDEO.py',self.pm.output_dir)
  
-        ### Remove temporary code
-        ##os.system('mv outputs/' + str(pm.run.name) + '/parameters.py outputs/' + str(pm.run.name) + '/parameters.temp')
-        ##os.system('mv outputs/' + str(pm.run.name) + '/ViDEO.py outputs/' + str(pm.run.name) + '/ViDEO.temp')
-        ##os.system('rm -f outputs/' + str(pm.run.name) + '/*.py')
-        ##os.system('rm -f outputs/' + str(pm.run.name) + '/*.pyc')
-        ##os.system('rm -f outputs/' + str(pm.run.name) + '/*.npy')
-        ##os.system('rm -f outputs/' + str(pm.run.name) + '/*.f90')
-        ##os.system('rm -f outputs/' + str(pm.run.name) + '/*.f')
-
-        ## Add ViDEO to the directory to be used for visualisation
-        #os.rename(pm.run.name + '/ViDEO.temp', pm.run.name + '/ViDEO.py')
-
-        ## Add the parameters file to show details of the run
-        #os.rename(pm.run.name + '/parameters.temp', pm.run.name + '/parameters.py')
-
         self.results = results
         return results
 
     def save(self):
         """Save results to disk."""
-        self.results.save(dir=self.pm.output_dir + 'data')
+        self.results.save(dir=self.pm.output_dir + 'data',verbosity=self.pm.run.verbosity)
 
     def post_process(self):
         """Run ViDEO post-processing script"""

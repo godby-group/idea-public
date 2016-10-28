@@ -28,6 +28,7 @@ import scipy as sp
 import RE_Utilities
 import scipy.sparse as sps
 import scipy.sparse.linalg as spsla
+import results as rs
 
 # Function to construct the kinetic energy K
 def constructK():
@@ -141,6 +142,13 @@ def main(parameters):
    pickle.dump(density,output_file)
    output_file.close()
 
+   # Save ground state density and energy 
+   results = rs.Results()
+   results.add(density,name='{}gs_non_den'.format(pm.sys.NE))
+   results.add(energy.real,name='{}gs_non_e'.format(pm.sys.NE))
+   if pm.run.save:
+      results.save(pm.output_dir + '/raw', pm.run.verbosity)
+
    # Perform real time iterations
    if(pm.run.time_dependence == True):
 
@@ -203,15 +211,26 @@ def main(parameters):
       current_density = calculateCurrentDensity(total_density_gs)
       print
 
-      # Save time dependent data to pickle file (density)
-      output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'td_non_den.db','w')
-      pickle.dump(np.asarray(total_density),output_file)
-      output_file.close()
+      ## Save time dependent data to pickle file (density)
+      #output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'td_non_den.db','w')
+      #pickle.dump(np.asarray(total_density),output_file)
+      #output_file.close()
 
-      # Save time dependent data to pickle file (current density)
-      output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'td_non_cur.db','w')
-      pickle.dump(np.asarray(current_density),output_file)
-      output_file.close()
+      ## Save time dependent data to pickle file (current density)
+      #output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'td_non_cur.db','w')
+      #pickle.dump(np.asarray(current_density),output_file)
+      #output_file.close()
+
+      # Save time-dependent density and current
+      results.add(density,name='{}td_non_den'.format(pm.sys.NE))
+      results.add(density,name='{}td_non_cur'.format(pm.sys.NE))
+
+   if pm.run.save:
+      results.save(pm.output_dir + '/raw', pm.run.verbosity)
+   #output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_mbpt_den.db','w')
+   #pickle.dump(density,output_file)
+   #output_file.close()
+   return results
 
    # Program complete
    os.system('rm *.pyc')

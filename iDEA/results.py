@@ -4,6 +4,7 @@
 import numpy as np
 import pickle
 import copy as cp
+import sprint
 
 class Results(object):
     """Container for results.
@@ -48,14 +49,17 @@ class Results(object):
         #else:
         setattr(self, name, cp.deepcopy(results))
 
-    def save(self,dir):
+    def save(self,dir,verbosity='default'):
         """Save results to disk."""
         for key,val in self.__dict__.iteritems():
             if isinstance(val,Results):
                 val.save(dir)
             else:
                 outname = "{}/{}.db".format(dir,key)
-                print("Saving {} to {}".format(key,outname))
+                if verbosity:
+                    sprint.sprint("Saving {} to {}".format(key,outname),0,verbosity)    
+                else:
+                    sprint.sprint("Saving {} to {}".format(key,outname),0,verbosity)
                 f = open(outname, 'wb')
                 pickle.dump(val,f)
                 f.close()
