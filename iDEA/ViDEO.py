@@ -146,7 +146,8 @@ data = int(input('enter which quantity to plot (DEN=0,CUR=1,VXT=2,VKS=3,VH=4,VXC
 N = pm.sys.grid
 L = pm.sys.xmax*2
 dx = float(L/(N-1))
-filename = str(run_name) + '_' + str(NE)
+#filename = str(run_name) + '_' + str(NE)
+filename = ''
 if(td):
    filename = filename + 'td_'
 else:
