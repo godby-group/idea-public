@@ -53,7 +53,7 @@ class Results(object):
         # if name already exists and we are adding another Results instance
         # copy its attributes
         else:
-            getattr(self, name).add(results.__dict__)
+            getattr(self, name).__dict__.update(results.__dict__)
 
 
     def read(self, name, dir, verbosity='default'):

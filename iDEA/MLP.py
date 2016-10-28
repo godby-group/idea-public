@@ -262,7 +262,7 @@ def main(parameters):
 
    if pm.run.time_dependence == False: # Output results
       results.add(v_s,name='gs_mlp_vks')
-      results.add(v_xc,name='gs_mlp_vxc'
+      results.add(v_xc,name='gs_mlp_vxc')
       results.add(n,name='gs_mlp_den')
 
       if str(pm.mlp.f)=='e':
@@ -272,7 +272,7 @@ def main(parameters):
          sprint.sprint('',1,pm.run.verbosity)
 
       if pm.run.save:
-         results.save()
+         results.save(pm.output_dir+'/raw')
 
 
    sprint.sprint('',1,pm.run.verbosity)

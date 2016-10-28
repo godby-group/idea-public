@@ -113,6 +113,7 @@ class Job(object):
 
         if(pm.run.HF == True):
               import HF
+              results.add(HF.main(pm), name='HF')
         if(pm.hf.RE == True):
               import RE
               results.add(RE.main(pm,'hf'), name='RE')

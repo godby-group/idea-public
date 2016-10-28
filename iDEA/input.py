@@ -12,8 +12,12 @@ class Input(object):
 
     def check(self):
         """Checks validity of input parameters."""
-
-        pass
+        pm = self
+        if pm.run.time_dependence == True:
+            if pm.run.HF == True:
+                sprint.sprint('HF: Warning - time-dependence not implemented!')
+            if pm.run.MBPT == True:
+                sprint.sprint('MBPT: Warning - time-dependence not implemented!')
 
 
     @classmethod

@@ -1,5 +1,6 @@
  * remove reliance on global variables in all codes
  * add checks in input.py
+ * implement HF time-dependence
 
 To check
  * RE.py: E_xc now saved in pickle format
