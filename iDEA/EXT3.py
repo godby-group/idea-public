@@ -606,8 +606,8 @@ def main(parameters):
 
     imax = 1
     CNsolveRealTime()
-    #os.system('rm *.npy')
-    #os.system('rm *.txt') 
+    os.system('rm *.npy')
+    os.system('rm Particle.txt') 
 
     #ProbPsiFile = open('outputs/' + str(pm.run.name) + '/' + 'raw/' + str(pm.run.name) + '_3gs_ext_den.db','w')
     #pickle.dump(ground, ProbPsiFile)
