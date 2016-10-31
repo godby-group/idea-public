@@ -21,7 +21,6 @@ if(__name__ == '__main__'):
 
 # Library imports
 import os
-import pickle
 import sprint
 import numpy as np
 import scipy as sp
@@ -135,9 +134,9 @@ def main(parameters):
    # Save ground state density and energy 
    results = rs.Results()
    results.add(density,'gs_non_den')
-   results.add(energy.real,'gs_non_e')
+   results.add(energy.real,'gs_non_E')
 
-   if pm.run.save:
+   if(pm.run.save):
       results.save(pm.output_dir + '/raw', pm.run.verbosity)
 
    # Perform real time iterations
@@ -203,15 +202,16 @@ def main(parameters):
       print
 
       # Save time-dependent density and current
-      results.add(density,'td_non_den')
-      results.add(density,'td_non_cur')
-
-      if pm.run.save:
+      results.add(np.asarray(total_density),'td_non_den')
+      results.add(np.asarray(current_density),'td_non_cur')
+ 
+      if(pm.run.save):
          # no need to save previous results again
          l = ['td_non_den', 'td_non_cur']
          results.save(pm.output_dir + '/raw', pm.run.verbosity, list=l)
-   return results
 
-   # Program complete
-   os.system('rm *.pyc')
+   ## Program complete
+   #os.system('rm *.pyc')
+
+   return results
 

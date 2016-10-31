@@ -29,9 +29,10 @@ import scipy.sparse.linalg as spsla
 # Function to read inputs
 def ReadInput(approx):
    V = np.zeros((pm.sys.imax,pm.sys.grid),dtype='complex')       # Only a ground-state to read in
-   file_name='outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_' + str(approx) + '_vks.db'
-   input_file=open(file_name,'r')
-   data=pickle.load(input_file)
+
+   results = rs.Results()
+   name = 'gs_{}_vks'.format(approx)
+   data = results.read(name, pm.output_dir+'/raw',pm.run.verbosity)
    V[0,:]=data
    return V
 

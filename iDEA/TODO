@@ -1,6 +1,7 @@
  * remove reliance on global variables in all codes
  * add checks in input.py
  * implement HF time-dependence
+ * add Potential improvements to EXT2
 
 To check
  * RE.py: E_xc now saved in pickle format

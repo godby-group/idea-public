@@ -30,6 +30,7 @@ import scipy as sp
 import RE_Utilities
 import scipy.sparse as sps
 import scipy.sparse.linalg as spsla
+import results as rs
 
 # Function to construct the potential V
 def constructV(time):
@@ -166,18 +167,15 @@ def main(parameters):
    print
    print 'many body complex time: ground state energy =', energy
 
-   # Save ground state energy to file
-   output_file = open('outputs/' + str(pm.run.name) + '/data/' + str(pm.run.name) + '_1gs_ext_E.dat','w')
-   output_file.write(str(energy))
-   output_file.close()
+   # Save ground state energy
+   results = rs.Results()
+   results.add(energy, 'gs_ext_E')
 
-   # Save ground state data to pickle file
-   output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_1gs_ext_den.db','w')
-   pickle.dump(density,output_file)
-   output_file.close()
-   output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_1gs_ext_vxt.db','w')
-   pickle.dump(V,output_file)
-   output_file.close()	
+   # Save ground state density and external potential
+   results.add(density, 'gs_ext_den')
+   results.add(V, 'gs_ext_vxt')
+   if pm.run.save:
+      results.save(pm.output_dir+'/raw')
 
    # Construct the potential
    V = constructV('r')
@@ -222,18 +220,18 @@ def main(parameters):
    # Save time dependant data to pickle file
    if(pm.run.time_dependence == True):
       current_density = calculateCurrentDensity(densities)
-      output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_1td_ext_den.db','w')
-      pickle.dump(densities,output_file)
-      output_file.close()
-      output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_1td_ext_cur.db','w')
-      pickle.dump(current_density,output_file)
-      output_file.close()
-      output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_1td_ext_vxt.db','w')
-      pickle.dump(potentials,output_file)
-      output_file.close()
+      print
+   
+      results.add(densities,'td_ext_den')
+      results.add(current_density,'td_ext_cur')
+      results.add(potentials,'td_ext_vxt')
+      
+      if pm.run.save:
+         l = ['td_ext_den','td_ext_cur','td_ext_vxt']
+         results.save(pm.output_dir+'/raw',list=l)
+      
 
    # Program Complete
-   if(pm.run.time_dependence == True):
-      print
    os.system('rm *.pyc')
 
+   return results

@@ -21,6 +21,7 @@ import RE_Utilities
 import scipy.sparse as sps
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
+import results as rs
 
 # Solve ground-state KS equations
 def groundstate(v):
@@ -141,23 +142,19 @@ def main(parameters):
       string = 'LDA: electron density convergence = ' + str(convergence)
       sprint.sprint(string,1,pm.run.verbosity,newline=False)
 
-   print
-   print 'LDA: ground-state xc energy: %s' % (EXC(n))
+   sprint.sprint('',1,pm.run.verbosity)
+   sprint.sprint('LDA: ground-state xc energy: %s' % EXC(n),1,pm.run.verbosity)
    v_h = Hartree(n,U)
    v_xc = XC(n)
-   if pm.run.time_dependence == False: # Output results
-      file1 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_lda_vks.db', 'w') # KS potential
-      pickle.dump(v_s[:],file1)
-      file1.close()
-      file2 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_lda_vh.db', 'w') # H potential
-      pickle.dump(v_h[:],file2)
-      file2.close()
-      file3 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_lda_vxc.db', 'w') # xc potential
-      pickle.dump(v_xc[:],file3)
-      file3.close()
-      file4 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_lda_den.db', 'w') # density
-      pickle.dump(n[:],file4)
-      file4.close()
+
+   results = rs.Results()
+   results.add(v_s[:], 'gs_lda_vks')
+   results.add(v_h[:], 'gs_lda_vh')
+   results.add(v_xc[:], 'gs_lda_vxc')
+   results.add(n[:], 'gs_lda_den')
+
+   if pm.run.save:
+      results.save(pm.output_dir+'/raw')
 
    if pm.run.time_dependence == True:
       for i in range(pm.sys.NE):
@@ -181,17 +178,14 @@ def main(parameters):
          v_xc_t[j,:] = XC(n_t[j,:])
 
       # Output results
-      file1 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'td_lda_vks.db', 'w') 
-      pickle.dump(v_s_t,file1)				
-      file1.close()
-      file2 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'td_lda_vxc.db', 'w') 	
-      pickle.dump(v_xc_t,file2)				
-      file2.close()
-      file3 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'td_lda_den.db', 'w') 
-      pickle.dump(n_t,file3)				
-      file3.close()
-      file4 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'td_lda_cur.db', 'w') 
-      pickle.dump(current,file4)				
-      file4.close()
-      print
+      results.add(v_s_t, 'td_lda_vks')
+      results.add(v_xc_t, 'td_lda_vxc')
+      results.add(n_t, 'td_lda_den')
+      results.add(current, 'td_lda_cur')
 
+      if pm.run.save:
+         l = ['td_lda_vks','td_lda_vxc','td_lda_den','td_lda_cur']
+         results.save(pm.output_dir+'/raw',list=l)
+
+      sprint.sprint('',1,pm.run.verbosity)
+   return results

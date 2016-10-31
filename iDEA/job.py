@@ -69,26 +69,27 @@ class Job(object):
         print('run name: ' + str(pm.run.name))
 
         # Execute required jobs
-        results = rs.Results()
+        self.results = rs.Results()
+        results = self.results
         # Execute required jobs
         if(pm.sys.NE == 1):
            if(pm.run.EXT == True):
               import SPiDEA
-              SPiDEA.main(pm)
+              results.add(SPiDEA.main(pm), name='EXT')
            if(pm.ext.RE == True):
               import RE
               results.add(RE.main(pm,'ext'), name='RE')
         elif(pm.sys.NE == 2):
            if(pm.run.EXT == True):
               import EXT2
-              EXT2.main(pm)
+              results.add(EXT2.main(pm), name='EXT')
            if(pm.ext.RE == True):
               import RE
               results.add(RE.main(pm,'ext'), name='RE')
         elif(pm.sys.NE == 3):
            if(pm.run.EXT == True):
               import EXT3
-              EXT3.main(pm)
+              results.add(EXT3.main(pm), name='EXT')
            if(pm.ext.RE == True):
               import RE
               results.add(RE.main(pm,'ext'), name='RE')
@@ -105,8 +106,7 @@ class Job(object):
 
         if(pm.run.LDA == True):
               import LDA
-              LDA.main(pm)
-
+              results.add(LDA.main(pm), name='LDA')
         if(pm.run.MLP == True):
               import MLP
               MLP.main(pm)
@@ -147,8 +147,6 @@ class Job(object):
             s += " Simply add the iDEA folder to your PATH variable to use ViDEO.py anywhere"
             sprint.sprint(s)
 
- 
-        self.results = results
         return results
 
     def save(self):

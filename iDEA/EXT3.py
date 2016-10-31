@@ -30,6 +30,7 @@ import numpy as np
 import scipy as sp
 import os
 import RE_Utilities
+import results as rs
 
 import scipy.misc as spmisc
 import scipy.special as spec
@@ -63,16 +64,14 @@ def EnergyEigenfunction(n):
 
 # Define potential array for all spacial points (3 electron)
 def Potential3(i,k,j,l):
-    V = np.zeros((pm.sys.grid,pm.sys.grid,pm.sys.grid))
     xk = -pm.sys.xmax + (k*pm.sys.deltax)
     xj = -pm.sys.xmax + (j*pm.sys.deltax)
     xl = -pm.sys.xmax + (l*pm.sys.deltax)
     inte = pm.sys.interaction_strength
     if (i == 0): 	
-        V[k,j,l] = pm.sys.v_ext(xk) + pm.sys.v_ext(xj) + pm.sys.v_ext(xl) + inte*(1.0/(np.abs(xk-xj) + pm.sys.acon)) + inte*(1.0/(np.abs(xl-xj) + pm.sys.acon)) + inte*(1.0/(np.abs(xk-xl) + pm.sys.acon))
+        return  pm.sys.v_ext(xk) + pm.sys.v_ext(xj) + pm.sys.v_ext(xl) + inte*(1.0/(np.abs(xk-xj) + pm.sys.acon)) + inte*(1.0/(np.abs(xl-xj) + pm.sys.acon)) + inte*(1.0/(np.abs(xk-xl) + pm.sys.acon))
     else:
-	V[k,j,l] = pm.sys.v_ext(xk) + pm.sys.v_ext(xj) + pm.sys.v_ext(xl) + inte*(1.0/(np.abs(xk-xj) + pm.sys.acon)) + inte*(1.0/(np.abs(xl-xj) + pm.sys.acon)) + inte*(1.0/(np.abs(xk-xl) + pm.sys.acon)) + pm.sys.v_pert(xk) + pm.sys.v_pert(xj) + pm.sys.v_pert(xl)
-    return V[k,j,l]
+	return  pm.sys.v_ext(xk) + pm.sys.v_ext(xj) + pm.sys.v_ext(xl) + inte*(1.0/(np.abs(xk-xj) + pm.sys.acon)) + inte*(1.0/(np.abs(xl-xj) + pm.sys.acon)) + inte*(1.0/(np.abs(xk-xl) + pm.sys.acon)) + pm.sys.v_pert(xk) + pm.sys.v_pert(xj) + pm.sys.v_pert(xl)
 
 # Builds the Cayley Matrix on the LHS (C1) of the matrix eigenproblem in Complex Time (t*=-it): C1=(I+H.dt/2)
 def Matrixdef(i,r):
@@ -85,9 +84,7 @@ def Matrixdef(i,r):
             k=0
             while (k < kmax):
                 jkl = Gind(k,j,l)
-                a=0;b=0;c=0;d=0;e=0;f=0
                 Mat[jkl,jkl] = 1.0 + (6.0*r) + (2.0*r*(deltax**2)*(Potential3(i,k,j,l)))
-                aa=Mat[jkl,jkl]
                 if (k<kmax-1):
                     if ((Gind(k+1,j,l) >= 0) and (Gind(k+1,j,l) < jmax**3)):
                         Mat[jkl,Gind(k+1,j,l)] = -r 
@@ -423,12 +420,6 @@ def CNsolveComplexTime():
     # Calculate denstiy
     density = 3.0*np.sum(np.sum(abs(Psi3Dcon[:,:,:])**2, axis=0), axis=0)*deltax**2
 
-    # Output ground state density
-    output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_2gs_ext_den.db','w')
-    pickle.dump(density,output_file)
-    output_file.close()
-    OutputPotential()
-
     # Dispose of matrices and terminate
     A = 0
     C = 0
@@ -571,6 +562,16 @@ def main(parameters):
 
     # Complex time evolution
     ground = CNsolveComplexTime()
+    potential = pm.sys.v_ext(np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid))
+
+    # Output ground state density
+    results = rs.Results()
+    results.add(ground,'gs_ext_den')
+    results.add(potential,'gs_ext_vxt')
+
+    if pm.run.save:
+       results.save(pm.output_dir+'/raw')
+
 
     # Real Time CN array initialisations
     if TD == True:
@@ -582,10 +583,9 @@ def main(parameters):
         Mat2 = sps.lil_matrix((jmax**3,jmax**3),dtype = np.cfloat)
         r = 0.0 + (1.0j)*(deltat/(4.0*(deltax**2)))
 
-    current_density = []
+        current_density = []
 
-    # Evolve throught real time
-    if TD == True:
+        # Evolve throught real time
     	CNsolveRealTime()
         Den = np.zeros((imax,jmax))
         for i in range(imax):     
@@ -596,18 +596,23 @@ def main(parameters):
         print   
 
         ground = Den.tolist().pop(0)
-        ProbPsiFile = open('outputs/' + str(pm.run.name) + '/' + 'raw/' + str(pm.run.name) + '_3td_ext_den.db','w')
-        pickle.dump(Den, ProbPsiFile)
-        ProbPsiFile.close()
-        current_File = open('outputs/' + str(pm.run.name) + '/' + 'raw/' + str(pm.run.name) + '_3td_ext_cur.db','w')
-        pickle.dump(current_density, current_File)
-        current_File.close()
+
+        results.add(Den,'td_ext_den')
+        results.add(current_density, 'td_ext_cur')
+
+        if pm.run.save:
+           l = ['td_ext_den','td_ext_cur']
+           results.save(pm.output_dir+'/raw',list=l)
+
     imax = 1
     CNsolveRealTime()
-    os.system('rm *.npy')
-    os.system('rm *.txt') 
-    ProbPsiFile = open('outputs/' + str(pm.run.name) + '/' + 'raw/' + str(pm.run.name) + '_3gs_ext_den.db','w')
-    pickle.dump(ground, ProbPsiFile)
-    ProbPsiFile.close()
-    OutputPotential()
+    #os.system('rm *.npy')
+    #os.system('rm *.txt') 
+
+    #ProbPsiFile = open('outputs/' + str(pm.run.name) + '/' + 'raw/' + str(pm.run.name) + '_3gs_ext_den.db','w')
+    #pickle.dump(ground, ProbPsiFile)
+    #ProbPsiFile.close()
+    #OutputPotential()
+
+    return results
 

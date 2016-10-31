@@ -8,25 +8,25 @@ class InputSection():
 
 ### run parameters
 run = InputSection()
-run.name = 'test1'           # Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
+run.name = 'test2'           # Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
 run.code_version = 0         # Version of iDEA to use (0: As downloaded off the git) (Global: 1.9.0)
 run.time_dependence = True   # whether to run time-dependent calculation
 run.verbosity = 'default'     # output verbosity ('low', 'default', 'high')
 run.save = True              # whether to save results to disk when they are generated
 
-run.EXT = False                     # Run Exact Many-Body calculation
+run.EXT = True                      # Run Exact Many-Body calculation
 run.NON = True                      # Run Non-Interacting approximation
 run.LDA = False                    # Run LDA approximation
 run.MLP = True                      # Run MLP approximation
 run.HF = False                     # Run Hartree-Fock approximation
 run.MBPT = False                   # Run Many-body pertubation theory
-run.LAN = True                     # Run Landauer approximation
+run.LAN = False                    # Run Landauer approximation
 
 
 
 ### system parameters
 sys = InputSection()
-sys.NE = 2                          # Number of electrons
+sys.NE = 3                          # Number of electrons
 sys.grid = 21                      # Number of grid points (must be odd)
 sys.xmax = 2.0 			# Size of the system
 sys.tmax = 0.1 			# Total real time

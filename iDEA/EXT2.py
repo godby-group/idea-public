@@ -28,12 +28,12 @@ import sprint
 import numpy as np
 import scipy as sp
 import RE_Utilities
-#import parameters as pm
 import scipy.sparse as sps
 import scipy.misc as spmisc
 import scipy.special as spec
 import scipy.sparse.linalg as spla
 import create_hamiltonian_coo as coo
+import results as rs
 
 # Takes every combination of the two electron indicies and creates a single unique index
 def Gind(j,k):
@@ -144,7 +144,7 @@ def InitialconI():
     return Psiarr[0,:]
 
 # Define function to turn array of compressed indexes into seperated indexes
-def PsiConverterI(Psiarr,i):
+def PsiConverterI(Psiarr):
     Psi2D = np.zeros((pm.sys.grid,pm.sys.grid), dtype = np.cfloat)
     mPsi2D = np.zeros((pm.sys.grid,pm.sys.grid))
     jk = 0
@@ -251,32 +251,6 @@ def antisym(N_x, retsize=False):
         return C_down, C_up, Nxs
     else:
         return C_down, C_up
-
-# Function to output the system's external potential
-def OutputPotential():
-    output_file1 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_2gs_ext_vxt.db','w')
-    potential = []
-    i = 0
-    while(i < pm.sys.grid):
-        potential.append(pm.sys.v_ext(float((i*deltax)-pm.sys.xmax)))
-        i = i + 1
-    pickle.dump(potential,output_file1)
-    output_file1.close()
-    if(pm.run.time_dependence == True):
-        potential2 = []
-        i = 0
-        while(i < pm.sys.grid):
-        	potential2.append(pm.sys.v_ext(float((i*deltax)-pm.sys.xmax)) + pm.sys.v_pert(float((i*deltax)-pm.sys.xmax)))
-        	i = i + 1
-        output_file2 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_2td_ext_vxt.db','w')
-        TDP = []
-        i = 0
-        while(i < pm.sys.imax):
-            TDP.append(potential2)
-            i = i + 1
-        pickle.dump(TDP,output_file2)
-        output_file2.close()
-    return
 
 # Function to calculate the current density
 def calculateCurrentDensity(total_td_density):
@@ -394,27 +368,10 @@ def CNsolveComplexTime():
         # Iterate
         i += 1
     
-    # Total Energy
-    output_file = open('outputs/' + str(pm.run.name) + '/data/' + str(pm.run.name) + '_2gs_ext_E.dat','w')
-    output_file.write(str(Ev))
-    output_file.close()
-
-    # Convert Psi
-    Psi2Dcon = PsiConverterI(Psiarr[1,:],i)
- 
-    # Calculate denstiy
-    density = np.sum(Psi2Dcon[:,:], axis=0)*deltax*2.0
-
-    # Output ground state density
-    output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_2gs_ext_den.db','w')
-    pickle.dump(density,output_file)
-    output_file.close()
-    OutputPotential()
-
     # Dispose of matrices and terminate
     A = 0
     C = 0
-    return Psiarr[1,:]
+    return Ev, Psiarr[1,:]
 
 # Function to iterate over real time
 def CNsolveRealTime(wavefunction):
@@ -529,22 +486,15 @@ def CNsolveRealTime(wavefunction):
     # Calculate current density
     current_density = calculateCurrentDensity(TDD_GS)
 
-    # Output time dependent density
-    output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_2td_ext_den.db','w')
-    pickle.dump(TDD,output_file)
-
-    # Output time dependent current density
-    output_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_2td_ext_cur.db','w')
-    pickle.dump(current_density,output_file)
-
     # Dispose of matrices and terminate
     A = 0
     C = 0
     sprint.sprint('',1,verbosity)
-    return
+    return TDD, current_density
 
 # Call this function to run iDEA-MB for 2 electrons
 def main(parameters):
+	
     # Use global variables
     global jmax,kmax,xmax,tmax,deltax,deltat,imax,verbosity,Psiarr,Rhv2,Psi2D,r,c_m,c_p,Nx_RM
     global cimax,cdeltat,ctol,rtol,TD,par
@@ -585,8 +535,20 @@ def main(parameters):
     r = 0.0 + (1.0)*(cdeltat/(4.0*(deltax**2))) 
 
     # Evolve throught complex time
-    wavefunction = CNsolveComplexTime() 
+    energy, wavefunction = CNsolveComplexTime() 
 
+    # Calculate denstiy and potential
+    density = np.sum(PsiConverterI(wavefunction), axis=0)*deltax*2.0
+    potential = pm.sys.v_ext(np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid))
+    
+    # Save ground state density, energy and external potential
+    results = rs.Results()
+    results.add(density,'gs_ext_den')
+    results.add(energy.real,'gs_ext_e')
+    results.add(potential,'gs_ext_vxt')
+    if(pm.run.save):
+        results.save(pm.output_dir + '/raw')
+        
     # Real Time array initialisations 
     if(pm.run.time_dependence == True):
         string = 'EXT: constructing arrays'
@@ -602,9 +564,14 @@ def main(parameters):
         deltat = tmax/(imax-1)
         deltax = pm.sys.deltax
         r = 0.0 + (1.0j)*(deltat/(4.0*(deltax**2)))
-        CNsolveRealTime(wavefunction)
-    if TD == False:
-       tmax = 0.0
-       imax = 1
-       deltat = 0.0
-
+        density, current_density = CNsolveRealTime(wavefunction)
+        potential = pm.sys.v_ext(np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)) + pm.sys.v_pert(np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid))
+        
+        # Save time-dependent density, energy and external potential
+        results.add(density,'td_ext_den')
+        results.add(current_density,'td_cur_e')
+        results.add(potential,'td_ext_vxt')
+        if(pm.run.save):
+            l = ['td_ext_den','td_cur_e','td_ext_vxt']
+            results.save(pm.output_dir + '/raw', list=l)
+    return results
