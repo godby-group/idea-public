@@ -81,15 +81,13 @@ def EnergyEigenfunction(n):
     return Psi
 
 # Define potential array for all spacial points
-def Potential(i,j,k):
-    V = np.zeros((pm.jmax,pm.kmax), dtype = np.cfloat)
-    xk = -pm.xmax + (k*pm.deltax)
-    xj = -pm.xmax + (j*pm.deltax)
+def Potential(i,j,k): 
     if (i == 0):
-        V[j,k] = pm.well(xk) + pm.well(xj) + pm.inte*(1.0/(abs(xk-xj) + pm.acon))
-    else:
-        V[j,k] = pm.well(xk) + pm.well(xj) + pm.inte*(1.0/(abs(xk-xj) + pm.acon)) + pm.petrb(xk) + pm.petrb(xj)
-    return V[j,k]
+        return V_ext_array[k] + V_ext_array[j] + pm.inte*V_coulomb_array[abs(j-k)]
+       # return pm.well(xk) + pm.well(xj) + pm.inte*(1.0/(abs(xk-xj) + pm.acon))
+    else:        
+        return V_ext_array[k] + V_ext_array[j] + pm.inte*V_coulomb_array[abs(j-k)] + V_pert_array[k] + V_pert_array[j]
+        #return pm.well(xk) + pm.well(xj) + pm.inte*(1.0/(abs(xk-xj) + pm.acon)) + pm.petrb(xk) + pm.petrb(xj)
 
 
 def create_hamiltonian_diagonals(i,r):
@@ -286,8 +284,8 @@ def OutputPotential():
         potential2 = []
         i = 0
         while(i < pm.grid):
-        	potential2.append(pm.well(float((i*deltax)-pm.xmax)) + pm.petrb(float((i*deltax)-pm.xmax)))
-        	i = i + 1
+                potential2.append(pm.well(float((i*deltax)-pm.xmax)) + pm.petrb(float((i*deltax)-pm.xmax)))
+                i = i + 1
         output_file2 = open('outputs/' + str(pm.run_name) + '/raw/' + str(pm.run_name) + '_2td_ext_vxt.db','w')
         TDP = []
         i = 0
@@ -353,62 +351,62 @@ def CNsolveComplexTime():
     # Perform iterations
     while (i < cimax):
 
-	# Begin timing the iteration
+        # Begin timing the iteration
         start = time.time()
         string = 'complex time = ' + str(i*cdeltat)
-	sprint.sprint(string,2,0,msglvl)
+        sprint.sprint(string,2,0,msglvl)
 
-	# Reduce the wavefunction
+        # Reduce the wavefunction
         if (i>=2):
             Psiarr[0,:]=Psiarr[1,:]
             Psiarr_RM = c_m*Psiarr[0,:]
 
-	# Construct vector b
-	if(par == 0):
-	    b_RM = C_RM*Psiarr_RM
-	else:
-	    b_RM = mkl.mkl_mvmultiply_c(C_RM.data,C_RM.indptr+1,C_RM.indices+1,1,Psiarr_RM,C_RM.shape[0],C_RM.indices.size)
+        # Construct vector b
+        if(par == 0):
+            b_RM = C_RM*Psiarr_RM
+        else:
+            b_RM = mkl.mkl_mvmultiply_c(C_RM.data,C_RM.indptr+1,C_RM.indices+1,1,Psiarr_RM,C_RM.shape[0],C_RM.indices.size)
 
-	# Solve Ax=b
-	Psiarr_RM,info = spla.cg(A_RM,b_RM,x0=Psiarr_RM,tol=ctol)
+        # Solve Ax=b
+        Psiarr_RM,info = spla.cg(A_RM,b_RM,x0=Psiarr_RM,tol=ctol)
 
-	# Expand the wavefunction
+        # Expand the wavefunction
         Psiarr[1,:] = c_p*Psiarr_RM
 
-	# Calculate the energy
+        # Calculate the energy
         Ev = Energy(Psiarr)
-	string = 'energy = ' + str(Ev)
-	sprint.sprint(string,2,0,msglvl)
+        string = 'energy = ' + str(Ev)
+        sprint.sprint(string,2,0,msglvl)
 
-	# Normalise the wavefunction
-	mag = (np.linalg.norm(Psiarr[1,:])*deltax)
+        # Normalise the wavefunction
+        mag = (np.linalg.norm(Psiarr[1,:])*deltax)
         Psiarr[1,:] = Psiarr[1,:]/mag
-	
-	# Stop timing the iteration
-	finish = time.time()
+        
+        # Stop timing the iteration
+        finish = time.time()
         string = 'time to Complete Step: ' + str(finish-start)
-	sprint.sprint(string,2,0,msglvl)
+        sprint.sprint(string,2,0,msglvl)
 
-	# Test for convergance
-	wf_con = np.linalg.norm(Psiarr[0,:]-Psiarr[1,:])
-	string = 'wave function convergence: ' + str(wf_con)
-	sprint.sprint(string,2,0,msglvl)
-	string = 'EXT: ' + 't = ' + str(i*cdeltat) + ', convergence = ' + str(wf_con)
+        # Test for convergance
+        wf_con = np.linalg.norm(Psiarr[0,:]-Psiarr[1,:])
+        string = 'wave function convergence: ' + str(wf_con)
+        sprint.sprint(string,2,0,msglvl)
+        string = 'EXT: ' + 't = ' + str(i*cdeltat) + ', convergence = ' + str(wf_con)
         sprint.sprint(string,1,1,msglvl)
-	if(i>1):
-	    e_con = old_energy - Ev
-	    string = 'energy convergence: ' + str(e_con)
-	    sprint.sprint(string,2,0,msglvl)
-	    if(e_con < ctol*10.0 and wf_con < ctol*10.0):
-		print
-	        string = 'EXT: ground state converged' 
-		sprint.sprint(string,1,0,msglvl)
+        if(i>1):
+            e_con = old_energy - Ev
+            string = 'energy convergence: ' + str(e_con)
+            sprint.sprint(string,2,0,msglvl)
+            if(e_con < ctol*10.0 and wf_con < ctol*10.0):
+                print
+                string = 'EXT: ground state converged' 
+                sprint.sprint(string,1,0,msglvl)
                 string = 'ground state converged' 
-		sprint.sprint(string,2,0,msglvl)
-	        i = cimax
-	old_energy = copy.copy(Ev)
+                sprint.sprint(string,2,0,msglvl)
+                i = cimax
+        old_energy = copy.copy(Ev)
         string = '---------------------------------------------------'
-	sprint.sprint(string,2,0,msglvl)
+        sprint.sprint(string,2,0,msglvl)
 
         # Iterate
         i += 1
@@ -486,39 +484,39 @@ def CNsolveRealTime(wavefunction):
 
     while (i <= imax):
 
-	# Begin timing the iteration
+        # Begin timing the iteration
         start = time.time()
-	string = 'real time = ' + str(i*deltat) + '/' + str((imax-1)*deltat)
-	sprint.sprint(string,2,0,msglvl)
+        string = 'real time = ' + str(i*deltat) + '/' + str((imax-1)*deltat)
+        sprint.sprint(string,2,0,msglvl)
 
-	# Reduce the wavefunction
+        # Reduce the wavefunction
         if (i>=2):
             Psiarr[0,:] = Psiarr[1,:]
             Psiarr_RM = c_m*Psiarr[0,:]
 
         # Construct the vector b
-	b = C*Psiarr[0,:]
+        b = C*Psiarr[0,:]
         if(par == 0):
-	    b_RM = C_RM*Psiarr_RM
-	else:
-	    b_RM = mkl.mkl_mvmultiply_c(C_RM.data,C_RM.indptr+1,C_RM.indices+1,1,Psiarr_RM,C_RM.shape[0],C_RM.indices.size)
+            b_RM = C_RM*Psiarr_RM
+        else:
+            b_RM = mkl.mkl_mvmultiply_c(C_RM.data,C_RM.indptr+1,C_RM.indices+1,1,Psiarr_RM,C_RM.shape[0],C_RM.indices.size)
 
-	# Solve Ax=b
-	if(par == 0):
-	    Psiarr_RM,info = spla.cg(A_RM,b_RM,x0=Psiarr_RM,tol=rtol)
-	else:
-	    b1, b2 = mkl.mkl_split(b_RM,len(b_RM))
-	    bf = np.append(b1,b2)
-	    if(i == 1):
-		xf = bf
-	    xf = mkl.mkl_isolve(Af.data,Af.indptr+1,Af.indices+1,1,bf,xf,Af.shape[0],Af.indices.size)
-	    x1, x2 = np.split(xf,2)
-	    Psiarr_RM = mkl.mkl_comb(x1,x2,len(x1))
+        # Solve Ax=b
+        if(par == 0):
+            Psiarr_RM,info = spla.cg(A_RM,b_RM,x0=Psiarr_RM,tol=rtol)
+        else:
+            b1, b2 = mkl.mkl_split(b_RM,len(b_RM))
+            bf = np.append(b1,b2)
+            if(i == 1):
+                xf = bf
+            xf = mkl.mkl_isolve(Af.data,Af.indptr+1,Af.indices+1,1,bf,xf,Af.shape[0],Af.indices.size)
+            x1, x2 = np.split(xf,2)
+            Psiarr_RM = mkl.mkl_comb(x1,x2,len(x1))
 
         # Expand the wavefunction
-	Psiarr[1,:] = c_p*Psiarr_RM
+        Psiarr[1,:] = c_p*Psiarr_RM
 
-	# Convert the wavefunction
+        # Convert the wavefunction
         Psi2Dcon = PsiConverterR(Psiarr[1,:])
 
         # Calculate denstiy
@@ -526,23 +524,23 @@ def CNsolveRealTime(wavefunction):
         TDD.append(density)
         TDD_GS.append(density)
 
-	# Stop timing the iteration
-	finish = time.time()
+        # Stop timing the iteration
+        finish = time.time()
         string = 'Time to Complete Step: ' + str(finish-start)
-	sprint.sprint(string,2,0,msglvl)
+        sprint.sprint(string,2,0,msglvl)
 
-	# Print to screen
+        # Print to screen
         string = 'residual: ' + str(np.linalg.norm(A*Psiarr[1,:]-b))
-	sprint.sprint(string,2,0,msglvl)
-	normal = np.sum(np.absolute(Psiarr[1,:])**2)*(deltax**2)
+        sprint.sprint(string,2,0,msglvl)
+        normal = np.sum(np.absolute(Psiarr[1,:])**2)*(deltax**2)
         string = 'normalisation: ' + str(normal)
-	sprint.sprint(string,2,0,msglvl)
-	string = 'EXT: ' + 't = ' + str(i*deltat) + ', normalisation = ' + str(normal)
+        sprint.sprint(string,2,0,msglvl)
+        string = 'EXT: ' + 't = ' + str(i*deltat) + ', normalisation = ' + str(normal)
         sprint.sprint(string,1,1,msglvl)
         string = '---------------------------------------------------'
-	sprint.sprint(string,2,0,msglvl)
+        sprint.sprint(string,2,0,msglvl)
 
-	# Iterate
+        # Iterate
         i += 1
 
     # Calculate current density
@@ -567,7 +565,7 @@ def main():
 
     # Use global variables
     global jmax,kmax,xmax,tmax,deltax,deltat,imax,msglvl,Psiarr,Rhv2,Psi2D,r,c_m,c_p,Nx_RM
-
+    global V_ext_array, V_pert_array, V_coulomb_array
     # Construct reduction and expansion matrices
     c_m, c_p, Nx_RM = antisym(jmax, True)
 
@@ -579,7 +577,16 @@ def main():
     Rhv2 = np.zeros((jmax**2), dtype = np.cfloat)
     Psi2D = np.zeros((jmax,kmax), dtype = np.cfloat)
     r = 0.0 + (1.0)*(cdeltat/(4.0*(deltax**2))) 
+        
+    x_points = np.linspace(-pm.xmax, pm.xmax, pm.grid)
 
+    V_ext_array = pm.well(x_points)
+
+    V_pert_array = pm.petrb(x_points)
+
+    x_points_tmp = np.linspace(0.0, 2*pm.xmax, pm.grid)
+
+    V_coulomb_array = 1.0/(pm.acon + x_points_tmp)
     # Evolve throught complex time
     wavefunction = CNsolveComplexTime() 
 
