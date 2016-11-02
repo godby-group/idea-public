@@ -6,8 +6,8 @@ Installation requirements
 -------------------------
 
  * `Python <http://www.python.org>`_ 2.7 or later
- * `numpy <http://www.numpy.org>`_ ... or later
- * `scipy <http://www.scipy.org>`_ ... or later
+ * `numpy <http://www.numpy.org>`_ 1.10 or later
+ * `scipy <http://www.scipy.org>`_ 0.17 or later
  * *(optional)* Parallel execution requires the 
    `Intel MKL  <https://software.intel.com/en-us/intel-mkl>`_ 11.3 or later
  * *(optional)* Generating the documentation requires
@@ -18,17 +18,19 @@ Installing iDEA
 
 .. code-block:: bash
 
-   scp -r user@rwgu1.york.ac.uk:~jw1294/iDEAL .
-   cd iDEAL
+   git clone user@rwgu1.york.ac.uk:~jw1294/iDEAL .
+   git checkout v2.0  # move to current development branch
    # add current working directory to PYTHONPATH
-   mycwd=`pwd`
-   echo "export PYTHONPATH=\$PYTHONPATH:$mycwd" >> ~/.bashrc
+   echo "export PYTHONPATH=\$PYTHONPATH:`pwd`" >> ~/.bashrc
+
+   cd iDEA
+   make  # makes Fortran MKL libraries
 
 Generating documentation
 ------------------------
 
 .. code-block:: bash
 
-   cd iDEAL/doc
-   bash apidoc.sh    # parses iDEA python modules
-   make html         # builds HTML documentation
+   cd doc
+   # build documentation in doc/_build/html
+   bash make.sh  
