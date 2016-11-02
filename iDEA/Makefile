@@ -1,5 +1,6 @@
 # Set up environment variables for proper architecture
-include make_rwgu.sys
+#include make_rwgu.sys
+include make_macbook.sys
 
 ###### Targets
 default: all

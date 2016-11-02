@@ -29,11 +29,10 @@ class Results(object):
 
     @staticmethod
     def label(shortname):
-        """returns full label for shortname of result.
+        r""" returns full label for shortname of result.
 
-        This refers to shortnames used for 1d quantities
-        saved by iDEA.
-        E.g. 'non_den' => r'non-interacting $\rho$'
+        Expand shortname used for 1d quantities saved by iDEA.
+        E.g. 'non_den' => 'non-interacting $\rho$'
         """
         m, l = shortname.split('_')
         s  = "{} ({})".format(Results.quantity_dict[l], Results.method_dict[m])

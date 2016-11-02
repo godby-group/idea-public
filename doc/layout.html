@@ -1,0 +1,9 @@
+{# Extending the theme's layout #}
+{% extends "!layout.html" %}
+{# Adding custom CSS. #}
+{% set css_files = css_files + ['_static/style.css'] %}
+
+{% block document %}
+ <div class="logo"></div>
+ {{ super() }}
+{% endblock %}
