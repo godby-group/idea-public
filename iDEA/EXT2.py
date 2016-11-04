@@ -61,15 +61,13 @@ def EnergyEigenfunction(n):
 
 # Define potential array for all spacial points
 def Potential(i,j,k):
-    V = np.zeros((pm.sys.grid,pm.sys.grid), dtype = np.cfloat)
     xk = -pm.sys.xmax + (k*pm.sys.deltax)
     xj = -pm.sys.xmax + (j*pm.sys.deltax)
     inte = pm.sys.interaction_strength
     if (i == 0):
-        V[j,k] = pm.sys.v_ext(xk) + pm.sys.v_ext(xj) + inte*(1.0/(abs(xk-xj) + pm.sys.acon))
+        return pm.sys.v_ext(xk) + pm.sys.v_ext(xj) + inte*(1.0/(abs(xk-xj) + pm.sys.acon))
     else:
-        V[j,k] = pm.sys.v_ext(xk) + pm.sys.v_ext(xj) + inte*(1.0/(abs(xk-xj) + pm.sys.acon)) + pm.sys.v_pert(xk) + pm.sys.v_pert(xj)
-    return V[j,k]
+        return pm.sys.v_ext(xk) + pm.sys.v_ext(xj) + inte*(1.0/(abs(xk-xj) + pm.sys.acon)) + pm.sys.v_pert(xk) + pm.sys.v_pert(xj)
 
 
 def create_hamiltonian_diagonals(i,r):
@@ -189,6 +187,7 @@ def Energy(Psi):
 
 # Function to construct the real matrix Af
 def ConstructAf(A):
+    import mkl
     A1_dat, A2_dat = mkl.mkl_split(A.data,len(A.data))
     A.data = A1_dat
     A1 = copy.copy(A)
@@ -308,62 +307,62 @@ def CNsolveComplexTime():
     # Perform iterations
     while (i < cimax):
 
-	# Begin timing the iteration
+        # Begin timing the iteration
         start = time.time()
         string = 'complex time = ' + str(i*cdeltat)
-	sprint.sprint(string,0,verbosity)
+        sprint.sprint(string,0,verbosity)
 
-	# Reduce the wavefunction
+        # Reduce the wavefunction
         if (i>=2):
             Psiarr[0,:]=Psiarr[1,:]
             Psiarr_RM = c_m*Psiarr[0,:]
 
-	# Construct vector b
-	if(par == 0):
-	    b_RM = C_RM*Psiarr_RM
-	else:
-	    b_RM = mkl.mkl_mvmultiply_c(C_RM.data,C_RM.indptr+1,C_RM.indices+1,1,Psiarr_RM,C_RM.shape[0],C_RM.indices.size)
+        # Construct vector b
+        if(par == 0):
+            b_RM = C_RM*Psiarr_RM
+        else:
+            b_RM = mkl.mkl_mvmultiply_c(C_RM.data,C_RM.indptr+1,C_RM.indices+1,1,Psiarr_RM,C_RM.shape[0],C_RM.indices.size)
 
-	# Solve Ax=b
-	Psiarr_RM,info = spla.cg(A_RM,b_RM,x0=Psiarr_RM,tol=ctol)
+        # Solve Ax=b
+        Psiarr_RM,info = spla.cg(A_RM,b_RM,x0=Psiarr_RM,tol=ctol)
 
-	# Expand the wavefunction
+        # Expand the wavefunction
         Psiarr[1,:] = c_p*Psiarr_RM
 
-	# Calculate the energy
+        # Calculate the energy
         Ev = Energy(Psiarr)
-	string = 'energy = ' + str(Ev)
-	sprint.sprint(string,0,verbosity)
+        string = 'energy = ' + str(Ev)
+        sprint.sprint(string,0,verbosity)
 
-	# Normalise the wavefunction
-	mag = (np.linalg.norm(Psiarr[1,:])*deltax)
+        # Normalise the wavefunction
+        mag = (np.linalg.norm(Psiarr[1,:])*deltax)
         Psiarr[1,:] = Psiarr[1,:]/mag
-	
-	# Stop timing the iteration
-	finish = time.time()
+        
+        # Stop timing the iteration
+        finish = time.time()
         string = 'time to Complete Step: ' + str(finish-start)
-	sprint.sprint(string,0,verbosity)
+        sprint.sprint(string,0,verbosity)
 
-	# Test for convergance
-	wf_con = np.linalg.norm(Psiarr[0,:]-Psiarr[1,:])
-	string = 'wave function convergence: ' + str(wf_con)
-	sprint.sprint(string,0,verbosity)
-	string = 'EXT: ' + 't = ' + str(i*cdeltat) + ', convergence = ' + str(wf_con)
+        # Test for convergance
+        wf_con = np.linalg.norm(Psiarr[0,:]-Psiarr[1,:])
+        string = 'wave function convergence: ' + str(wf_con)
+        sprint.sprint(string,0,verbosity)
+        string = 'EXT: ' + 't = ' + str(i*cdeltat) + ', convergence = ' + str(wf_con)
         sprint.sprint(string,1,verbosity,newline=False)
-	if(i>1):
-	    e_con = old_energy - Ev
-	    string = 'energy convergence: ' + str(e_con)
-	    sprint.sprint(string,0,verbosity)
-	    if(e_con < ctol*10.0 and wf_con < ctol*10.0):
-		print
-	        string = 'EXT: ground state converged' 
-		sprint.sprint(string,1,verbosity)
+        if(i>1):
+            e_con = old_energy - Ev
+            string = 'energy convergence: ' + str(e_con)
+            sprint.sprint(string,0,verbosity)
+            if(e_con < ctol*10.0 and wf_con < ctol*10.0):
+                print
+                string = 'EXT: ground state converged' 
+                sprint.sprint(string,1,verbosity)
                 string = 'ground state converged' 
-		sprint.sprint(string,0,verbosity)
-	        i = cimax
-	old_energy = copy.copy(Ev)
+                sprint.sprint(string,0,verbosity)
+                i = cimax
+        old_energy = copy.copy(Ev)
         string = '---------------------------------------------------'
-	sprint.sprint(string,0,verbosity)
+        sprint.sprint(string,0,verbosity)
 
         # Iterate
         i += 1
@@ -424,39 +423,39 @@ def CNsolveRealTime(wavefunction):
 
     while (i <= imax):
 
-	# Begin timing the iteration
+        # Begin timing the iteration
         start = time.time()
-	string = 'real time = ' + str(i*deltat) + '/' + str((imax-1)*deltat)
-	sprint.sprint(string,0,verbosity)
+        string = 'real time = ' + str(i*deltat) + '/' + str((imax-1)*deltat)
+        sprint.sprint(string,0,verbosity)
 
-	# Reduce the wavefunction
+        # Reduce the wavefunction
         if (i>=2):
             Psiarr[0,:] = Psiarr[1,:]
             Psiarr_RM = c_m*Psiarr[0,:]
 
         # Construct the vector b
-	b = C*Psiarr[0,:]
+        b = C*Psiarr[0,:]
         if(par == 0):
-	    b_RM = C_RM*Psiarr_RM
-	else:
-	    b_RM = mkl.mkl_mvmultiply_c(C_RM.data,C_RM.indptr+1,C_RM.indices+1,1,Psiarr_RM,C_RM.shape[0],C_RM.indices.size)
+            b_RM = C_RM*Psiarr_RM
+        else:
+            b_RM = mkl.mkl_mvmultiply_c(C_RM.data,C_RM.indptr+1,C_RM.indices+1,1,Psiarr_RM,C_RM.shape[0],C_RM.indices.size)
 
-	# Solve Ax=b
-	if(par == 0):
-	    Psiarr_RM,info = spla.cg(A_RM,b_RM,x0=Psiarr_RM,tol=rtol)
-	else:
-	    b1, b2 = mkl.mkl_split(b_RM,len(b_RM))
-	    bf = np.append(b1,b2)
-	    if(i == 1):
-		xf = bf
-	    xf = mkl.mkl_isolve(Af.data,Af.indptr+1,Af.indices+1,1,bf,xf,Af.shape[0],Af.indices.size)
-	    x1, x2 = np.split(xf,2)
-	    Psiarr_RM = mkl.mkl_comb(x1,x2,len(x1))
+        # Solve Ax=b
+        if(par == 0):
+            Psiarr_RM,info = spla.cg(A_RM,b_RM,x0=Psiarr_RM,tol=rtol)
+        else:
+            b1, b2 = mkl.mkl_split(b_RM,len(b_RM))
+            bf = np.append(b1,b2)
+            if(i == 1):
+                xf = bf
+            xf = mkl.mkl_isolve(Af.data,Af.indptr+1,Af.indices+1,1,bf,xf,Af.shape[0],Af.indices.size)
+            x1, x2 = np.split(xf,2)
+            Psiarr_RM = mkl.mkl_comb(x1,x2,len(x1))
 
         # Expand the wavefunction
-	Psiarr[1,:] = c_p*Psiarr_RM
+        Psiarr[1,:] = c_p*Psiarr_RM
 
-	# Convert the wavefunction
+        # Convert the wavefunction
         Psi2Dcon = PsiConverterR(Psiarr[1,:])
 
         # Calculate denstiy
@@ -464,23 +463,23 @@ def CNsolveRealTime(wavefunction):
         TDD.append(density)
         TDD_GS.append(density)
 
-	# Stop timing the iteration
-	finish = time.time()
+        # Stop timing the iteration
+        finish = time.time()
         string = 'Time to Complete Step: ' + str(finish-start)
-	sprint.sprint(string,0,verbosity)
+        sprint.sprint(string,0,verbosity)
 
-	# Print to screen
+        # Print to screen
         string = 'residual: ' + str(np.linalg.norm(A*Psiarr[1,:]-b))
-	sprint.sprint(string,0,verbosity)
-	normal = np.sum(np.absolute(Psiarr[1,:])**2)*(deltax**2)
+        sprint.sprint(string,0,verbosity)
+        normal = np.sum(np.absolute(Psiarr[1,:])**2)*(deltax**2)
         string = 'normalisation: ' + str(normal)
-	sprint.sprint(string,0,verbosity)
-	string = 'EXT: ' + 't = ' + str(i*deltat) + ', normalisation = ' + str(normal)
+        sprint.sprint(string,0,verbosity)
+        string = 'EXT: ' + 't = ' + str(i*deltat) + ', normalisation = ' + str(normal)
         sprint.sprint(string,1,verbosity,newline=False)
         string = '---------------------------------------------------'
-	sprint.sprint(string,0,verbosity)
+        sprint.sprint(string,0,verbosity)
 
-	# Iterate
+        # Iterate
         i += 1
 
     # Calculate current density
@@ -494,7 +493,7 @@ def CNsolveRealTime(wavefunction):
 
 # Call this function to run iDEA-MB for 2 electrons
 def main(parameters):
-	
+        
     # Use global variables
     global jmax,kmax,xmax,tmax,deltax,deltat,imax,verbosity,Psiarr,Rhv2,Psi2D,r,c_m,c_p,Nx_RM
     global cimax,cdeltat,ctol,rtol,TD,par

@@ -1,11 +1,12 @@
 # Set up environment variables for proper architecture
-#include make_rwgu.sys
-include make_macbook.sys
+include make_rwgu.sys   
+#include make_macbook.sys
 
 ###### Targets
-default: all
+default: parallel
 
-all: mkl RE_Utilities create_hamiltonian_coo
+parallel: mkl RE_Utilities create_hamiltonian_coo
+serial: RE_Utilities
 
 %::  %.f90
 	f2py -c --fcompiler=$(FC) $(LFLAGS) -m $@ $< --f90flags='$(FCFLAGS)' -lgomp --opt='$(OPTFLAGS)'

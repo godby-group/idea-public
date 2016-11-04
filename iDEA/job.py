@@ -39,8 +39,7 @@ class Job(object):
                     pass
                 else: raise
 
-        # Note: this is not being used now...
-        version = 'ver' + str(pm.run.code_version)
+        #version = 'ver' + str(pm.run.code_version)
 
         output_dirs = ['data', 'raw', 'plots', 'animations']
         for d in output_dirs:

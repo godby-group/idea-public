@@ -9,5 +9,3 @@ inp.check()
 job = Job(inp)
 # run job
 job.run()
-## save results
-#job.save()

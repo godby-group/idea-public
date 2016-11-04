@@ -1,4 +1,5 @@
 ## Ubuntu using ifort and MKL
+# Before making, do
 # . /phys/sfw/intel/current/bin/compilervars.sh intel64
 FC = intelem
 FCFLAGS = -fast

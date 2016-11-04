@@ -4,6 +4,10 @@ import numpy as np
 import importlib
 import os
 
+
+class InputSection():
+   pass
+
 class Input(object):
 
     def __init__(self):
