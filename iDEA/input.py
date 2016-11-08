@@ -3,16 +3,174 @@
 import numpy as np
 import importlib
 import os
+import pprint
+
+def input_string(key,value):
+    """Prints a line of the input file"""
+    if isinstance(value, basestring):
+        s = "{} = '{}'\n".format(key, value)
+    else:
+        s = "{} = {}\n".format(key, value)
+    return s
 
 
 class InputSection():
-   pass
+   """Generic section of input file"""
+
+   def __str__(self):
+       """Print variables of section and their values"""
+       s = ""
+       v = vars(self)
+       for key,value in v.iteritems():
+           s += input_string(key, value)
+       return s
+
+
+class SystemSection(InputSection):
+    """System section of input file
+
+    Includes some derived quantities.
+    """
+
+    @property
+    def deltax(self):
+        """Spacing of real space grid"""
+        return 2.0*self.xmax/(self.grid-1)
+
+    @property
+    def deltat(self):
+        """Spacing of temporal grid"""
+        return 2.0*self.tmax/(self.imax-1)
+
+    @property
+    def grid_points(self):
+        """Real space grid"""
+        return np.linspace(-self.xmax,self.xmax,self.grid)
+
+
 
 class Input(object):
 
     def __init__(self):
         """Sets default values of some properties."""
-        pass
+        self.filename = ''
+
+        ### run parameters
+        self.run = InputSection()
+        run = self.run
+        run.name = 'run_name'       #: Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
+        run.time_dependence = False #: whether to run time-dependent calculation
+        run.verbosity = 'default'   #: output verbosity ('low', 'default', 'high')
+        run.save = True             #: whether to save results to disk when they are generated
+        run.EXT = False             #: Run Exact Many-Body calculation
+        run.NON = False             #: Run Non-Interacting approximation
+        run.LDA = False             #: Run LDA approximation
+        run.MLP = False             #: Run MLP approximation
+        run.HF = False              #: Run Hartree-Fock approximation
+        run.MBPT = False            #: Run Many-body pertubation theory
+        run.LAN = False             #: Run Landauer approximation
+        
+        ### system parameters
+        self.sys = SystemSection()
+        sys = self.sys
+        sys.NE = 2                  #: Number of electrons
+        sys.grid = 201              #: Number of grid points (must be odd)
+        sys.xmax = 10.0             #: Size of the system
+        sys.tmax = 1.0              #: Total real time
+        sys.imax = 1000             #: Number of real time iterations
+        sys.acon = 1.0              #: Smoothing of the Coloumb interaction
+        sys.interaction_strength = 1#: Scales the strength of the Coulomb interaction
+        sys.im = 0                  #: Use imaginary potentials
+        
+        def v_ext(x):
+            """Initial external potential"""
+            return 0.5*(0.25**2)*(x**2)
+        sys.v_ext = v_ext
+        
+        def v_pert(x): 
+            """Time-dependent perturbation potential
+        
+            Switched on at t=0.
+            """
+            y = -0.1*x
+            if(sys.im == 1):
+                return y + im_petrb(x)
+            return y
+        sys.v_pert = v_pert
+        
+        def v_pert_im(x):                                        
+            """Imaginary perturbation potential
+            
+            Switched on at t=0.
+            """
+            strength = 1.0                                      
+            length_from_edge = 5.0                              
+            I = sys.xmax - length_from_edge                         
+            if(-sys.xmax < x and x < -I) or (sys.xmax > x and x > I):   
+                return -strength*1.0j                           
+            return 0.0 
+        sys.v_pert_im = v_pert_im                                          
+        
+        
+        ### Exact parameters
+        self.ext = InputSection()
+        ext = self.ext
+        ext.par = 0            #: Use parallelised solver and multiplication (0: serial, 1: parallel) Note: Recommend using parallel for large runs
+        ext.ctol = 1e-14       #: Tolerance of complex time evolution (Recommended: 1e-14)
+        ext.rtol = 1e-14       #: Tolerance of real time evolution (Recommended: 1e-14)
+        ext.ctmax = 10000.0    #: Total complex time
+        ext.cimax = int(0.1*(ext.ctmax/sys.deltat)+1)     #: Complex iterations (DERIVED)
+        ext.cdeltat = ext.ctmax/(ext.cimax-1)             #: Complex Time Grid spacing (DERIVED)
+        ext.RE = False         #: Reverse engineer many-body density
+        
+        
+        ### Non-Interacting approximation parameters
+        self.non = InputSection()
+        non = self.non
+        non.rtol = 1e-14        #: Tolerance of real time evolution (Recommended: 1e-14)
+        non.RE = False          #: Reverse engineer non-interacting density
+        
+        ### LDA parameters
+        self.lda = InputSection()
+        lda = self.lda
+        lda.NE = 2              #: Number of electrons used in construction of the LDA
+        lda.mix = 0.0           #: Self consistent mixing parameter (default 0, only use if doesn't converge)
+        lda.tol = 1e-12         #: Self-consistent convergence tolerance
+        
+        ### MLP parameters
+        self.mlp = InputSection()
+        mlp = self.mlp
+        mlp.f = 'e'             #: f mixing parameter (if f='e' the weight is optimzed with the elf)
+        mlp.tol = 1e-12         #: Self-consistent convergence tollerance
+        mlp.mix = 0.0           #: Self consistent mixing parameter (default 0, only use if doesn't converge)
+        mlp.reference_potential = 'non'      #: Choice of refernce potential for mixing with the SOA
+        
+        ### HF parameters
+        self.hf = InputSection()
+        hf = self.hf
+        hf.fock = 1             #: Include Fock term (0 = Hartree approximation, 1 = Hartree-Fock approximation)
+        hf.con = 1e-12          #: Tolerance
+        hf.nu = 0.9             #: Mixing term
+        hf.RE = False           #: Reverse engineer hf density
+        
+        ### MBPT parameters
+        self.mbpt = InputSection()
+        mbpt = self.mbpt
+        mbpt.starting_orbitals = 'non'  #: Orbitals to constuct G0 from
+        mbpt.tau_max = 40.0             #: Maximum value of imaginary time
+        mbpt.tau_N = 800                #: Number of imaginary time points (must be even)
+        mbpt.number_empty = 25          #: Number of unoccupied orbitals to use
+        mbpt.self_consistent = 0        #: (0 = one-shot, 1 = fully self-consistent)
+        mbpt.update_w = True            #: Update screening
+        mbpt.tolerance = 1e-12          #: Tolerance of the self-consistent algorithm
+        mbpt.max_iterations = 100       #: Maximum number of iterations in full self-consistency
+        mbpt.RE = False                 #: Reverse engineer mbpt density
+        
+        # LAN parameters
+        self.lan = InputSection()
+        lan = self.lan
+        lan.start = 'non'               #: Ground-state Kohn-Sham potential to be perturbed
+
 
     def check(self):
         """Checks validity of input parameters."""
@@ -23,6 +181,19 @@ class Input(object):
             if pm.run.MBPT == True:
                 sprint.sprint('MBPT: Warning - time-dependence not implemented!')
 
+
+    def __str__(self):
+        """Prints different sections in input file"""
+        s = ""
+        v = vars(self)
+        for key, value in v.iteritems():
+            if isinstance(value, InputSection):
+                s += "### {} section\n".format(key)
+                s += str(value)
+                s += "\n"
+            else:
+                s += input_string(key,value)
+        return s
 
     @classmethod
     def from_python_file(self,filename):
@@ -48,7 +219,7 @@ class Input(object):
         self.filename = filename
 
     ##########################################
-    ### TODO: Here add derived parameters ####
+    #######   Here add derived parameters ####
     ##########################################
 
     @property
@@ -56,4 +227,3 @@ class Input(object):
         """Returns full path to output directory
         """
         return 'outputs/{}'.format(self.run.name)
-

@@ -9,7 +9,7 @@ run.time_dependence = False #: whether to run time-dependent calculation
 run.verbosity = 'default'   #: output verbosity ('low', 'default', 'high')
 run.save = True             #: whether to save results to disk when they are generated
 
-run.EXT = True              #: Run Exact Many-Body calculation
+run.EXT = False             #: Run Exact Many-Body calculation
 run.NON = True              #: Run Non-Interacting approximation
 run.LDA = False             #: Run LDA approximation
 run.MLP = False             #: Run MLP approximation
@@ -22,7 +22,7 @@ run.LAN = False             #: Run Landauer approximation
 ### system parameters
 sys = SystemSection()
 sys.NE = 2                  #: Number of electrons
-sys.grid = 201              #: Number of grid points (must be odd)
+sys.grid = 401              #: Number of grid points (must be odd)
 sys.xmax = 10.0             #: Size of the system
 sys.tmax = 1.0              #: Total real time
 sys.imax = 1000             #: Number of real time iterations

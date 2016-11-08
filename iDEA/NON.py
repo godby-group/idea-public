@@ -31,7 +31,6 @@ import results as rs
 
 # Function to construct the kinetic energy K
 def constructK():
-   xgrid = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
    K = -0.5*sps.diags([1, -2, 1],[-1, 0, 1], shape=(pm.sys.grid,pm.sys.grid), format='csr')/(pm.sys.deltax**2)
    return K
 
@@ -106,7 +105,7 @@ def main(parameters):
    H = K + V
 
    # Compute first N wavefunctions
-   print 'NON: computing ground state density'
+   sprint.sprint('NON: computing ground state density',1,pm.run.verbosity)
    solution = spsla.eigs(H, k=pm.sys.NE, which='SR', maxiter=1000000)
    energies = solution[0] 
    wavefunctions = solution[1]
@@ -129,7 +128,7 @@ def main(parameters):
    energy = 0.0
    for i in range(0,pm.sys.NE):
       energy += energies[i]
-   print('NON: ground state energy: ' + str(energy.real))
+   sprint.sprint('NON: ground state energy: ' + str(energy.real),1,pm.run.verbosity)
 
    # Save ground state density and energy 
    results = rs.Results()
@@ -181,10 +180,10 @@ def main(parameters):
 
          # Add to densities
          td_densities.append(densities)
-         print
+         sprint.sprint('',1,pm.run.verbosity)
   
       # Calculate total density
-      print('NON: computing time dependent density')
+      sprint.sprint('NON: computing time dependent density',1,pm.run.verbosity)
       total_density = []
       i = 0
       while(i < pm.sys.imax):
@@ -199,7 +198,7 @@ def main(parameters):
 
       # Calculate current density
       current_density = calculateCurrentDensity(total_density_gs)
-      print
+      sprint.sprint('',1,pm.run.verbosity)
 
       # Save time-dependent density and current
       results.add(np.asarray(total_density),'td_non_den')
