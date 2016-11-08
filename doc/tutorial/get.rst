@@ -34,3 +34,11 @@ Generating documentation
    cd doc
    # build documentation in doc/_build/html
    bash make.sh  
+
+Run unit tests
+--------------
+
+.. code-block:: bash
+
+   # run this in the base directory
+   python -m unittest discover

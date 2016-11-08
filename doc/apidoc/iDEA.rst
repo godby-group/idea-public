@@ -132,6 +132,14 @@ iDEA.sprint module
     :undoc-members:
     :show-inheritance:
 
+iDEA.test_NON module
+--------------------
+
+.. automodule:: iDEA.test_NON
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 
 Module contents
 ---------------
