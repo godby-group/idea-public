@@ -67,10 +67,25 @@ class Job(object):
         splash.draw(pm.run.verbosity)
         sprint.sprint('run name: ' + str(pm.run.name),1,pm.run.verbosity)
 
+        # Copy parameters file and ViDEO script to output folder
+        # Note: this doesn't work, when there is no actual parameters file
+        if os.path.isfile(pm.filename):
+            shutil.copy2(pm.filename,pm.output_dir)
+          
+        vfile = 'iDEA/ViDEO.py'
+        if os.path.isfile(vfile):
+			   # Note: this doesn't work, when using iDEA as a system module
+            shutil.copy2('iDEA/ViDEO.py',pm.output_dir)
+        else:
+            s  = "Warning: Unable to copy ViDEO.py since running iDEA as python module."
+            s += " Simply add the iDEA folder to your PATH variable to use ViDEO.py anywhere"
+            sprint.sprint(s,1,pm.run.verbosity)
+        
         # Execute required jobs
         self.results = rs.Results()
         results = self.results
         # Execute required jobs
+          
         if(pm.sys.NE == 1):
            if(pm.run.EXT == True):
               import SPiDEA
@@ -131,20 +146,6 @@ class Job(object):
         # All jobs done
         string = 'all jobs done \n'
         sprint.sprint(string,1,pm.run.verbosity)
-
-        # Copy parameters file and ViDEO script to output folder
-        # Note: this doesn't work, when there is no actual parameters file
-        if os.path.isfile(pm.filename):
-            shutil.copy2(pm.filename,pm.output_dir)
-
-        # Note: this doesn't work, when using iDEA as a system module
-        vfile = 'iDEA/ViDEO.py'
-        if os.path.isfile(vfile):
-            shutil.copy2('iDEA/ViDEO.py',pm.output_dir)
-        else:
-            s  = "Warning: Unable to copy ViDEO.py since running iDEA as python module."
-            s += " Simply add the iDEA folder to your PATH variable to use ViDEO.py anywhere"
-            sprint.sprint(s,1,pm.run.verbosity)
 
         return results
 
