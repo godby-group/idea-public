@@ -51,8 +51,11 @@ def constructV(st):
          Vdiagonal.append(pm.sys.v_ext(st.x_grid[i]))
       V = sps.spdiags(Vdiagonal, 0, st.x_N, st.x_N, format='csr')
    else:
-      input_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_' + str(pm.mbpt.starting_orbitals) + '_vks.db','r')
-      Vdiagonal = pickle.load(input_file).real
+      results = rs.Results()
+      name = 'gs_{}_vks'.format(pm.mbpt.starting_orbitals)
+      data = results.read(name, pm.output_dir+'/raw',pm.run.verbosity)
+      #input_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_' + str(pm.mbpt.starting_orbitals) + '_vks.db','r')
+      Vdiagonal = data.real
       V = sps.spdiags(Vdiagonal, 0, st.x_N, st.x_N, format='csr')
    return V
 
@@ -117,8 +120,11 @@ def correct_diagrams(st,S_f,v_f,density):
    V_h = np.dot(v_f[0,:,:],density)*st.dx
    V_hxc0 = np.zeros(st.x_N, dtype='complex')
    if(pm.mbpt.starting_orbitals != 'non'):
-      V_h0 = pickle.load(open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_' + str(pm.mbpt.starting_orbitals) + '_vh.db','r'))
-      V_xc0 = pickle.load(open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_' + str(pm.mbpt.starting_orbitals) + '_vxc.db','r'))
+      results = rs.Results()
+      name = 'gs_{}_vh'.format(pm.mbpt.starting_orbitals)
+      V_h0 = results.read(name, pm.output_dir+'/raw',pm.run.verbosity) 
+      name = 'gs_{}_vxc'.format(pm.mbpt.starting_orbitals)
+      V_xc0 = results.read(name, pm.output_dir+'/raw',pm.run.verbosity)
       V_hxc0 = V_h0 + V_xc0 
    for i in xrange(0,st.x_N):
       S_f[:,i,i] += (V_h[i] - V_hxc0[i])/st.dx
@@ -188,22 +194,12 @@ def has_converged(density_new, density_old, iteration):
       return False
 
 # Function to save all hedin quantities to pickle files
-def output_quantities(G0,P,W,S,G):
-   output_file = open('outputs/' + str(pm.run.name) + '/data/g0.db','w')
-   pickle.dump(G0,output_file)
-   output_file.close()
-   output_file = open('outputs/' + str(pm.run.name) + '/data/p.db','w')
-   pickle.dump(P,output_file)
-   output_file.close()
+def output_quantities(W,W_f):
    output_file = open('outputs/' + str(pm.run.name) + '/data/w.db','w')
    pickle.dump(W,output_file)
    output_file.close()
-   output_file = open('outputs/' + str(pm.run.name) + '/data/s.db','w')
-   pickle.dump(S,output_file)
-   output_file.close()
-   output_file = open('outputs/' + str(pm.run.name) + '/data/g.db','w')
-   pickle.dump(G,output_file)
-   output_file.close()
+   output_file = open('outputs/' + str(pm.run.name) + '/data/wf.db','w')
+   pickle.dump(W_f,output_file)
 
 # Main function
 def main(parameters):
@@ -313,8 +309,8 @@ def main(parameters):
    results.add(density,'gs_mbpt_den')
    if pm.run.save:
       results.save(pm.output_dir + '/raw',pm.run.verbosity)
-
-   return results
-
+      
    # Output all hedin quantities
-   #output_quantities(G0,P,W_f,S,G) # Uncomment this to save all hedin quantities to pickle files
+   output_quantities(W,W_f) # Uncomment this to save all hedin quantities to pickle files
+   
+   return results
