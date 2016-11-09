@@ -13,7 +13,9 @@
 #                                                                                    #
 #                                                                                    #
 ######################################################################################
+
 from __future__ import print_function
+import sys
 
 # Do not run stand-alone
 if(__name__ == '__main__'):
@@ -52,18 +54,8 @@ def sprint(string, priority=1, verbosity='default', newline=True):
         if newline:
             print(string)
         else:
-            #print('\r' + string, end='')
-            print(string, end='\r')
-
-#import sys
-#
-#    
-#    f(n == verbosity):
-#       if(s == 1):
-#           sys.stdout.write('\033[K')
-#           sys.stdout.flush()
-#           sys.stdout.write('\r' + text)
-#           sys.stdout.flush()
-#       else:
-#           print(text)
-#
+            #print(string, end='\r')
+            sys.stdout.write('\033[K')
+            sys.stdout.flush()
+            sys.stdout.write('\r' + string)
+            sys.stdout.flush()
