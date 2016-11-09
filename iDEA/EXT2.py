@@ -538,7 +538,8 @@ def main(parameters):
 
     # Calculate denstiy and potential
     density = np.sum(PsiConverterI(wavefunction), axis=0)*deltax*2.0
-    potential = pm.sys.v_ext(np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid))
+    grid = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
+    potential = np.array([pm.sys.v_ext(x) for x in grid])
     
     # Save ground state density, energy and external potential
     results = rs.Results()
@@ -564,7 +565,7 @@ def main(parameters):
         deltax = pm.sys.deltax
         r = 0.0 + (1.0j)*(deltat/(4.0*(deltax**2)))
         density, current_density = CNsolveRealTime(wavefunction)
-        potential = pm.sys.v_ext(np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)) + pm.sys.v_pert(np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid))
+        potential = np.array([pm.sys.v_ext(x) for x in grid]) + np.array([pm.sys.v_pert(x) for x in grid])
         
         # Save time-dependent density, energy and external potential
         results.add(density,'td_ext_den')
