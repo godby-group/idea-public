@@ -1,4 +1,12 @@
 import alabaster
+
+import sys
+import os
+# Some python magic to make it find the iDEA directory
+# even if it hasn't been added to the PYTHONPATH
+sys.path.insert(0, os.path.abspath('..'))
+import iDEA.info as info
+
 # -*- coding: utf-8 -*-
 #
 # iDEA documentation build configuration file, created by
@@ -59,8 +67,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'iDEA'
-copyright = u'2016, P. Lillystone, J. Ramsden, M. Hodgson, J. Chapman, T. Durrant, J. Wetherell, M. Entwistle, M. Smith, L. Talirz'
-author = u'Piers Lillystone, James Ramsden, Matt Hodgson, Jacob Chapman, Thomas Durrant, Jack Wetherell, Mike Entwistle, Matthew Smith, Leopold Talirz'
+copyright = u'2016, ' + info.authors_short
+author = info.authors_long
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -267,8 +275,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  (master_doc, 'iDEA.tex', u'iDEA Documentation',
-   u'Piers Lillystone, James Ramsden, Matt Hodgson, Jacob Chapman, Thomas Durrant, Jack Wetherell, Mike Entwistle, Matthew Smith, Leopold Talirz', 'manual'),
+  (master_doc, 'iDEA.tex', u'iDEA Documentation', info.authors_long, 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of

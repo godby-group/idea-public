@@ -33,7 +33,7 @@ Generating documentation
 
    cd doc
    # build documentation in doc/_build/html
-   bash make.sh  
+   bash make_doc.sh  
 
 Run unit tests
 --------------
