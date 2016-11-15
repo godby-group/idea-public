@@ -1,11 +1,18 @@
 from iDEA.input import Input
-from iDEA.job import Job
 
 # read parameters file
 inp = Input.from_python_file('parameters.py')
 # perform checks on input parameters
 inp.check()
+
+if inp.run.module == 'iDEA':
+    import iDEA.job as job
+else:
+    # import iDEA from alternative folder, if specified
+    import importlib
+    job = importlib.import_module("{}.job".format(inp.run.module))
+
 # pass parameters to job
-job = Job(inp)
+j = job.Job(inp)
 # run job
-job.run()
+j.run()
