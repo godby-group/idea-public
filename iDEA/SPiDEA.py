@@ -175,7 +175,7 @@ def main(parameters):
    results.add(density, 'gs_ext_den')
    results.add(V, 'gs_ext_vxt')
    if pm.run.save:
-      results.save(pm.output_dir+'/raw')
+      results.save(pm.output_dir+'/raw',pm.run.verbosity)
 
    # Construct the potential
    V = constructV('r')
@@ -228,7 +228,7 @@ def main(parameters):
       
       if pm.run.save:
          l = ['td_ext_den','td_ext_cur','td_ext_vxt']
-         results.save(pm.output_dir+'/raw',list=l)
+         results.save(pm.output_dir+'/raw',pm.run.verbosity,list=l)
       
 
    # Program Complete

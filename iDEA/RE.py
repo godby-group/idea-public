@@ -27,7 +27,6 @@
 import copy
 import math
 import pickle
-import sprint
 import numpy as np
 import RE_Utilities
 import scipy.sparse as sps
@@ -41,14 +40,14 @@ def ReadInput(approx,GS,imax):
    # Read in the ground-state first
 
    name = 'gs_{}_den'.format(approx)
-   data = rs.Results.read(name, pm.output_dir+'/raw',pm.run.verbosity)
+   data = rs.Results.read(name, pm.output_dir+'/raw')
    
    n[0,:] = data
    if pm.run.time_dependence == True:
       Read_n = np.zeros(((imax-1),pm.sys.grid),dtype='float')
       # Then read im the time-dependent density
       name = 'td_{}_den'.format(approx)
-      data = rs.Results.read(name, pm.output_dir+'/raw',pm.run.verbosity)
+      data = rs.Results.read(name, pm.output_dir+'/raw')
       Read_n[:,:] = data
       for k in range(1,imax):
          n[k,:] = Read_n[k-1,:] # Accounts for the difference in convention between MB and RE (for RE t=0 is the ground-state)
@@ -88,7 +87,7 @@ def GroundState(n_T,mu,sqdx,T_s,n,approx):
    while cost_n_GS>1e-13:
       cost_old = cost_n_GS
       string = 'REV: electron density error = ' + str(cost_old)
-      sprint.sprint(string,1,pm.run.verbosity,newline=False)
+      pm.sprint(string,1,newline=False)
       V_KS,n,cost_n_GS,U,E_KS = CalculateGroundstate(V_KS,n_T,mu,sqdx,T_s,n)
       if abs(cost_n_GS-cost_old)<1e-15 or cost_n_GS>cost_old:
          mu *= 0.5
@@ -317,7 +316,7 @@ def CalculateKS(V_KS,A_KS,J,Psi,j,upper_bound,frac1,frac2,z,tol,n_T,J_T,cost_n,c
           z = z*(-1)+1 # Only save two times at any point
           break
    string='REV: t = ' + str(j*pm.sys.deltat) + ', tol = ' + str(tol) + ', current error = ' + str(cost_J[j]) + ', density error = ' + str(cost_n[j])
-   sprint.sprint(string,1,pm.run.verbosity,newline=False)
+   pm.sprint(string,1,newline=False)
    Apot[:]=0 # Change guage so only have scalar potential
    for i in range(pm.sys.grid): # Calculate full KS scalar potential
       for k in range(i+1):
@@ -388,10 +387,10 @@ def main(parameters,approx):
    v_hxc[:] = (V_xc[0,:]+V_h[0,:]).real
    results.add(v_hxc[:],'gs_{}_hxc'.format(approx))
    if pm.run.save:
-      results.save(pm.output_dir+'/raw')
+      results.save(pm.output_dir+'/raw',pm.run.verbosity)
 
-   if(approx != 'non'):
-      sprint.sprint('',1,pm.run.verbosity)
+   #if(approx != 'non'):
+   pm.sprint('',1)
    if pm.run.time_dependence==True: # Time-dependence
       J_KS = np.zeros((imax,pm.sys.grid),dtype='float')
       n_MB = ReadInput(approx,1,imax) # Read in exact charge density obtained from code
@@ -410,8 +409,8 @@ def main(parameters,approx):
             V_xc[j,:] = V_KS[j,:]-(V_ext[:]+petrb[:]+V_h[j,:])
             counter += 1
       except:
-         sprint.sprint('',1,pm.run.verbosity)
-         sprint.sprint('REV: Stopped at timestep ' + str(counter) + '! Outputing all quantities',1,pm.run.verbosity)
+         pm.sprint('',1)
+         pm.sprint('REV: Stopped at timestep ' + str(counter) + '! Outputing all quantities',1)
 
       results.add( V_KS[:,:].real, 'gs_{}_vks'.format(approx)) 
       results.add(V_h[:,:], 'gs_{}_vh'.format(approx)) 
@@ -419,6 +418,6 @@ def main(parameters,approx):
       if pm.run.save:
          # No need to save previous results again
          l = ['gs_{}_vks'.format(approx),'gs_{}_vh'.format(approx),'gs_{}_vxc'.format(approx)]
-         results.save(pm.output_dir+'/raw', list=l)
+         results.save(pm.output_dir+'/raw',pm.run.verbosity, list=l)
 
    return results

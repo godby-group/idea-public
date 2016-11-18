@@ -21,7 +21,6 @@ if(__name__ == '__main__'):
 
 # Library imports
 import os
-import sprint
 import numpy as np
 import scipy as sp
 import RE_Utilities
@@ -71,7 +70,7 @@ def calculateCurrentDensity(total_td_density):
     current_density = []
     for i in range(0,len(total_td_density)-1):
          string = 'NON: computing time dependent current density t = ' + str(i*pm.sys.deltat)
-         sprint.sprint(string,1,pm.run.verbosity,newline=False)
+         pm.sprint(string,1,newline=False)
          J = np.zeros(pm.sys.grid)
          J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,total_td_density[i+1],total_td_density[i])
          if pm.sys.im==1:
@@ -105,7 +104,7 @@ def main(parameters):
    H = K + V
 
    # Compute wavefunctions
-   sprint.sprint('NON: computing ground state density',1,pm.run.verbosity)
+   pm.sprint('NON: computing ground state density',1)
    energies, wavefunctions = spsla.eigs(H, k=pm.sys.grid-2, which='SR', maxiter=1000000)
    # Order by energy
    indices = np.argsort(energies)
@@ -129,7 +128,7 @@ def main(parameters):
    energy = 0.0
    for i in range(0,pm.sys.NE):
       energy += energies[i]
-   sprint.sprint('NON: ground state energy: ' + str(energy.real),1,pm.run.verbosity)
+   pm.sprint('NON: ground state energy: ' + str(energy.real),1)
 
    # Save ground state density and energy 
    results = rs.Results()
@@ -178,17 +177,17 @@ def main(parameters):
             # Calculate the wavefunction normalisation
             normalisation = (np.linalg.norm(wavefunction)*pm.sys.deltax**0.5)
             string = 'NON real time: N = ' + str(n+1) + ', t = ' + str(i*pm.sys.deltat) + ', normalisation = ' + str(normalisation)
-      	    sprint.sprint(string,1,pm.run.verbosity,newline=False)
+      	    pm.sprint(string,1,newline=False)
 
             # iterate
             i = i + 1
 
          # Add to densities
          td_densities.append(densities)
-         sprint.sprint('',1,pm.run.verbosity)
+         pm.sprint('',1)
   
       # Calculate total density
-      sprint.sprint('NON: computing time dependent density',1,pm.run.verbosity)
+      pm.sprint('NON: computing time dependent density',1)
       total_density = []
       i = 0
       while(i < pm.sys.imax):
@@ -203,7 +202,7 @@ def main(parameters):
 
       # Calculate current density
       current_density = calculateCurrentDensity(total_density_gs)
-      sprint.sprint('',1,pm.run.verbosity)
+      pm.sprint('',1)
 
       # Save time-dependent density and current
       results.add(np.asarray(total_density),'td_non_den')

@@ -25,7 +25,6 @@ import time
 import math
 import copy
 import pickle
-import sprint
 import numpy as np
 import scipy as sp
 import os
@@ -308,7 +307,7 @@ def calculateCurrentDensity(total_td_density):
     current_density = []
     for i in range(0,len(total_td_density)-1):
          string = 'MB: computing time dependent current density t = ' + str(i*pm.sys.deltat)
-         sprint.sprint(string,1,pm.run.verbosity,newline=False)
+         pm.sprint(string,1,newline=False)
          J = np.zeros(pm.sys.grid)
          J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,total_td_density[i+1],total_td_density[i])
          if pm.sys.im==1:
@@ -342,7 +341,7 @@ def CNsolveComplexTime():
 	# Begin timing the iteration
         start = time.time()
         string = 'Complex Time = ' + str(i*deltat)
-	sprint.sprint(string,0,verbosity)
+	pm.sprint(string,0)
 
         # Initialising
         if (i==1):
@@ -365,7 +364,7 @@ def CNsolveComplexTime():
 	# Calculate the energy
         Ev = Energy(Psiarr)
 	string = 'Energy = ' + str(Ev)
-	sprint.sprint(string,0,verbosity)
+	pm.sprint(string,0)
         
 	# Normalise new wavefunction
         mag = np.sqrt((np.sum(Psiarr[1,:]*np.conjugate(Psiarr[1,:]))*(deltax**3)))
@@ -377,33 +376,33 @@ def CNsolveComplexTime():
 	# Stop timing the iteration
 	finish = time.time()
         string = 'Time to Complete Step: ' + str(finish-start)
-	sprint.sprint(string,0,verbosity)
+	pm.sprint(string,0)
 
 	# Test for convergance
 	wf_con = np.linalg.norm(Psiarr[0,:]-Psiarr[1,:])
 	string = 'wave function convergence: ' + str(wf_con)
-	sprint.sprint(string,0,verbosity)
+	pm.sprint(string,0)
 	string = 'EXT: ' + 't = ' + str(i*deltat) + ', convergence = ' + str(wf_con)
-        sprint.sprint(string,1,verbosity,newline=False)
+        pm.sprint(string,1,newline=False)
 	if(i>1):
 	    e_con = old_energy - Ev
 	    string = 'energy convergence: ' + str(e_con)
-	    sprint.sprint(string,0,verbosity)
+	    pm.sprint(string,0)
 	    normal = np.sum(np.absolute(Psiarr[1,:])**2)*(deltax**3)          
             string = 'normalisation: ' + str(normal)                          
-            sprint.sprint(string,0,verbosity)                                  
+            pm.sprint(string,0)                                  
             string = 'residual: ' + str(np.linalg.norm(A_RM*Psiarr_RM-b_RM))  
-	    sprint.sprint(string,0,verbosity)                                  
+	    pm.sprint(string,0)                                  
 	    if(wf_con < ctol*10.0):
 		print
 	        string = 'EXT: ground state converged' 
-		sprint.sprint(string,1,verbosity)
+		pm.sprint(string,1)
                 string = 'ground state converged' 
-		sprint.sprint(string,0,verbosity)
+		pm.sprint(string,0)
 	        i = cimax
 	old_energy = copy.copy(Ev)
         string = '---------------------------------------------------'
-	sprint.sprint(string,0,verbosity)
+	pm.sprint(string,0)
 
         # Iterate
         i += 1
@@ -451,7 +450,7 @@ def CNsolveRealTime():
 	# Begin timing the iteration
         start = time.time()
 	string = 'Real Time = ' + str(i*deltat) + '/' + str((imax-1)*deltat)
-	sprint.sprint(string,0,verbosity)
+	pm.sprint(string,0)
 
         if (i>=2):
             Psiarr_RM = c_m*Psiarr[1,:]    
@@ -489,18 +488,18 @@ def CNsolveRealTime():
         # Stop timing the iteration
 	finish = time.time()
         string = 'time to complete step: ' + str(finish-start)
-	sprint.sprint(string,0,verbosity)
+	pm.sprint(string,0)
 
         # Print to screen
         string = 'residual: ' + str(np.linalg.norm(A_RM*Psiarr_RM-b_RM))
-	sprint.sprint(string,0,verbosity)
+	pm.sprint(string,0)
 	normal = np.sum(np.absolute(Psiarr[1,:])**2)*(deltax**3)
         string = 'normalisation: ' + str(normal)
-        sprint.sprint(string,0,verbosity)
+        pm.sprint(string,0)
 	string = 'EXT: ' + 't = ' + str(i*deltat) + ', normalisation = ' + str(normal)
-        sprint.sprint(string,1,verbosity,newline=False)
+        pm.sprint(string,1,newline=False)
         string = '---------------------------------------------------'
-	sprint.sprint(string,0,verbosity)
+	pm.sprint(string,0)
 
 	# Iterate
         i += 1
@@ -546,8 +545,8 @@ def main(parameters):
 
     # Use global variables
     string = 'EXT: constructing arrays'
-    sprint.sprint(string,0,verbosity)
-    sprint.sprint(string,1,verbosity)
+    pm.sprint(string,0)
+    pm.sprint(string,1)
 
     # Construct reduction and expansion matrices
     c_m, c_p = antisym(jmax)
@@ -570,14 +569,14 @@ def main(parameters):
     results.add(potential,'gs_ext_vxt')
 
     if pm.run.save:
-       results.save(pm.output_dir+'/raw')
+       results.save(pm.output_dir+'/raw',pm.run.verbosity)
 
 
     # Real Time CN array initialisations
     if TD == True:
         string = 'EXT: constructing arrays'
-        sprint.sprint(string,1,verbosity)
-        #sprint.sprint(string,0,verbosity)
+        pm.sprint(string,1)
+        #pm.sprint(string,0)
         Psiarr = np.zeros((2,jmax**3), dtype = np.cfloat)	     
         Rhv2 = np.zeros((jmax**3), dtype = np.cfloat)     
         Mat2 = sps.lil_matrix((jmax**3,jmax**3),dtype = np.cfloat)
@@ -602,7 +601,7 @@ def main(parameters):
 
         if pm.run.save:
            l = ['td_ext_den','td_ext_cur']
-           results.save(pm.output_dir+'/raw',list=l)
+           results.save(pm.output_dir+'/raw',pm.run.verbosity,list=l)
 
     imax = 1
     CNsolveRealTime()

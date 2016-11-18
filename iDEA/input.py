@@ -1,9 +1,11 @@
 """ Stores input parameters for iDEA calculations.
 """
+from __future__ import print_function
 import numpy as np
 import importlib
 import os
 import pprint
+import sys
 
 def input_string(key,value):
     """Prints a line of the input file"""
@@ -50,10 +52,21 @@ class SystemSection(InputSection):
 
 
 class Input(object):
+    """Stores variables of input parameters file
+
+    Includes automatic generation of dependent variables,
+    checking of input parameters, printing back to file and more.
+    """
+
+    priority_dict = {
+      'low': 2,
+      'default': 1,
+      'high': 0}
 
     def __init__(self):
         """Sets default values of some properties."""
         self.filename = ''
+        self.log = ''
 
         ### run parameters
         self.run = InputSection()
@@ -181,9 +194,9 @@ class Input(object):
         pm = self
         if pm.run.time_dependence == True:
             if pm.run.HF == True:
-                sprint.sprint('HF: Warning - time-dependence not implemented!')
+                self.sprint('HF: Warning - time-dependence not implemented!')
             if pm.run.MBPT == True:
-                sprint.sprint('MBPT: Warning - time-dependence not implemented!')
+                self.sprint('MBPT: Warning - time-dependence not implemented!')
 
 
     def __str__(self):
@@ -198,6 +211,36 @@ class Input(object):
             else:
                 s += input_string(key,value)
         return s
+
+    def sprint(self, string, priority=1, newline=True):
+        """Customized print function
+
+        Prints to screen and appends to log.
+
+        parameters
+        ----------
+        string : string
+            string to be printed
+        priority: int
+            priority of message, possible values are
+            0: debug
+            1: normal
+            2: important
+        newline : bool
+            If False, overwrite the last line
+        """
+        verbosity = self.run.verbosity
+        if priority >= self.priority_dict[verbosity]:
+            self.log += string + '\n'
+            if newline:
+                print(string)
+            else:
+                #print(string, end='\r')
+                sys.stdout.write('\033[K')
+                sys.stdout.flush()
+                sys.stdout.write('\r' + string)
+                sys.stdout.flush()
+
 
     @classmethod
     def from_python_file(self,filename):

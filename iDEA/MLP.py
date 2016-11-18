@@ -12,7 +12,6 @@
 ######################################################################################
 
 import pickle
-import sprint
 import numpy as np
 import scipy as sp
 import math as math
@@ -253,7 +252,7 @@ def main(parameters):
       convergence = np.sum(abs(n-n_old))*pm.sys.deltax
       n_old[:] = n[:]
       string = 'MLP: electron density convergence = ' + str(convergence)
-      sprint.sprint(string,1,pm.run.verbosity,newline=False)
+      pm.sprint(string,1,newline=False)
 
    v_xc = np.zeros(pm.sys.grid,dtype='float')
    v_xc[:]=v_s[:]-v_ext[:]-Hartree(n,U)
@@ -266,16 +265,16 @@ def main(parameters):
       results.add(n,name='gs_mlp_den')
 
       if str(pm.mlp.f)=='e':
-         sprint.sprint('\nMLP: optimal f = %s' % f_e,1,pm.run.verbosity)
+         pm.sprint('\nMLP: optimal f = %s' % f_e,1)
          results.add(elf,name='gs_mlp_elf')
       else:
-         sprint.sprint('',1,pm.run.verbosity)
+         pm.sprint('',1)
 
       if pm.run.save:
-         results.save(pm.output_dir+'/raw')
+         results.save(pm.output_dir+'/raw',pm.run.verbosity)
 
 
-   sprint.sprint('',1,pm.run.verbosity)
+   pm.sprint('',1)
    if pm.run.time_dependence == True:
       for i in range(pm.sys.NE):
          Psi[i,0,:] = waves[:,i]/math.sqrt(pm.sys.deltax)
@@ -293,7 +292,7 @@ def main(parameters):
       A = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
       for j in range(1,pm.sys.imax): 
          string = 'MLP: evolving through real time: t = ' + str(j*pm.sys.deltat) 
-         sprint.sprint(string,1,pm.run.verbosity,newline=False)
+         pm.sprint(string,1,newline=False)
          n_t,Psi = CrankNicolson(v_s_t,Psi,n_t,j,A)
          current[j,:] = CalculateCurrentDensity(n_t,j)
          if j != pm.sys.imax-1:
@@ -319,4 +318,4 @@ def main(parameters):
          l = ['td_mlp_den', 'td_mlp_vks']
          results.save(pm.output_dir + '/raw',verbosity=pm.run.verbosity,list=l)
 
-   sprint.sprint('',1,pm.run.verbosity)
+   pm.sprint('',1)

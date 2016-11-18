@@ -13,7 +13,6 @@
 ######################################################################################
 
 import pickle
-import sprint
 import numpy as np
 import scipy as sp
 import copy as copy
@@ -140,10 +139,10 @@ def main(parameters):
       convergence = np.sum(abs(n-n_old))*pm.sys.deltax
       n_old[:] = n[:]
       string = 'LDA: electron density convergence = ' + str(convergence)
-      sprint.sprint(string,1,pm.run.verbosity,newline=False)
+      pm.sprint(string,1,newline=False)
 
-   sprint.sprint('',1,pm.run.verbosity)
-   sprint.sprint('LDA: ground-state xc energy: %s' % EXC(n),1,pm.run.verbosity)
+   pm.sprint('',1)
+   pm.sprint('LDA: ground-state xc energy: %s' % EXC(n),1)
    v_h = Hartree(n,U)
    v_xc = XC(n)
 
@@ -158,7 +157,7 @@ def main(parameters):
        results.add(energies,'gs_lda_eigv')
 
    if pm.run.save:
-      results.save(pm.output_dir+'/raw')
+      results.save(pm.output_dir+'/raw',pm.run.verbosity)
 
    if pm.run.time_dependence == True:
       for i in range(pm.sys.NE):
@@ -174,7 +173,7 @@ def main(parameters):
          v_ext[i] += pm.sys.v_pert((i*pm.sys.deltax-pm.sys.xmax)) 
       for j in range(1,pm.sys.imax): 
          string = 'LDA: evolving through real time: t = ' + str(j*pm.sys.deltat) 
-         sprint.sprint(string,1,pm.run.verbosity,newline=False)
+         pm.sprint(string,1,newline=False)
          n_t,Psi = CrankNicolson(v_s_t,Psi,n_t,j)
          if j != pm.sys.imax-1:
             v_s_t[j+1,:] = v_ext[:]+Hartree(n_t[j,:],U)+XC(n_t[j,:])
@@ -189,7 +188,7 @@ def main(parameters):
 
       if pm.run.save:
          l = ['td_lda_vks','td_lda_vxc','td_lda_den','td_lda_cur']
-         results.save(pm.output_dir+'/raw',list=l)
+         results.save(pm.output_dir+'/raw',pm.run.verbosity,list=l)
 
-      sprint.sprint('',1,pm.run.verbosity)
+      pm.sprint('',1)
    return results

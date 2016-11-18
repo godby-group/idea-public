@@ -16,7 +16,6 @@
 
 # Import librarys
 import pickle
-import sprint
 import numpy as np
 import RE_Utilities
 import results as rs
@@ -139,6 +138,8 @@ def main(parameters):
 
 
    z = 0
+   string = "LAN: reading ks-potential from '{}'".format(pm.lan.start)
+   pm.sprint(string,1)
    V_lan = ReadInput(pm.lan.start)                        # Read in exact vks obtained from code
    n_LAN,Psi=CalculateGroundstate(V_lan,sqdx,T)
 
@@ -149,7 +150,7 @@ def main(parameters):
       V_lan[:,:]=V_lan[0,:]+petrb[:]                      # Add the perturbing field to the external potential and the KS potential
       for j in range(1,pm.sys.imax):                          # Propagate from the ground-state
          string = 'LAN: computing density and current density, time = ' + str(j*pm.sys.deltat)
-	 sprint.sprint(string,1,pm.run.verbosity,newline=False)
+	 pm.sprint(string,1,newline=False)
          Psi,z=SolveKSE(V_lan,Psi,j,frac1,frac2,z)
          n_LAN[j,:]=0
          z=z*(-1)+1
@@ -160,6 +161,6 @@ def main(parameters):
       results.add(n_LAN.real,'td_lan_den')
       results.add(J_LAN.real,'td_lan_cur')
       if pm.run.save:
-         results.save(pm.output_dir+'/raw')
+         results.save(pm.output_dir+'/raw',pm.run.verbosity)
 
    return results

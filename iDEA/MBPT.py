@@ -18,7 +18,6 @@
 # Library imports
 import copy
 import pickle
-import sprint
 import numpy as np
 import scipy as sp
 import numpy.linalg as npl
@@ -53,7 +52,7 @@ def constructV(st):
       V = sps.spdiags(Vdiagonal, 0, st.x_N, st.x_N, format='csr')
    else:
       name = 'gs_{}_vks'.format(pm.mbpt.starting_orbitals)
-      data = rs.Results.read(name, pm.output_dir+'/raw',pm.run.verbosity)
+      data = rs.Results.read(name, pm.output_dir+'/raw')
       #input_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_' + str(pm.mbpt.starting_orbitals) + '_vks.db','r')
       Vdiagonal = data.real
       V = sps.spdiags(Vdiagonal, 0, st.x_N, st.x_N, format='csr')
@@ -73,7 +72,7 @@ def non_interacting_greens_function(st, occupied, occupied_energies, empty, empt
    for k in xrange(0,st.tau_N):
       tau = st.tau_grid[k]
       string = 'MBPT: computing non-interacting greens function G0, tau = ' + str(tau)
-      sprint.sprint(string,1,pm.run.verbosity,newline=False)
+      pm.sprint(string,1,newline=False)
       if(tau > 0.0): # Construct G0 for positive imaginary time
          for i in xrange(0,st.x_N):
             for j in xrange(0,st.x_N):
@@ -121,9 +120,9 @@ def correct_diagrams(st,S_f,v_f,density):
    V_hxc0 = np.zeros(st.x_N, dtype='complex')
    if(pm.mbpt.starting_orbitals != 'non'):
       name = 'gs_{}_vh'.format(pm.mbpt.starting_orbitals)
-      V_h0 = rs.Results.read(name, pm.output_dir+'/raw',pm.run.verbosity) 
+      V_h0 = rs.Results.read(name, pm.output_dir+'/raw') 
       name = 'gs_{}_vxc'.format(pm.mbpt.starting_orbitals)
-      V_xc0 = rs.Results.read(name, pm.output_dir+'/raw',pm.run.verbosity)
+      V_xc0 = rs.Results.read(name, pm.output_dir+'/raw')
       V_hxc0 = V_h0 + V_xc0 
    for i in xrange(0,st.x_N):
       S_f[:,i,i] += (V_h[i] - V_hxc0[i])/st.dx
@@ -186,7 +185,7 @@ def extract_density(st,G):
 def has_converged(density_new, density_old, iteration):
    convergence = abs(npl.norm(density_new-density_old))
    string = 'MBPT: performing self-consistency (iteration=' + str(iteration+1) + '): convergence = ' + str(convergence)
-   sprint.sprint(string,1,pm.run.verbosity,newline=False)
+   pm.sprint(string,1,newline=False)
    if(convergence < pm.mbpt.tolerance):
       return True
    else:

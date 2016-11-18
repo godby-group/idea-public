@@ -22,9 +22,6 @@ if(__name__ == '__main__'):
     print('do not run stand-alone')
     quit()
 
-# Library imports
-
-
 priority_dict = {
   'low': 2,
   'default': 1,

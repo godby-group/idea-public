@@ -5,7 +5,6 @@ import numpy as np
 import pickle
 import copy as cp
 import results as rs
-import sprint
 
 
 class Job(object):
@@ -55,17 +54,10 @@ class Job(object):
         #pickle.dump(pm,f)
         #f.close()
 
-
-        ## Collect relevant source code to be run
-        #os.system('cp source/' + str(version) + '/* outputs/' + str(pm.run.name))
-        #os.system('cp parameters.py' + ' outputs/' + str(pm.run.name))
-
-        ## Run relevant code
-        #os.system('python outputs/' + str(pm.run.name) + '/run.py')
-        import splash
         # Draw splash to screen
-        splash.draw(pm.run.verbosity)
-        sprint.sprint('run name: ' + str(pm.run.name),1,pm.run.verbosity)
+        import splash
+        splash.draw(pm)
+        pm.sprint('run name: ' + str(pm.run.name),1)
 
         # Copy parameters file and ViDEO script to output folder
         # Note: this doesn't work, when there is no actual parameters file
@@ -79,7 +71,7 @@ class Job(object):
         else:
             s  = "Warning: Unable to copy ViDEO.py since running iDEA as python module."
             s += " Simply add the iDEA folder to your PATH variable to use ViDEO.py anywhere"
-            sprint.sprint(s,1,pm.run.verbosity)
+            pm.sprint(s,1)
         
         # Execute required jobs
         self.results = rs.Results()
@@ -145,7 +137,7 @@ class Job(object):
 
         # All jobs done
         string = 'all jobs done \n'
-        sprint.sprint(string,1,pm.run.verbosity)
+        pm.sprint(string,1)
 
         return results
 

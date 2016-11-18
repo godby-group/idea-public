@@ -17,7 +17,6 @@
 
 # Library imports
 import copy
-import sprint
 import pickle
 import numpy as np
 import scipy as sp
@@ -124,7 +123,7 @@ def main(parameters):
       n_x, Psi, V, K = Groundstate(V, F, nu)
       con = sum(abs(n_x[:]-n_old[:]))
       string = 'HF: computing ground-state density, convergence = ' + str(con)
-      sprint.sprint(string,1,verbosity,newline=False)
+      pm.sprint(string,1,newline=False)
    print
    
    # Calculate ground state energy
@@ -149,6 +148,6 @@ def main(parameters):
        results.add(K, 'gs_hf_eigv')
 
    if pm.run.save:
-      results.save(pm.output_dir+'/raw')
+      results.save(pm.output_dir+'/raw',pm.run.verbosity)
  
    return results
