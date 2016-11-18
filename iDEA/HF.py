@@ -54,9 +54,7 @@ def Groundstate(V, F, nu):
    if pm.hf.fock == 1:
       HGS[:,:] += F[:,:]
    K, U = spla.eigh(HGS)
-   Psi = np.zeros((pm.sys.NE,Nx), dtype='complex')
-   for i in range(pm.sys.NE):
-      Psi[i,:] = U[:,i]/sqdx 
+   Psi = U.T / sqdx
    n_x[:] = 0
    for i in range(pm.sys.NE):
       n_x[:]+=abs(Psi[i,:])**2 
@@ -146,7 +144,8 @@ def main(parameters):
    results.add(n_x,'gs_hf_den')
 
    if pm.hf.save_eig:
-       results.add(Psi, 'gs_hf_eigf')
+       # Note: Psi is incorrectly normalised in the code...
+       results.add(Psi*np.sqrt(sqdx), 'gs_hf_eigf')
        results.add(K, 'gs_hf_eigv')
 
    if pm.run.save:

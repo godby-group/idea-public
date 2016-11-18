@@ -104,18 +104,19 @@ def main(parameters):
    # Constuct the Hamiltonian
    H = K + V
 
-   # Compute first N wavefunctions
+   # Compute wavefunctions
    sprint.sprint('NON: computing ground state density',1,pm.run.verbosity)
-   solution = spsla.eigs(H, k=pm.sys.NE, which='SR', maxiter=1000000)
-   energies = solution[0] 
-   wavefunctions = solution[1]
+   energies, wavefunctions = spsla.eigs(H, k=pm.sys.grid-2, which='SR', maxiter=1000000)
+   # Order by energy
+   indices = np.argsort(energies)
+   energies = energies[indices]
+   wavefunctions = ((wavefunctions.T)[indices]).T # I hate this ordering of indices
 
-   # Normalise first N wavefunctions
-   length = len(wavefunctions[0,:])
-   for i in range(0,length):
-      wavefunctions[:,i] = wavefunctions[:,i]/(np.linalg.norm(wavefunctions[:,i])*pm.sys.deltax**0.5)
+   # Normalise wavefunctions (already normalised to 1)
+   wavefunctions /= pm.sys.deltax**0.5
 
    # Compute first N densities
+   length = pm.sys.NE
    densities = []
    for i in range(0,length):
       d = calculateDensity(wavefunctions[:,i])
