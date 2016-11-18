@@ -135,6 +135,10 @@ def main(parameters):
    results.add(density,'gs_non_den')
    results.add(energy.real,'gs_non_E')
 
+   if pm.non.save_eig:
+       results.add(wavefunctions.T,'gs_non_eigf')
+       results.add(energies,'gs_non_eigv')
+
    if(pm.run.save):
       results.save(pm.output_dir + '/raw', pm.run.verbosity)
 

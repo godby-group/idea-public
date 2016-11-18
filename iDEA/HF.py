@@ -145,6 +145,10 @@ def main(parameters):
    results.add(E_HF.real,'gs_hf_E')
    results.add(n_x,'gs_hf_den')
 
+   if pm.hf.save_eig:
+       results.add(Psi, 'gs_hf_eigf')
+       results.add(K, 'gs_hf_eigv')
+
    if pm.run.save:
       results.save(pm.output_dir+'/raw')
  

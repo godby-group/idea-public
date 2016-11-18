@@ -129,6 +129,7 @@ class Input(object):
         self.non = InputSection()
         non = self.non
         non.rtol = 1e-14        #: Tolerance of real time evolution (Recommended: 1e-14)
+        non.save_eig = False    #: save eigenfunctions and eigenvalues of Hamiltonian
         non.RE = False          #: Reverse engineer non-interacting density
         
         ### LDA parameters
@@ -137,6 +138,7 @@ class Input(object):
         lda.NE = 2              #: Number of electrons used in construction of the LDA
         lda.mix = 0.0           #: Self consistent mixing parameter (default 0, only use if doesn't converge)
         lda.tol = 1e-12         #: Self-consistent convergence tolerance
+        lda.save_eig = False    #: save eigenfunctions and eigenvalues of Hamiltonian
         
         ### MLP parameters
         self.mlp = InputSection()
@@ -152,6 +154,7 @@ class Input(object):
         hf.fock = 1             #: Include Fock term (0 = Hartree approximation, 1 = Hartree-Fock approximation)
         hf.con = 1e-12          #: Tolerance
         hf.nu = 0.9             #: Mixing term
+        hf.save_eig = False     #: save eigenfunctions and eigenvalues of Hamiltonian
         hf.RE = False           #: Reverse engineer hf density
         
         ### MBPT parameters

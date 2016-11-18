@@ -32,7 +32,7 @@ def groundstate(v):
    for i in range(pm.sys.NE):
       n[:] += abs(eig_func[:,i])**2 # Calculate density
    n[:] /= pm.sys.deltax # Normalise
-   return n,eig_func
+   return n,eig_func,e
 
 # Define function for generating the Hartree potential for a given charge density
 def Hartree(n,U):
@@ -125,7 +125,7 @@ def main(parameters):
    for i in xrange(pm.sys.grid):
       v_s[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # External potential
       v_ext[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # External potential
-   n,waves = groundstate(v_s) #Inital guess
+   n,waves,energies = groundstate(v_s) #Inital guess
    U = Coulomb()
    n_old = np.zeros(pm.sys.grid,dtype='float')
    n_old[:] = n[:]
@@ -136,7 +136,7 @@ def main(parameters):
          v_s[:] = v_ext[:]+Hartree(n,U)+XC(n)
       else:
          v_s[:] = (1-pm.lda.mix)*v_s_old[:]+pm.lda.mix*(v_ext[:]+Hartree(n,U)+XC(n))
-      n,waves = groundstate(v_s) # Calculate LDA density 
+      n,waves,energies = groundstate(v_s) # Calculate LDA density 
       convergence = np.sum(abs(n-n_old))*pm.sys.deltax
       n_old[:] = n[:]
       string = 'LDA: electron density convergence = ' + str(convergence)
@@ -152,6 +152,10 @@ def main(parameters):
    results.add(v_h[:], 'gs_lda_vh')
    results.add(v_xc[:], 'gs_lda_vxc')
    results.add(n[:], 'gs_lda_den')
+
+   if pm.lda.save_eig:
+       results.add(waves.T,'gs_lda_eigf')
+       results.add(energies,'gs_lda_eigv')
 
    if pm.run.save:
       results.save(pm.output_dir+'/raw')
