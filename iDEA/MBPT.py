@@ -23,6 +23,7 @@ import numpy as np
 import scipy as sp
 import numpy.linalg as npl
 import scipy.sparse as sps
+import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
 import results as rs
 
@@ -99,7 +100,7 @@ def irreducible_polarizability(st,G,iteration):
    for k in xrange(0,st.tau_N):
       for i in xrange(0,st.x_N):
          for j in xrange(0,st.x_N):
-            P[k,i,j] = -1.0j*G[k,i,j]*G[-k,j,i]
+            P[k,i,j] = -1.0j*G[k,i,j]*G[-k-1,j,i]
    return P
 
 # Function to calculate the screened interaction W_f in the frequency domain
@@ -194,12 +195,28 @@ def has_converged(density_new, density_old, iteration):
       return False
 
 # Function to save all hedin quantities to pickle files
-def output_quantities(W,W_f):
-   output_file = open('outputs/' + str(pm.run.name) + '/data/w.db','w')
-   pickle.dump(W,output_file)
+def output_quantities(G0,G0_f,P,P_f,Sc_f,S_f,G):
+   output_file = open('outputs/' + str(pm.run.name) + '/data/g0.db','w')
+   pickle.dump(G0,output_file)
    output_file.close()
-   output_file = open('outputs/' + str(pm.run.name) + '/data/wf.db','w')
-   pickle.dump(W_f,output_file)
+   output_file = open('outputs/' + str(pm.run.name) + '/data/g0_f.db','w')
+   pickle.dump(G0_f,output_file)
+   output_file.close()
+   output_file = open('outputs/' + str(pm.run.name) + '/data/p.db','w')
+   pickle.dump(P,output_file)
+   output_file.close()
+   output_file = open('outputs/' + str(pm.run.name) + '/data/p_f.db','w')
+   pickle.dump(P_f,output_file)
+   output_file.close()
+   output_file = open('outputs/' + str(pm.run.name) + '/data/sc_f.db','w')
+   pickle.dump(Sc_f,output_file)
+   output_file.close()
+   output_file = open('outputs/' + str(pm.run.name) + '/data/s_f.db','w')
+   pickle.dump(S_f,output_file)
+   output_file.close()
+   output_file = open('outputs/' + str(pm.run.name) + '/data/g.db','w')
+   pickle.dump(G,output_file)
+   output_file.close()
 
 # Main function
 def main(parameters):
@@ -208,7 +225,7 @@ def main(parameters):
 
    # Construct space-time grid
    st = SpaceTime()
-
+   
    # Construct the kinetic energy
    K = constructK(st)
 
@@ -216,7 +233,7 @@ def main(parameters):
    V = constructV(st)
 
    # Constuct the hamiltonian
-   H = K + V
+   H = K + V 
 
    # Compute all wavefunctions
    print 'MBPT: computing eigenstates of single particle hamiltonian'
@@ -311,6 +328,7 @@ def main(parameters):
       results.save(pm.output_dir + '/raw',pm.run.verbosity)
       
    # Output all hedin quantities
-   output_quantities(W,W_f) # Uncomment this to save all hedin quantities to pickle files
+   if(pm.mbpt.output_hedin == True):
+      output_quantities(G0,G0_f,P,P_f,W_f-v_f,S_f,G) 
    
    return results
