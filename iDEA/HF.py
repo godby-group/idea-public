@@ -148,6 +148,6 @@ def main(parameters):
        results.add(K, 'gs_hf_eigv')
 
    if pm.run.save:
-      results.save(pm.output_dir+'/raw',pm.run.verbosity)
+      results.save(pm)
  
    return results

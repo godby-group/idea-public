@@ -569,7 +569,7 @@ def main(parameters):
     results.add(potential,'gs_ext_vxt')
 
     if pm.run.save:
-       results.save(pm.output_dir+'/raw',pm.run.verbosity)
+       results.save(pm)
 
 
     # Real Time CN array initialisations
@@ -601,7 +601,7 @@ def main(parameters):
 
         if pm.run.save:
            l = ['td_ext_den','td_ext_cur']
-           results.save(pm.output_dir+'/raw',pm.run.verbosity,list=l)
+           results.save(pm, list=l)
 
     imax = 1
     CNsolveRealTime()

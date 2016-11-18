@@ -140,7 +140,7 @@ def main(parameters):
        results.add(energies,'gs_non_eigv')
 
    if(pm.run.save):
-      results.save(pm.output_dir + '/raw', pm.run.verbosity)
+      results.save(pm)
 
    # Perform real time iterations
    if(pm.run.time_dependence == True):
@@ -211,7 +211,7 @@ def main(parameters):
       if(pm.run.save):
          # no need to save previous results again
          l = ['td_non_den', 'td_non_cur']
-         results.save(pm.output_dir + '/raw', pm.run.verbosity, list=l)
+         results.save(pm, list=l)
 
    ## Program complete
    #os.system('rm *.pyc')

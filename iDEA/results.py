@@ -4,7 +4,6 @@
 import numpy as np
 import pickle
 import copy as cp
-import sprint
 
 class Results(object):
     """Container for results.
@@ -55,64 +54,75 @@ class Results(object):
             getattr(self, name).__dict__.update(results.__dict__)
 
     @staticmethod
-    def read(name, dir, verbosity='default'):
+    def read(name, pm, dir=None):
         """Reads and returns results from pickle file
 
         parameters
         ----------
         name : string
-            name of results to be read (filename = name.db)
+            name of result to be read (filepath = raw/name.db)
+        pm : object
+            iDEA.input.Input object
         dir : string
-            directory where to read results from, relative to cwd
-        verbosity : string
-            additional info will be printed for verbosity 'high'
+            directory where result is stored
+            default: pm.output_dir + '/raw'
 
         Returns data
         """
+        if dir is None:
+            dir = pm.output_dir + '/raw'
+
         filename = "{}/{}.db".format(dir,name)
-        sprint.sprint("Reading {} from {}".format(filename,dir),0,verbosity)
+        pm.sprint("Reading {} from {}".format(name,filename),0)
         f = open(filename, 'rb')
         data = pickle.load(f)
         f.close()
         
         return data
 
-    def add_pickled_data(self, name, dir, verbosity='default'):
+    def add_pickled_data(self, name, pm, dir=None):
         """Read results from pickle file and adds to results.
 
         parameters
         ----------
         name : string
-            name of results to be read (filename = name.db)
+            name of results to be read (filepath = raw/name.db)
+        pm : object
+            iDEA.input.Input object
         dir : string
-            directory where to read results from, relative to cwd
-        verbosity : string
-            additional info will be printed for verbosity 'high'
+            directory where result is stored
+            default: pm.output_dir + '/raw'
         """
         data = self.read(name, dir, verbosity)
         setattr(self, name, data)
 
 
 
-    def save(self, dir, verbosity='default', list=None):
+    def save(self, pm, dir=None, list=None):
         """Save results to disk.
 
         parameters
         ----------
+        pm : object
+            iDEA.input.Input object
         dir : string
-            directory where to save results, relative to cwd
+            directory where to save results
+            default: pm.output_dir + '/raw'
         verbosity : string
             additional info will be printed for verbosity 'high'
         list : array_like
             if set, only the listed results will be saved
         """
+        if dir is None:
+            dir = pm.output_dir + '/raw'
+
         for key,val in self.__dict__.iteritems():
             if list is None or key in list:
                 if isinstance(val,Results):
-                    val.save(dir)
+                    val.save(pm, dir)
                 else:
                     outname = "{}/{}.db".format(dir,key)
-                    sprint.sprint("Saving {} to {}".format(key,outname),0,verbosity)    
+                    pm.sprint("Saving {} to {}".format(key,outname),0)
                     f = open(outname, 'wb')
                     pickle.dump(val,f)
                     f.close()

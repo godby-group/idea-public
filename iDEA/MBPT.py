@@ -52,7 +52,7 @@ def constructV(st):
       V = sps.spdiags(Vdiagonal, 0, st.x_N, st.x_N, format='csr')
    else:
       name = 'gs_{}_vks'.format(pm.mbpt.starting_orbitals)
-      data = rs.Results.read(name, pm.output_dir+'/raw')
+      data = rs.Results.read(name, pm)
       #input_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_' + str(pm.mbpt.starting_orbitals) + '_vks.db','r')
       Vdiagonal = data.real
       V = sps.spdiags(Vdiagonal, 0, st.x_N, st.x_N, format='csr')
@@ -120,9 +120,9 @@ def correct_diagrams(st,S_f,v_f,density):
    V_hxc0 = np.zeros(st.x_N, dtype='complex')
    if(pm.mbpt.starting_orbitals != 'non'):
       name = 'gs_{}_vh'.format(pm.mbpt.starting_orbitals)
-      V_h0 = rs.Results.read(name, pm.output_dir+'/raw') 
+      V_h0 = rs.Results.read(name, pm)
       name = 'gs_{}_vxc'.format(pm.mbpt.starting_orbitals)
-      V_xc0 = rs.Results.read(name, pm.output_dir+'/raw')
+      V_xc0 = rs.Results.read(name, pm)
       V_hxc0 = V_h0 + V_xc0 
    for i in xrange(0,st.x_N):
       S_f[:,i,i] += (V_h[i] - V_hxc0[i])/st.dx
@@ -322,7 +322,7 @@ def main(parameters):
    results = rs.Results()
    results.add(density,'gs_mbpt_den')
    if pm.run.save:
-      results.save(pm.output_dir + '/raw',pm.run.verbosity)
+      results.save(pm)
       
    # Output all hedin quantities
    if(pm.mbpt.output_hedin == True):

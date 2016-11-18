@@ -136,6 +136,11 @@ class Job(object):
               results.add(LAN.main(pm), name='LAN')
 
         # All jobs done
+        # store log in file
+        f = open(pm.output_dir + '/iDEA.log', 'w')
+        f.write(pm.log)
+        f.close
+
         string = 'all jobs done \n'
         pm.sprint(string,1)
 
@@ -143,7 +148,7 @@ class Job(object):
 
     def save(self):
         """Save results to disk."""
-        self.results.save(dir=self.pm.output_dir + 'data',verbosity=self.pm.run.verbosity)
+        self.results.save(pm)
 
     def post_process(self):
         """Run ViDEO post-processing script"""

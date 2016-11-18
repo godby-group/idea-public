@@ -271,7 +271,7 @@ def main(parameters):
          pm.sprint('',1)
 
       if pm.run.save:
-         results.save(pm.output_dir+'/raw',pm.run.verbosity)
+         results.save(pm)
 
 
    pm.sprint('',1)
@@ -316,6 +316,6 @@ def main(parameters):
       if pm.run.save:
          # no need to save ground state quantities again...
          l = ['td_mlp_den', 'td_mlp_vks']
-         results.save(pm.output_dir + '/raw',verbosity=pm.run.verbosity,list=l)
+         results.save(pm, list=l)
 
    pm.sprint('',1)

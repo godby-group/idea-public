@@ -546,7 +546,7 @@ def main(parameters):
     results.add(energy.real,'gs_ext_E')
     results.add(potential,'gs_ext_vxt')
     if(pm.run.save):
-        results.save(pm.output_dir + '/raw',pm.run.verbosity)
+        results.save(pm)
         
     # Real Time array initialisations 
     if(pm.run.time_dependence == True):
@@ -572,5 +572,5 @@ def main(parameters):
         results.add(potential,'td_ext_vxt')
         if(pm.run.save):
             l = ['td_ext_den','td_cur_e','td_ext_vxt']
-            results.save(pm.output_dir + '/raw',pm.run.verbosity, list=l)
+            results.save(pm, list=l)
     return results

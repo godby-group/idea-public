@@ -30,7 +30,7 @@ def ReadInput(approx):
    V = np.zeros((pm.sys.imax,pm.sys.grid),dtype='complex')       # Only a ground-state to read in
 
    name = 'gs_{}_vks'.format(approx)
-   data = rs.Results.read(name, pm.output_dir+'/raw',pm.run.verbosity)
+   data = rs.Results.read(name, pm)
    V[0,:]=data
    return V
 
@@ -161,6 +161,6 @@ def main(parameters):
       results.add(n_LAN.real,'td_lan_den')
       results.add(J_LAN.real,'td_lan_cur')
       if pm.run.save:
-         results.save(pm.output_dir+'/raw',pm.run.verbosity)
+         results.save(pm)
 
    return results

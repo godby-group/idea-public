@@ -40,7 +40,7 @@ def ReadInput(approx,GS,imax):
    # Read in the ground-state first
 
    name = 'gs_{}_den'.format(approx)
-   data = rs.Results.read(name, pm.output_dir+'/raw')
+   data = rs.Results.read(name, pm)
    
    n[0,:] = data
    if pm.run.time_dependence == True:
@@ -78,12 +78,12 @@ def CalculateGroundstate(V,n_T,mu,sqdx,T_s,n):
 def GroundState(n_T,mu,sqdx,T_s,n,approx):
    V_KS = np.zeros((imax,pm.sys.grid),dtype='complex')
    V_ext = np.zeros(pm.sys.grid,dtype='complex')
-   print 'REV: calculating ground-state Kohn-Sham potential for the ' + str(approx) + ' density'
+   pm.sprint('REV: calculating ground-state Kohn-Sham potential for the ' + str(approx) + ' density',1)
    for i in range(pm.sys.grid):
       V_KS[0,i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # Initial guess for KS potential
       V_ext[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax))
    V_KS,n,cost_n_GS,U,E_KS = CalculateGroundstate(V_KS,n_T,0,sqdx,T_s,n)
-   print 'REV: initial guess electron density error = %s' % cost_n_GS
+   pm.sprint('REV: initial guess electron density error = %s' % cost_n_GS,1)
    while cost_n_GS>1e-13:
       cost_old = cost_n_GS
       string = 'REV: electron density error = ' + str(cost_old)
@@ -93,6 +93,7 @@ def GroundState(n_T,mu,sqdx,T_s,n,approx):
          mu *= 0.5
       if mu < 1e-15:
          break
+   pm.sprint('',1)
    return V_KS,n,U,V_ext,E_KS
 
 # Function used in calculation of the Hatree potential
@@ -136,7 +137,7 @@ def coulomb():
 # Function to calculate the exchange-correlation energy
 def xcenergy(approx,n,V_h,V_xc,E_KS):
    try:
-      E_MB = rs.Results.read('gs_{}_E'.format(approx), pm.output_dir+'/raw',pm.run.verbosity) 
+      E_MB = rs.Results.read('gs_{}_E'.format(approx), pm)
       E_xc = E_MB - E_KS
       for i in range(pm.sys.grid):
          E_xc += (n[0,i])*((0.50*V_h[0,i])+(V_xc[0,i]))*pm.sys.deltax
@@ -387,7 +388,7 @@ def main(parameters,approx):
    v_hxc[:] = (V_xc[0,:]+V_h[0,:]).real
    results.add(v_hxc[:],'gs_{}_hxc'.format(approx))
    if pm.run.save:
-      results.save(pm.output_dir+'/raw',pm.run.verbosity)
+      results.save(pm)
 
    #if(approx != 'non'):
    pm.sprint('',1)
@@ -418,6 +419,6 @@ def main(parameters,approx):
       if pm.run.save:
          # No need to save previous results again
          l = ['gs_{}_vks'.format(approx),'gs_{}_vh'.format(approx),'gs_{}_vxc'.format(approx)]
-         results.save(pm.output_dir+'/raw',pm.run.verbosity, list=l)
+         results.save(pm, list=l)
 
    return results

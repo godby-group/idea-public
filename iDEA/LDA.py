@@ -157,7 +157,7 @@ def main(parameters):
        results.add(energies,'gs_lda_eigv')
 
    if pm.run.save:
-      results.save(pm.output_dir+'/raw',pm.run.verbosity)
+      results.save(pm)
 
    if pm.run.time_dependence == True:
       for i in range(pm.sys.NE):
@@ -188,7 +188,7 @@ def main(parameters):
 
       if pm.run.save:
          l = ['td_lda_vks','td_lda_vxc','td_lda_den','td_lda_cur']
-         results.save(pm.output_dir+'/raw',pm.run.verbosity,list=l)
+         results.save(pm, list=l)
 
       pm.sprint('',1)
    return results
