@@ -30,9 +30,8 @@ import scipy.sparse.linalg as spsla
 def ReadInput(approx):
    V = np.zeros((pm.sys.imax,pm.sys.grid),dtype='complex')       # Only a ground-state to read in
 
-   results = rs.Results()
    name = 'gs_{}_vks'.format(approx)
-   data = results.read(name, pm.output_dir+'/raw',pm.run.verbosity)
+   data = rs.Results.read(name, pm.output_dir+'/raw',pm.run.verbosity)
    V[0,:]=data
    return V
 

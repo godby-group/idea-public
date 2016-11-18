@@ -62,6 +62,7 @@ class Input(object):
         run.time_dependence = False #: whether to run time-dependent calculation
         run.verbosity = 'default'   #: output verbosity ('low', 'default', 'high')
         run.save = True             #: whether to save results to disk when they are generated
+        run.module = 'iDEA'         #: specify alternative folder (in this directory) containing modified iDEA module  
         run.EXT = False             #: Run Exact Many-Body calculation
         run.NON = False             #: Run Non-Interacting approximation
         run.LDA = False             #: Run LDA approximation

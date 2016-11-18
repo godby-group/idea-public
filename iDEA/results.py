@@ -54,11 +54,9 @@ class Results(object):
         else:
             getattr(self, name).__dict__.update(results.__dict__)
 
-
-    def read(self, name, dir, verbosity='default'):
-        """Read results from disk.
-
-        Results are both added to results object *and* returned.
+    @staticmethod
+    def read(name, dir, verbosity='default'):
+        """Reads and returns results from pickle file
 
         parameters
         ----------
@@ -69,16 +67,30 @@ class Results(object):
         verbosity : string
             additional info will be printed for verbosity 'high'
 
-        Returns l
+        Returns data
         """
         filename = "{}/{}.db".format(dir,name)
-        sprint.sprint("Saving {} to {}".format(filename,dir),0,verbosity)
+        sprint.sprint("Reading {} from {}".format(filename,dir),0,verbosity)
         f = open(filename, 'rb')
         data = pickle.load(f)
         f.close()
         
-        setattr(self, name, data)
         return data
+
+    def add_pickled_data(self, name, dir, verbosity='default'):
+        """Read results from pickle file and adds to results.
+
+        parameters
+        ----------
+        name : string
+            name of results to be read (filename = name.db)
+        dir : string
+            directory where to read results from, relative to cwd
+        verbosity : string
+            additional info will be printed for verbosity 'high'
+        """
+        data = self.read(name, dir, verbosity)
+        setattr(self, name, data)
 
 
 

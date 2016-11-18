@@ -92,6 +92,14 @@ iDEA.ViDEO module
     :undoc-members:
     :show-inheritance:
 
+iDEA.info module
+----------------
+
+.. automodule:: iDEA.info
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 iDEA.input module
 -----------------
 

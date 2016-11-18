@@ -8,6 +8,7 @@ run.name = 'run_name'       #: Name to identify run. Note: Do not use spaces or 
 run.time_dependence = False #: whether to run time-dependent calculation
 run.verbosity = 'default'   #: output verbosity ('low', 'default', 'high')
 run.save = True             #: whether to save results to disk when they are generated
+run.module = 'iDEA'         #: specify alternative folder (in this directory) containing modified iDEA module  
 
 run.EXT = True              #: Run Exact Many-Body calculation
 run.NON = True              #: Run Non-Interacting approximation

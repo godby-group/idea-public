@@ -40,16 +40,15 @@ def ReadInput(approx,GS,imax):
    n = np.zeros((imax,pm.sys.grid),dtype='float')
    # Read in the ground-state first
 
-   results = rs.Results()
    name = 'gs_{}_den'.format(approx)
-   data = results.read(name, pm.output_dir+'/raw',pm.run.verbosity)
+   data = rs.Results.read(name, pm.output_dir+'/raw',pm.run.verbosity)
    
    n[0,:] = data
    if pm.run.time_dependence == True:
       Read_n = np.zeros(((imax-1),pm.sys.grid),dtype='float')
       # Then read im the time-dependent density
       name = 'td_{}_den'.format(approx)
-      data = results.read(name, pm.output_dir+'/raw',pm.run.verbosity)
+      data = rs.Results.read(name, pm.output_dir+'/raw',pm.run.verbosity)
       Read_n[:,:] = data
       for k in range(1,imax):
          n[k,:] = Read_n[k-1,:] # Accounts for the difference in convention between MB and RE (for RE t=0 is the ground-state)
@@ -138,8 +137,7 @@ def coulomb():
 # Function to calculate the exchange-correlation energy
 def xcenergy(approx,n,V_h,V_xc,E_KS):
    try:
-      file_name = 'outputs/' + str(pm.run.name) + '/data/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_' + str(approx) + '_E.dat'
-      E_MB = np.loadtxt(file_name)
+      E_MB = rs.Results.read('gs_{}_E'.format(approx), pm.output_dir+'/raw',pm.run.verbosity) 
       E_xc = E_MB - E_KS
       for i in range(pm.sys.grid):
          E_xc += (n[0,i])*((0.50*V_h[0,i])+(V_xc[0,i]))*pm.sys.deltax

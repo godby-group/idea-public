@@ -544,7 +544,7 @@ def main(parameters):
     # Save ground state density, energy and external potential
     results = rs.Results()
     results.add(density,'gs_ext_den')
-    results.add(energy.real,'gs_ext_e')
+    results.add(energy.real,'gs_ext_E')
     results.add(potential,'gs_ext_vxt')
     if(pm.run.save):
         results.save(pm.output_dir + '/raw')
@@ -569,7 +569,7 @@ def main(parameters):
         
         # Save time-dependent density, energy and external potential
         results.add(density,'td_ext_den')
-        results.add(current_density,'td_cur_e')
+        results.add(current_density,'td_ext_cur')
         results.add(potential,'td_ext_vxt')
         if(pm.run.save):
             l = ['td_ext_den','td_cur_e','td_ext_vxt']
