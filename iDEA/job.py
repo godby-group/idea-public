@@ -127,6 +127,9 @@ class Job(object):
         if(pm.run.MBPT == True):
               import MBPT
               results.add(MBPT.main(pm), name='MBPT')
+        if(pm.run.MBPT2 == True):
+              import MBPT2
+              results.add(MBPT2.main(pm), name='MBPT2')
         if(pm.mbpt.RE == True):
               import RE
               results.add(RE.main(pm,'mbpt'), name='RE')

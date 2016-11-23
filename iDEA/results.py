@@ -8,9 +8,14 @@ import copy as cp
 class Results(object):
     """Container for results.
 
-    At the moment, this class is simply a convenient container for the results
-    of a calculation. Additional functionality may be added at a later point.
+    A convenient container for storing, reading and saving the results of a
+    calculation.
     """
+    calc_dict = {
+        'td': 'time-dependent',
+        'gs': 'ground state',
+    }
+
     method_dict = {
         'non': 'non-interacting',
         'ext': 'exact',
@@ -20,6 +25,9 @@ class Results(object):
 
     quantity_dict = {
         'den': r'$\rho$',
+        'cur': r'$j$',
+        'eigf': r'$\psi_j$',
+        'eigv': r'$\varepsilon_j$',
         'vxt': r'$V_{ext}$',
         'vh': r'$V_{H}$',
         'vxc': r'$V_{xc}$',
@@ -31,10 +39,10 @@ class Results(object):
         r""" returns full label for shortname of result.
 
         Expand shortname used for 1d quantities saved by iDEA.
-        E.g. 'non_den' => 'non-interacting $\rho$'
+        E.g. 'gs_non_den' => 'ground state $\rho$ (non-interacting)'
         """
-        m, l = shortname.split('_')
-        s  = "{} ({})".format(Results.quantity_dict[l], Results.method_dict[m])
+        c, m, q = shortname.split('_')
+        s  = r"{} {} ({})".format(Results.calc_dict[c], Results.quantity_dict[q], Results.method_dict[m])
 
         return s
 
@@ -74,6 +82,7 @@ class Results(object):
 
         filename = "{}/{}.db".format(dir,name)
         pm.sprint("Reading {} from {}".format(name,filename),0)
+        #pm.sprint("Reading {} from {}".format(Results.label(name),filename),0)
         f = open(filename, 'rb')
         data = pickle.load(f)
         f.close()

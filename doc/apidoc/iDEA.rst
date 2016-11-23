@@ -132,14 +132,6 @@ iDEA.splash module
     :undoc-members:
     :show-inheritance:
 
-iDEA.sprint module
-------------------
-
-.. automodule:: iDEA.sprint
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 iDEA.test_NON module
 --------------------
 

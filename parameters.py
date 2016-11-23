@@ -16,6 +16,7 @@ run.LDA = False             #: Run LDA approximation
 run.MLP = False             #: Run MLP approximation
 run.HF = False              #: Run Hartree-Fock approximation
 run.MBPT = False            #: Run Many-body pertubation theory
+run.MBPT2 = True            #: Run Many-body pertubation theory
 run.LAN = False             #: Run Landauer approximation
 
 
@@ -111,6 +112,19 @@ mbpt.update_w = True            #: Update screening
 mbpt.tolerance = 1e-12          #: Tolerance of the self-consistent algorithm
 mbpt.max_iterations = 100       #: Maximum number of iterations in full self-consistency
 mbpt.RE = False                 #: Reverse engineer mbpt density
+
+### MBPT2 parameters
+mbpt = InputSection()
+mbpt.h0 = 'non'                 #: starting hamiltonian: 'non','ha','hf','lda'
+mbpt.tau_max = 40.0             #: Maximum value of imaginary time
+mbpt.tau_npt = 800              #: Number of imaginary time points (must be even)
+mbpt.norb = 25                  #: Number of orbitals to use
+mbpt.flavour = 'G0W0'           #: 'G0W0', 'GW', 'G0W', 'GW0'
+mbpt.den_tol = 1e-12            #: density tolerance of self-consistent algorithm
+mbpt.max_iter = 100             #: Maximum number of self-consistent algorithm
+mbpt.save_diag = True           #: whether to save diagonal components of all space-time quantities
+mbpt.RE = False                 #: Reverse engineer mbpt density
+
 
 # LAN parameters
 lan = InputSection()
