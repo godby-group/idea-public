@@ -353,7 +353,7 @@ def CNsolveComplexTime():
             string = 'energy convergence: ' + str(e_con)
             pm.sprint(string,0)
             if(e_con < ctol*10.0 and wf_con < ctol*10.0):
-                print
+                pm.sprint('',1)
                 string = 'EXT: ground state converged' 
                 pm.sprint(string,1)
                 string = 'ground state converged' 
@@ -525,7 +525,6 @@ def main(parameters):
 
     # Complex Time array initialisations 
     string = 'EXT: constructing arrays'
-    pm.sprint(string,0)
     pm.sprint(string,1)
     Psiarr = np.zeros((2,jmax**2), dtype = np.cfloat)
     Rhv2 = np.zeros((jmax**2), dtype = np.cfloat)
