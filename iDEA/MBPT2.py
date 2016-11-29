@@ -8,6 +8,7 @@ import copy
 import numpy as np
 import scipy as sp
 import results as rs
+import mklfftwrap
 
 class SpaceTimeGrid:
     """Stores spatial and frequency grids"""
@@ -30,6 +31,10 @@ class SpaceTimeGrid:
         # no shift for the frequency grid
         self.omega_grid = 2*self.omega_max * np.fft.fftfreq(self.tau_npt)
         self.omega_delta = 2*np.pi / 2*self.tau_max
+        # phase factors for Fourier transform
+        # numpy forward transform has minus sign in exponent
+        self.phase_forward= np.exp(-1J * np.pi * np.fft.fftfreq(self.tau_npt))
+        self.phase_backward= np.conj(self.phase_forward)
 
         # space
         self.x_max = pm.sys.xmax
@@ -54,7 +59,21 @@ class SpaceTimeGrid:
 
         
 def main(parameters):
-    """Runs GW calculation"""
+    r"""Runs GW calculation
+    
+    Steps: 
+       {eps_j, psi_j}
+    => G0(rr';i\tau)
+    => P(rr';i\tau)
+    => eps(rr';i\tau)
+    => eps(rr';i\omega)
+    => W(rr';i\omega) (eps_inv not calculated directly)
+    => W(rr';i\tau)
+    => sigma(rr';i\tau)
+    => sigma(rr';i\omega)
+    => G(rr';i\omega) (for self-consistent calculation)
+ 
+    """
     pm = parameters
     results = rs.Results()
 
@@ -92,15 +111,106 @@ def main(parameters):
               "gap {:.3f} Ha.\n Increase tau_max to {:.1f} for decay to 1e-2 "\
               "or {:.1f} for decay to 1e-3".format(gap,t2,t3))
 
+    def save(O, shortname):
+        """Auxiliary function for saving 3d objects"""
+        # For saving diagonals, there is just a switch
+        if pm.mbpt.save_diag:
+            name = "gs_mbpt_{}_dg".format(shortname)
+            results.add(bracket_r(O, h0_orbitals, st), name)
 
+        # For saving full objects, there is a list
+        if shortname in pm.mbpt.save_full:
+            name = "gs_mbpt_{}".format(shortname)
+            results.add(O, name)
+            results.save(pm, list=[name])
+
+    # compute G0
     pm.sprint('MBPT: setting up G0(it)')
     G0 = non_interacting_green_function(h0_orbitals, h0_energies, st)
+    save(G0,"G0_it")
 
-    if pm.mbpt.save_diag:
-        exp_values = bracket_r(G0, h0_orbitals,st)
-        results.add(exp_values,"gs_mbpt_G0_dg")
+    if 'G0_iw' in pm.mbpt.save_full:
+        pm.sprint('MBPT: transforming G0 to imaginary frequency')
+        G0_iw = fft_t(G0, st, dir='it2if')
+        save(G0_iw,"G0_iw")
+        del G0_iw
+
+    if pm.mbpt.flavour in ['GW', 'QSGW']:
+        # we need both G and G0 separately
+        G = copy.deepcopy(G0)
+    else:
+        # we need only G0 but will call it G
+        G = G0
+        del G0
+
+
+    #pm.sprint('GW: computing Hartree and exchange energies')
+    #rho0 = electron_density(pm, G=G0_m)
+    #results.add(rho0, name="rho0")
+    #h_energies = hartree_energies(pm, orbitals=orbitals, rho=rho0)
+    #results.add(h_energies, name="h_energies")
+    #x_energies = exchange_energies(pm,orbitals=orbitals,G=G0_m)
+    #results.add(x_energies, name="x_energies")
+
+
+    # GW self-consistency loop
+    converged = False
+    cycle = 0
+    qp_fermi = e_fermi
+    while not converged:
+
+        pm.sprint('GW: setting up P(it)')
+        P = irreducible_polarizability(G, pm)
+        save(P, "P{}_it".format(cycle))
+
+        pm.sprint('GW: transforming P to imaginary frequency')
+        P = fft_t(P, st, dir='it2if')
+        save(P, "P{}_iw".format(cycle))
+
+        #pm.sprint('GW: setting up eps(iw)')
+        #eps = dielectric_matrix(P, pm)
+        #exp_values = bracket_r(eps, orbitals, pm)
+        #results.add(exp_values, name="eps_iw_diagonal")
+        #if 'eps_iw' in pm.to_plot:
+        #    results.add(eps, name="eps_iw")
+        ##eps_it = fft_t(eps, pm, dir='if2it')
+        ##results.add(eps_it, name="eps_it")
+
+        #del P
+
+        #pm.sprint('GW: setting up W(iw)')
+        #W = screened_interaction(pm, epsilon=eps, w_flavor=pm.w_flavor)
+        #exp_values = bracket_r(W, orbitals, pm)
+        #results.add(exp_values, name="W_iw_diagonal")
+        #if 'W_iw' in pm.to_plot:
+        #    results.add(W, name="W_iw")
+        ##del eps_inv
+        #del eps
+
+        #pm.sprint('GW: transforming W to imaginary time')
+        #W = fft_t(W, pm, dir='if2it')
+        #exp_values = bracket_r(W, orbitals, pm)
+        #results.add(exp_values, name="W_it_diagonal")
+        #if 'W_it' in pm.to_plot:
+        #    results.add(W, name="W_it")
+
+        ## Note: we calculate just the correlation part here,
+        ##       as this is the part we would like to fit
+        #pm.sprint('GW: computing sigma(it)')
+        #sigma = self_energy(G_m, W, pm, h_flavor=pm.h_flavor, w_flavor=pm.w_flavor, self_consistent=True, rho0=rho0)
+        #if 'sigma_it' in pm.to_plot:
+        #    results.add(sigma, name="sigma_it")
+        #del W
+
+        cycle = cycle + 1
+        if pm.mbpt.flavour == 'G0W0':
+            break
+    
+
+
 
     #if pm.mbpt.flavour == 'G0W0':
+
     #    results = G0W0(pm, results)
     #elif pm.mbpt.flavour == 'GW':
     #    results = SCGW(pm, results)
@@ -211,6 +321,111 @@ def bracket_r(O, orbitals, st, mode='diagonal'):
         raise ValueError("Unknown mode {}".format(mode))
         
     return bracket_r
+
+
+def fft_t(F, st, dir, phase_shift=True):
+    r"""Performs 1d Fourier transform of F(r,r';t) along time dimension.
+
+    Can handle forward & backward transforms in real & imaginary time.
+    Here, we replicate the convention of [Rieger1999]_ (see equations 3.1 and 3.2)
+
+    .. math::
+
+        \begin{align}
+        F(\omega) &= \int dt F(t) e^{i\omega t} \\
+        F(t) &= \int \frac{d\omega}{2\pi} F(\omega) e^{-i\omega t}\\
+        F(i\omega) &= -i\int dt F(it) e^{-i\omega t}\\
+        F(it) &= i\int \frac{d\omega}{2\pi} F(i\omega) e^{i\omega t}
+        \end{align}
+
+    The infinitesimals :math:`d\tau,d\omega/2\pi` are automatically
+    included in the Fourier transforms.
+
+    Note: We adopt the Fourier transform convention by Rieger, Hedin et al.,
+    which uses negative imaginary exponents for the *backward* transform in real time.
+    This differs from the more common convention (adopted by numpy) of using
+    negative exponents for the *forward* transform.
+
+    numpy by default scales the forward transform by 1/n. See also
+    http://docs.scipy.org/doc/numpy/reference/routines.fft.html#implementation-details.
+    The MKL scales neither forward nor backward transform.
+
+    FLOPS: tau_npt * grid**2 * (log(grid) + 2)
+
+    parameters
+    ----------
+      F : array
+        will be transformed along last axis
+      dir : string
+        't2f' time to frequency domain
+        'f2t' frequency to time domain
+        'it2if' imaginary time to imaginary frequency domain
+        'if2it' imaginary frequency to imaginary time domain
+      phase_shift: bool
+        True: use with shifted tau grid (tau_grid[0] = tau_delta/2)
+        False: use with unshifted tau grid (tau_grid[0] = 0)
+    """
+
+    n = float(F.shape[-1])
+    # Crazy - taking out the prefactors p really makes it faster    
+    if dir == 't2f':
+        out = mklfftwrap.ifft_t(F) * st.tau_delta
+        #out = np.fft.ifft(F, axis=-1) * n * st.tau_delta
+    elif dir == 'f2t':
+        p = 1 / (n * st.tau_delta)
+        out = mklfftwrap.fft_t(F) * p
+        #out = np.fft.fft(F, axis=-1) / (n * st.tau_delta)
+    elif dir == 'it2if':
+        p = -1J * st.tau_delta
+        out = mklfftwrap.fft_t(F) * p
+        #out = -1J * np.fft.fft(F, axis=-1) * st.tau_delta
+    elif dir == 'if2it':
+        p = 1J / (n * st.tau_delta)
+        out = mklfftwrap.ifft_t(F) * p
+        #out = 1J * np.fft.ifft(F, axis=-1) / st.tau_delta
+    else:
+        raise IOError("FFT direction {} not recognized.".format(dir))
+
+    if not phase_shift:
+        return out
+    else:
+        if dir in ['f2t','it2if']:
+            # this correctly multiplies element-wise, looping over last axis of out
+            return out * st.phase_forward
+        else:
+            return out * st.phase_backward
+
+
+def irreducible_polarizability(G, st):
+    r"""Calculates irreducible polarizability P(r,r',it).
+
+    .. math:: P(r,r';i\tau) = -iG(r,r';i\tau) G(r',r;-i\tau)
+
+    parameters
+    ----------
+    G : array
+        Green function
+    st : object
+        space-time grid
+
+    FLOPS: grid**2 * tau_npt * 3
+
+    See equation 3.4 of [Rieger1999]_.
+    """
+
+    G_rev = copy.copy(G)
+    G_rev = G_rev.swapaxes(0,1)
+    # need t=0 to become the *last* index for ::-1
+    P =  -1J * G * G_rev[:,:,::-1]
+
+    # v2 done in python, significantly slower...
+    #P = np.zeros((pm.grid, pm.grid, pm.tau_npt), dtype=complex)
+    #for i in range(pm.grid):
+    #    for j in range(pm.grid):
+    #        for k in range(pm.tau_npt):
+    #            P[i, j, k] = -1J * G_m[i, j, k] * G_m[j, i, -k]
+
+    return P
 
 
 #
