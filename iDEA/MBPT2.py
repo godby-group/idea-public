@@ -42,6 +42,13 @@ class SpaceTimeGrid:
         self.x_delta = float(2*pm.sys.xmax)/float(pm.sys.grid-1)
         self.x_grid = np.linspace(-self.x_max,self.x_max,self.x_npt)
 
+        # set up coulomb repulsion matrix v(i,j)
+        tmp = np.empty((self.x_npt, self.x_npt), dtype=int)
+        for i in range(self.x_npt):
+            for j in range(self.x_npt):
+                tmp[i,j] = np.abs(i - j)
+        self.coulomb_repulsion = 1/(tmp * self.x_delta + pm.sys.acon)
+
         # orbitals
         self.norb = pm.mbpt.norb
         self.NE = pm.sys.NE
@@ -112,7 +119,11 @@ def main(parameters):
               "or {:.1f} for decay to 1e-3".format(gap,t2,t3))
 
     def save(O, shortname):
-        """Auxiliary function for saving 3d objects"""
+        """Auxiliary function for saving 3d objects
+        
+        Note: This needs to be defined *within* main in order to avoid having
+        to pass a long list of arguments
+        """
         # For saving diagonals, there is just a switch
         if pm.mbpt.save_diag:
             name = "gs_mbpt_{}_dg".format(shortname)
@@ -153,7 +164,7 @@ def main(parameters):
     #results.add(x_energies, name="x_energies")
 
 
-    # GW self-consistency loop
+    ### GW self-consistency loop
     converged = False
     cycle = 0
     qp_fermi = e_fermi
@@ -167,25 +178,15 @@ def main(parameters):
         P = fft_t(P, st, dir='it2if')
         save(P, "P{}_iw".format(cycle))
 
-        #pm.sprint('GW: setting up eps(iw)')
-        #eps = dielectric_matrix(P, pm)
-        #exp_values = bracket_r(eps, orbitals, pm)
-        #results.add(exp_values, name="eps_iw_diagonal")
-        #if 'eps_iw' in pm.to_plot:
-        #    results.add(eps, name="eps_iw")
-        ##eps_it = fft_t(eps, pm, dir='if2it')
-        ##results.add(eps_it, name="eps_it")
+        pm.sprint('GW: setting up eps(iw)')
+        eps = dielectric_matrix(P, st)
+        save(eps, "eps{}_iw".format(cycle))
+        del P # not needed anymore
 
-        #del P
-
-        #pm.sprint('GW: setting up W(iw)')
-        #W = screened_interaction(pm, epsilon=eps, w_flavor=pm.w_flavor)
-        #exp_values = bracket_r(W, orbitals, pm)
-        #results.add(exp_values, name="W_iw_diagonal")
-        #if 'W_iw' in pm.to_plot:
-        #    results.add(W, name="W_iw")
-        ##del eps_inv
-        #del eps
+        pm.sprint('GW: setting up W(iw)')
+        W = screened_interaction(st, epsilon=eps, w_flavour=pm.mbpt.w)
+        save(W, "W{}_iw".format(cycle))
+        del eps # not needed anymore
 
         #pm.sprint('GW: transforming W to imaginary time')
         #W = fft_t(W, pm, dir='if2it')
@@ -197,7 +198,7 @@ def main(parameters):
         ## Note: we calculate just the correlation part here,
         ##       as this is the part we would like to fit
         #pm.sprint('GW: computing sigma(it)')
-        #sigma = self_energy(G_m, W, pm, h_flavor=pm.h_flavor, w_flavor=pm.w_flavor, self_consistent=True, rho0=rho0)
+        #sigma = self_energy(G_m, W, pm, h_flavour=pm.h_flavour, w_flavour=pm.w_flavour, self_consistent=True, rho0=rho0)
         #if 'sigma_it' in pm.to_plot:
         #    results.add(sigma, name="sigma_it")
         #del W
@@ -367,33 +368,37 @@ def fft_t(F, st, dir, phase_shift=True):
     """
 
     n = float(F.shape[-1])
+
     # Crazy - taking out the prefactors p really makes it faster    
     if dir == 't2f':
         out = mklfftwrap.ifft_t(F) * st.tau_delta
         #out = np.fft.ifft(F, axis=-1) * n * st.tau_delta
+        if phase_shift:
+            out *= st.phase_backward
     elif dir == 'f2t':
         p = 1 / (n * st.tau_delta)
-        out = mklfftwrap.fft_t(F) * p
-        #out = np.fft.fft(F, axis=-1) / (n * st.tau_delta)
+        if phase_shift:
+            out = mklfftwrap.fft_t(F * st.phase_forward) * p
+        else:
+            out = mklfftwrap.fft_t(F) * p
+            #out = np.fft.fft(F, axis=-1) / (n * st.tau_delta)
     elif dir == 'it2if':
         p = -1J * st.tau_delta
         out = mklfftwrap.fft_t(F) * p
         #out = -1J * np.fft.fft(F, axis=-1) * st.tau_delta
+        if phase_shift:
+            out *= st.phase_forward
     elif dir == 'if2it':
         p = 1J / (n * st.tau_delta)
-        out = mklfftwrap.ifft_t(F) * p
-        #out = 1J * np.fft.ifft(F, axis=-1) / st.tau_delta
+        if phase_shift:
+            out = mklfftwrap.ifft_t(F * st.phase_backward) * p
+        else:
+            out = mklfftwrap.ifft_t(F) * p
+            #out = 1J * np.fft.ifft(F, axis=-1) / st.tau_delta
     else:
         raise IOError("FFT direction {} not recognized.".format(dir))
 
-    if not phase_shift:
-        return out
-    else:
-        if dir in ['f2t','it2if']:
-            # this correctly multiplies element-wise, looping over last axis of out
-            return out * st.phase_forward
-        else:
-            return out * st.phase_backward
+    return out
 
 
 def irreducible_polarizability(G, st):
@@ -426,6 +431,114 @@ def irreducible_polarizability(G, st):
     #            P[i, j, k] = -1J * G_m[i, j, k] * G_m[j, i, -k]
 
     return P
+
+
+def dielectric_matrix(P, st):
+    r"""Calculates dielectric matrix eps(r,r';iw) from polarizability.
+
+    .. math::
+
+        \varepsilon(r,r';i\omega) = \delta(r-r') - \int v(r-r'')P(r'',r';i\omega)d^3r''
+
+    See equation 3.5 and 4.3 of [Rieger1999]_.
+
+    FLOPS: tau_npt * (2*grid * grid**2)
+
+    parameters
+    ----------
+    P: array_like
+      irreducible polarizability P(r,r';iw)
+    st: object
+      space-time grid
+    """
+    v = st.coulomb_repulsion
+
+    # Note: dot + reshape is a tiny bit faster than tensordot...
+    #eps = - np.tensordot(v, P, axes=(1,1)) * st.x_delta
+    eps = - np.dot(v, P.reshape(st.x_npt, st.x_npt*st.tau_npt)) * st.x_delta
+    eps = eps.reshape(st.x_npt, st.x_npt, st.tau_npt)
+
+    # add delta(r-r')
+    tmp = 1 / st.x_delta
+    for i in range(st.x_npt):
+        eps[i, i, :] += tmp
+
+    # v2 within python
+    #for k in range(st.tau_npt):
+    #    eps[:, :, k] = -np.dot(v, P[:, :, k]) * st.deltax
+
+    #    # add delta(r-r')
+    #    for i in range(st.x_npt):
+    #        eps[i, i, k] += 1 / st.deltax
+
+    return eps
+
+
+def screened_interaction(st, epsilon_inv=None, epsilon=None, w_flavour='full'):
+    r"""Calculates screened interaction W(r,r';iw).
+
+    Input is the (inverse) dielectric function.
+
+    .. math::
+
+        W(r,r';i\omega) = \int v(r-r'') \varepsilon^{-1}(r'',r';i\omega)d^3r''
+
+    See equation 3.6 of [Rieger1999]_.
+
+    FLOPS: tau_npt * (grid**3 + grid**2)
+
+    parameters
+    ----------
+    epsilon_inv: array_like
+        inverse dielectric matrix eps_inv(r,r',iw)
+        if provided, we compute W = epsilon_inv v
+    epsilon: array_like
+        dielectric matrix eps(r,r',iw)
+        if provided, we solve epsilon W = v instead
+    w_flavour: string
+        'full': for full screened interaction (static and dynamical parts)
+        'dynamical': dynamical part only: W = (eps_inv -1) v
+
+    returns W
+    """
+    W = np.empty((st.x_npt, st.x_npt, st.tau_npt), dtype=complex)
+    v = st.coulomb_repulsion
+
+    if w_flavour not in ['full', 'dynamical']:
+        raise ValueError("Unrecognized flavour {} for screened interaction".format(w_flavour))
+
+    if epsilon_inv is not None:
+        # W = eps_inv * v
+
+        if w_flavour == 'dynamical':
+            # calculate only dynamical part of sigma: W = (eps_inv-1) v
+            tmp = 1.0 / st.x_delta
+            for i in range(st.x_npt):
+                epsilon_inv[i,i,:] -= tmp
+
+        for k in range(st.tau_npt):
+            W[:, :, k] = np.dot(epsilon_inv[:, :, k], v) * st.x_delta
+        # for some strange reason, above loop is slightly *faster* than np.tensordot
+        #W = np.tensordot(v, epsilon_inv, axes=(0,1)) * st.x_delta
+    elif epsilon is not None:
+        # solve linear system
+        v_dx = v / st.x_delta
+
+        if w_flavour == 'dynamical':
+            # solve eps * (W+v) = v/dx
+            for k in range(st.tau_npt):
+                W[:, :, k] = np.linalg.solve(epsilon[:,:,k], v_dx) - v
+        else:
+            # solve eps*W = v/dx
+
+            for k in range(st.tau_npt):
+                W[:, :, k] = np.linalg.solve(epsilon[:,:,k], v_dx)
+
+    else:
+        raise ValueError("Need to provide either epsilon or epsilon_inv")
+
+    return W
+
 
 
 #
