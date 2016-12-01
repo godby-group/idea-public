@@ -92,6 +92,14 @@ def main(parameters):
     h0_orbitals = rs.Results.read('gs_{}_eigf'.format(pm.mbpt.h0), pm)
     h0_rho = rs.Results.read('gs_{}_den'.format(pm.mbpt.h0), pm)
 
+    if h0_energies.dtype == np.complex:
+        im_max = np.max(np.abs(h0_energies.imag))
+        s  = "MBPT: Warning: single-particle energies are complex "
+        s += "(maximum imaginary component: {:.3e}). ".format(im_max)
+        s += "Casting to real."
+        pm.sprint(s)
+        h0_energies = h0_energies.real
+
     norb = len(h0_energies)
     if norb < st.norb:
         raise ValueError("Not enough orbitals: {} computed, {} requested.".format(norb,st.norb))
@@ -102,8 +110,9 @@ def main(parameters):
     homo = h0_energies[st.NE-1]
     lumo = h0_energies[st.NE]
     gap = lumo - homo
+    pm.sprint('MBPT: single-particle gap: {:.3f} Ha'.format(gap))
     e_fermi = homo + gap / 2
-    pm.sprint('MBPT: Shifting center of gap from {:.3f} Ha to zero.'.format(e_fermi))
+    pm.sprint('MBPT: single-particle Fermi energy: {:.3f} Ha'.format(e_fermi))
     h0_energies -= e_fermi
     results.add(h0_energies, name="gs_mbpt_eigv0")
     results.add(h0_orbitals, name="gs_mbpt_eigf0")
@@ -111,26 +120,28 @@ def main(parameters):
 
     # check that G(it) is well described
     exp_factor = np.exp(-(lumo-e_fermi)*st.tau_max)
-    if exp_factor > 1e-2:
+    if exp_factor > 1e-1:
+        t1 = -np.log(1e-1)/(lumo-e_fermi)
         t2 = -np.log(1e-2)/(lumo-e_fermi)
-        t3 = -np.log(1e-3)/(lumo-e_fermi)
-        pm.sprint("Warning: Width of tau-grid for G(it) is too small for HOMO-LUMO "\
-              "gap {:.3f} Ha.\n Increase tau_max to {:.1f} for decay to 1e-2 "\
-              "or {:.1f} for decay to 1e-3".format(gap,t2,t3))
+        s  = "MBPT: Warning: Width of tau-grid for G(it) is too small "
+        s += "for HOMO-LUMO gap {:.3f} Ha. ".format(gap)
+        s += "Increase tau_max to {:.1f} for decay to 1e-1 ".format(t1)
+        s +=  "or {:.1f} for decay to 1e-2".format(t2)
+        pm.sprint(s)
 
     # computing/reading potentials
     h0_vh = hartree_potential(st, rho=h0_rho)
     h0_vx = exchange_potential(st, orbitals=h0_orbitals)
     h0_vhxc = hartree_exchange_correlation_potential(pm.mbpt.h0, h0_orbitals, h0_vh, h0_vx, st)
 
-    def save(O, shortname):
+    def save(O, shortname, force_dg=False):
         """Auxiliary function for saving 3d objects
         
         Note: This needs to be defined *within* main in order to avoid having
         to pass a long list of arguments
         """
         # For saving diagonals, there is just a switch
-        if pm.mbpt.save_diag:
+        if (shortname in pm.mbpt.save_diag) or force_dg:
             name = "gs_mbpt_{}_dg".format(shortname)
             results.add(bracket_r(O, h0_orbitals, st), name)
 
@@ -166,7 +177,7 @@ def main(parameters):
 
 
 
-    #pm.sprint('GW: computing Hartree and exchange energies')
+    #pm.sprint('MBPT: computing Hartree and exchange energies')
     #rho0 = electron_density(pm, G=G0_m)
     #results.add(rho0, name="rho0")
     #h_energies = hartree_energies(pm, orbitals=orbitals, rho=rho0)
@@ -181,51 +192,60 @@ def main(parameters):
     qp_fermi = e_fermi
     while not converged:
 
-        pm.sprint('GW: setting up P(it)')
+        pm.sprint('MBPT: setting up P(it)')
         P = irreducible_polarizability(G)
         save(P, "P{}_it".format(cycle))
 
-        pm.sprint('GW: transforming P to imaginary frequency')
+        pm.sprint('MBPT: transforming P to imaginary frequency')
         P = fft_t(P, st, dir='it2if')
         save(P, "P{}_iw".format(cycle))
 
-        pm.sprint('GW: setting up eps(iw)')
+        pm.sprint('MBPT: setting up eps(iw)')
         eps = dielectric_matrix(P, st)
         save(eps, "eps{}_iw".format(cycle))
         del P # not needed anymore
 
-        pm.sprint('GW: setting up W(iw)')
+        pm.sprint('MBPT: setting up W(iw)')
         W = screened_interaction(st, epsilon=eps, w_flavour=pm.mbpt.w)
         save(W, "W{}_iw".format(cycle))
         del eps # not needed anymore
 
-        pm.sprint('GW: transforming W to imaginary time')
+        pm.sprint('MBPT: transforming W to imaginary time')
         W = fft_t(W, st, dir='if2it')
         save(W, "W{}_it".format(cycle))
 
-        pm.sprint('GW: computing sigma(it)')
+        pm.sprint('MBPT: computing sigma(it)')
         sigma = self_energy(G, W)
         save(sigma, "sigma{}_it".format(cycle))
         del W # not needed anymore
 
-        pm.sprint('GW: transforming sigma to imaginary frequency')
+        pm.sprint('MBPT: transforming sigma to imaginary frequency')
         sigma = fft_t(sigma, st, dir='it2if')
 
-        pm.sprint('GW: adjusting self energy')
+        pm.sprint('MBPT: adjusting self energy')
         # real for real orbitals...
         delta = np.zeros((st.x_npt, st.x_npt), dtype=np.complex)
         np.fill_diagonal(delta, h_vh)
         delta -= h0_vhxc
         if pm.mbpt.w == 'dynamical':
-            # in the frequency domain, we can put the exchange back
+            # in the frequency domain we can put the exchange back
             # Note: here, we need the extrapolated G(it=0^-)
             delta += h_vx
         for i in range(st.tau_npt):
             sigma[:,:,i] += delta
-        save(sigma, "sigma{}_iw".format(cycle))
+        save(sigma, "sigma{}_iw".format(cycle), force_dg=True)
 
+        if pm.mbpt.hedin_shift:
+            pm.sprint('MBPT: performing Hedin shift')
+            sigma_iw_dg = getattr(results, "gs_mbpt_sigma{}_iw_dg".format(cycle))
+            qp_shift = 0.5 * (sigma_iw_dg[st.NE-1,0] + sigma_iw_dg[st.NE,0])
+            qp_shift = qp_shift.real
+            qp_fermi += qp_shift
+            pm.sprint('MBPT: shifting quasi-particle fermi energy by {:.3f} Ha to {:.3f} Ha.'.format(qp_shift, qp_fermi))
+            for i in range(st.tau_npt):
+                sigma[:,:,i] -= qp_shift
 
-        #TODO: extrapolate full G to get v_x
+        #TODO: extrapolate full G (not just diagonal) to get h_vx
 
         cycle = cycle + 1
         if pm.mbpt.flavour == 'G0W0':
