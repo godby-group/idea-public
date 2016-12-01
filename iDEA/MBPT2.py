@@ -87,10 +87,10 @@ def main(parameters):
     st = SpaceTimeGrid(pm)
     pm.sprint(str(st))
 
-    # read in eigenvalues and eigenfunctions of
-    # starting Hamiltonian
+    # read eigenvalues and eigenfunctions of starting Hamiltonian
     h0_energies = rs.Results.read('gs_{}_eigv'.format(pm.mbpt.h0), pm)
     h0_orbitals = rs.Results.read('gs_{}_eigf'.format(pm.mbpt.h0), pm)
+    h0_rho = rs.Results.read('gs_{}_den'.format(pm.mbpt.h0), pm)
 
     norb = len(h0_energies)
     if norb < st.norb:
@@ -117,6 +117,11 @@ def main(parameters):
         pm.sprint("Warning: Width of tau-grid for G(it) is too small for HOMO-LUMO "\
               "gap {:.3f} Ha.\n Increase tau_max to {:.1f} for decay to 1e-2 "\
               "or {:.1f} for decay to 1e-3".format(gap,t2,t3))
+
+    # computing/reading potentials
+    h0_vh = hartree_potential(st, rho=h0_rho)
+    h0_vx = exchange_potential(st, orbitals=h0_orbitals)
+    h0_vhxc = hartree_exchange_correlation_potential(pm.mbpt.h0, h0_orbitals, h0_vh, h0_vx, st)
 
     def save(O, shortname):
         """Auxiliary function for saving 3d objects
@@ -149,10 +154,16 @@ def main(parameters):
     if pm.mbpt.flavour in ['GW', 'QSGW']:
         # we need both G and G0 separately
         G = copy.deepcopy(G0)
+        h_vh = copy.deepcopy(h0_vh)
+        h_vx = copy.deepcopy(h0_vx)
     else:
         # we need only G0 but will call it G
         G = G0
-        del G0
+        h_vh = h0_vh
+        h_vx = h0_vx
+
+        del G0, h0_vh, h0_vx
+
 
 
     #pm.sprint('GW: computing Hartree and exchange energies')
@@ -171,7 +182,7 @@ def main(parameters):
     while not converged:
 
         pm.sprint('GW: setting up P(it)')
-        P = irreducible_polarizability(G, pm)
+        P = irreducible_polarizability(G)
         save(P, "P{}_it".format(cycle))
 
         pm.sprint('GW: transforming P to imaginary frequency')
@@ -188,26 +199,38 @@ def main(parameters):
         save(W, "W{}_iw".format(cycle))
         del eps # not needed anymore
 
-        #pm.sprint('GW: transforming W to imaginary time')
-        #W = fft_t(W, pm, dir='if2it')
-        #exp_values = bracket_r(W, orbitals, pm)
-        #results.add(exp_values, name="W_it_diagonal")
-        #if 'W_it' in pm.to_plot:
-        #    results.add(W, name="W_it")
+        pm.sprint('GW: transforming W to imaginary time')
+        W = fft_t(W, st, dir='if2it')
+        save(W, "W{}_it".format(cycle))
 
-        ## Note: we calculate just the correlation part here,
-        ##       as this is the part we would like to fit
-        #pm.sprint('GW: computing sigma(it)')
-        #sigma = self_energy(G_m, W, pm, h_flavour=pm.h_flavour, w_flavour=pm.w_flavour, self_consistent=True, rho0=rho0)
-        #if 'sigma_it' in pm.to_plot:
-        #    results.add(sigma, name="sigma_it")
-        #del W
+        pm.sprint('GW: computing sigma(it)')
+        sigma = self_energy(G, W)
+        save(sigma, "sigma{}_it".format(cycle))
+        del W # not needed anymore
+
+        pm.sprint('GW: transforming sigma to imaginary frequency')
+        sigma = fft_t(sigma, st, dir='it2if')
+
+        pm.sprint('GW: adjusting self energy')
+        # real for real orbitals...
+        delta = np.zeros((st.x_npt, st.x_npt), dtype=np.complex)
+        np.fill_diagonal(delta, h_vh)
+        delta -= h0_vhxc
+        if pm.mbpt.w == 'dynamical':
+            # in the frequency domain, we can put the exchange back
+            # Note: here, we need the extrapolated G(it=0^-)
+            delta += h_vx
+        for i in range(st.tau_npt):
+            sigma[:,:,i] += delta
+        save(sigma, "sigma{}_iw".format(cycle))
+
+
+        #TODO: extrapolate full G to get v_x
 
         cycle = cycle + 1
         if pm.mbpt.flavour == 'G0W0':
             break
     
-
 
 
     #if pm.mbpt.flavour == 'G0W0':
@@ -221,6 +244,108 @@ def main(parameters):
     #    raise ValueError("MBPT mode {} is not implemented".format(pm.mbpt.flavour))
 
     return results
+
+def hartree_exchange_correlation_potential(h0, orbitals, h0_vh, h0_vx, st):
+    r"""Returns Hartree-exchange-correlation potential of h0
+
+    .. math ::
+        
+        \mathcal{H}_0 = T + V_{ext}(r) + V_{Hxc}(r,r') \\
+        V_{Hxc}(r,r') = \delta(r-r')V_H(r) + V_x(r,r') + V_c(r,r')
+
+    Possible choices for h0 are
+      * 'LDA'/'EXT': :math:`V_{Hxc}(r,r') = \delta(r-r') (V_H(r) + V_{xc}(r))`
+      * 'H': :math:`V_{Hxc}(r,r') = \delta(r-r') V_H(r)`
+      * 'HF': :math:`V_{Hxc}(r,r') = \delta(r-r') V_H(r) + V_x(r,r')`
+      * 'NON': :math:`V_{Hxc}(r,r') = 0
+
+    parameters
+    ----------
+    h0: string
+      The choice of single-particle Hamiltonian h0
+    h0: string
+        input parameters
+    st: object
+        space-time grid
+    orbitals : array_like
+        orbitals of non-interacting hamiltonian
+    h0_vh: array_like
+        Hartree potential V_H(r) of non-interacting density
+    h0_vx: array_like
+        Fock exchange operator V_x(r,r') of non-interacting density
+    """
+
+    h0_vhxc = np.zeros((st.x_npt, st.x_npt), dtype=np.float)
+    if h0 == 'non':
+        # non-interacting: v_Hxc = 0
+        np.fill_diagonal(h0_vhxc, np.zeros(st.x_npt))
+    elif h0 == 'h':
+        # Hartree: v_Hxc = v_H
+        tmp = rs.Results.read('gs_{}_vh'.format(h0), pm)
+        np.fill_diagonal(h0_vhxc, tmp / st.x_delta)
+    elif h0 == 'lda' or h0 == 'ext':
+        # KS-DFT: v_Hxc = v_H + v_xc
+        tmp = rs.Results.read('gs_{}_vh'.format(h0), pm)
+        tmp += rs.Results.read('gs_{}_vxc'.format(h0), pm)
+        np.fill_diagonal(h0_vhxc, tmp / st.x_delta)
+    elif h0 == 'hf':
+        # Hartree-Fock: v_Hxc = v_H + v_x
+        np.fill_diagonal(h0_vhxc, h0_vh / st.x_delta)
+        h0_vhxc += h0_vx
+    else:
+        raise ValueError("Unknown h0 flavor '{}'".format(h0))
+
+    return h0_vhxc
+
+def hartree_potential(st, rho=None, G=None):
+    r"""Sets up Hartree potential V_H(r) from electron density.
+
+    .. math::
+
+       V_H(r) = \int \frac{\rho(r')}{|r-r'|} dr' = (-i) \int \frac{G(r',r';0)}{|r-r'|}dr'
+
+    Note: :math:`V_H(r,r';i\tau) = \delta(r-r')\delta(i\tau)V_H(r)` with
+    :math:`\delta(i\tau)=i\delta(\tau)`.
+    """
+    if rho is not None:
+        pass
+    elif G is not None:
+        #TODO: to implement!
+        rho = electron_density(pm, G=G)
+    else:
+        raise IOError("Need to provide either rho or G.")
+
+    v_h = np.dot(st.coulomb_repulsion, rho) * st.x_delta
+    return v_h
+
+def exchange_potential(st, G=None, orbitals=None):
+    r"""Calculate Fock exchange operator V_x(r,r')
+
+    Can take either the Green function G(it) as input or the orbitals.
+
+    parameters
+    ----------
+    st: object
+       space-time grid
+    G: array_like
+       Green function G(r,r';it) (or G(r,r';t))
+    orbitals: array_like
+       single-particle orbitals
+
+    returns v_x(r,r')
+    """
+    if G is not None:
+        # default multiplication is element-wise
+        v_x = 1J * G[:, :, 0] * st.coulomb_repulsion
+    elif orbitals is not None:
+        v_x = np.zeros((st.x_npt,st.x_npt),dtype=complex)
+        for orb in orbitals:
+            v_x -= np.tensordot(orb.conj(), orb, axes=0)
+        v_x = v_x * st.coulomb_repulsion
+    else:
+        raise IOError("Need to provide either G or orbitals.")
+
+    return v_x
 
 
 def non_interacting_green_function(orbitals, energies, st, zero='0-'):
@@ -401,7 +526,7 @@ def fft_t(F, st, dir, phase_shift=True):
     return out
 
 
-def irreducible_polarizability(G, st):
+def irreducible_polarizability(G):
     r"""Calculates irreducible polarizability P(r,r',it).
 
     .. math:: P(r,r';i\tau) = -iG(r,r';i\tau) G(r',r;-i\tau)
@@ -410,8 +535,6 @@ def irreducible_polarizability(G, st):
     ----------
     G : array
         Green function
-    st : object
-        space-time grid
 
     FLOPS: grid**2 * tau_npt * 3
 
@@ -520,6 +643,7 @@ def screened_interaction(st, epsilon_inv=None, epsilon=None, w_flavour='full'):
             W[:, :, k] = np.dot(epsilon_inv[:, :, k], v) * st.x_delta
         # for some strange reason, above loop is slightly *faster* than np.tensordot
         #W = np.tensordot(v, epsilon_inv, axes=(0,1)) * st.x_delta
+
     elif epsilon is not None:
         # solve linear system
         v_dx = v / st.x_delta
@@ -539,6 +663,93 @@ def screened_interaction(st, epsilon_inv=None, epsilon=None, w_flavour='full'):
 
     return W
 
+
+def self_energy(G, W):
+    r"""Calculate the self-energy Sigma(it) within the GW approximation.
+
+    .. math::
+
+        \Sigma(r,r';i\tau) = iG(r,r';i\tau)W(r,r';i\tau)
+
+    FLOPS: tau_npt * (2*grid**2)
+
+    See equation 3.7 of [Rieger1999]_.
+
+    parameters
+    ----------
+    G: array_like
+       Green function G(it)
+    W: array_like
+       Screened interaction W(it)
+
+    return sigma
+    """
+    sigma = 1J * G * W
+    return sigma
+
+
+
+#def adjust_self_energy(sigma, v_h, h0_vxc, st, w_flavour='dynamical'):
+#    r"""Calculate the self-energy Sigma(it) within the GW approximation.
+#
+#    Here, the term "self-energy" is meant in the many-body sense, i.e.
+#    :math:`\Delta\Sigma = \mathcal{H}-\mathcal{H}^0` where `\mathcal{H}` is the
+#    many-body Hamiltonian and `\mathcal{H}^0` the single-particle Hamiltonian
+#    (of whatever kind).
+#    This is the self-energy required by the Dyson equation.
+#
+#    In general, we have
+#
+#    .. math::
+#
+#        \Sigma(r,r';i\tau) = iG(r,r';i\tau)W(r,r';i\tau) \\
+#        \Delta\Sigma(r,r';i\omega) = \Sigma(r,r';i\omega) + \delta(r-r') V_H(r) - V_{Hxc}^0(r,r')
+#
+#    where the superscript 0 indicates that the corresponding operator is 
+#    evaluated for the non-interacting Hamiltonian.
+#
+#    Note: :math:`V_H(r,r';i\tau) = \delta(r-r')\delta(i\tau)V_H(r)` with
+#    :math:`\delta(i\tau)=i\delta(\tau)`.
+#
+#
+#    parameters
+#    ----------
+#    sigma: array_like
+#       sigma(iw) where sigma(it) = -iGW
+#    vh: array_like
+#       up-to-date Hartree potential
+#    h0: string
+#      The choice of single-particle Hamiltonian h0
+#       'H'  :  h0 contains external & Hartree potential  (default)
+#       'HF' :  h0 contains external, Hartree & exchange potential
+#       'KS' :  h0 contains external, Hartree & exchange-correlation potential
+#       'NON':  h0 contains only external potential
+#    w_flavor: string
+#      flavor of screened interaction
+#       'full':  including the static exchange interaction
+#       'dynamical':  not including the static exchange interaction
+#    self_consistent:  True, if performing self-consistent calculation
+#    rho0:  single-particle electron-density
+#        needed for self-consistent calculations
+#    Vxc0:  single-particle exchange-correlation potential
+#        needed for self-consistent calculations
+#
+#    """
+#    # constructing static adjustment of self-energy
+#    diff = np.zeros((st.x_npt, st.x_npt), dtype=np.float)
+#
+#    np.fill_diagonal(diff, v_h)
+#    diff -= h0_vhxc
+#
+#    if w_flavour == 'dynamical':
+#        # in the frequency domain, we can put the exchange back
+#        # Note: here, we need the extrapolated G(it=0^-)
+#        diff += exchange_potential(st,G=G)
+#
+#    for i in range(st.tau_npt):
+#        sigma[:,:,i] += diff
+#
+#    return sigma
 
 
 #
