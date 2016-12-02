@@ -144,6 +144,7 @@ def main(parameters):
         if (shortname in pm.mbpt.save_diag) or force_dg:
             name = "gs_mbpt_{}_dg".format(shortname)
             results.add(bracket_r(O, h0_orbitals, st), name)
+            results.save(pm, list=[name])
 
         # For saving full objects, there is a list
         if shortname in pm.mbpt.save_full:
@@ -162,7 +163,7 @@ def main(parameters):
         save(G0_iw,"G0_iw")
         del G0_iw
 
-    if pm.mbpt.flavour in ['GW', 'QSGW']:
+    if pm.mbpt.flavour in ['GW', 'GW0', 'QSGW']:
         # we need both G and G0 separately
         G = copy.deepcopy(G0)
         h_vh = copy.deepcopy(h0_vh)
@@ -225,7 +226,7 @@ def main(parameters):
         pm.sprint('MBPT: adjusting self energy')
         # real for real orbitals...
         delta = np.zeros((st.x_npt, st.x_npt), dtype=np.complex)
-        np.fill_diagonal(delta, h_vh)
+        np.fill_diagonal(delta, h_vh / st.x_delta)
         delta -= h0_vhxc
         if pm.mbpt.w == 'dynamical':
             # in the frequency domain we can put the exchange back
@@ -355,11 +356,13 @@ def exchange_potential(st, G=None, orbitals=None):
     returns v_x(r,r')
     """
     if G is not None:
+        #TODO: need extrapolated G here!
         # default multiplication is element-wise
         v_x = 1J * G[:, :, 0] * st.coulomb_repulsion
     elif orbitals is not None:
         v_x = np.zeros((st.x_npt,st.x_npt),dtype=complex)
-        for orb in orbitals:
+        for i in range(st.NE):
+            orb = orbitals[i]
             v_x -= np.tensordot(orb.conj(), orb, axes=0)
         v_x = v_x * st.coulomb_repulsion
     else:
