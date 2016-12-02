@@ -157,24 +157,23 @@ def main(parameters):
     G0 = non_interacting_green_function(h0_orbitals, h0_energies, st)
     save(G0,"G0_it")
 
-    if 'G0_iw' in pm.mbpt.save_full:
-        pm.sprint('MBPT: transforming G0 to imaginary frequency')
-        G0_iw = fft_t(G0, st, dir='it2if')
-        save(G0_iw,"G0_iw")
-        del G0_iw
-
+    # prepare variables
     if pm.mbpt.flavour in ['GW', 'GW0', 'QSGW']:
         # we need both G and G0 separately
         G = copy.deepcopy(G0)
+        G0 = fft_t(G0, st, dir='it2if') # needed for dyson equation
+        save(G0,"G0_iw")
         h_vh = copy.deepcopy(h0_vh)
         h_vx = copy.deepcopy(h0_vx)
+        h_rho = copy.deepcopy(h0_rho)
     else:
         # we need only G0 but will call it G
         G = G0
         h_vh = h0_vh
         h_vx = h0_vx
+        h_rho = h0_rho
 
-        del G0, h0_vh, h0_vx
+        del G0, h0_vh, h0_vx, h0_rho
 
 
 
@@ -249,8 +248,31 @@ def main(parameters):
         #TODO: extrapolate full G (not just diagonal) to get h_vx
 
         cycle = cycle + 1
+
         if pm.mbpt.flavour == 'G0W0':
             break
+        elif pm.mbpt.flavour in ['GW','GW0']:
+            pm.sprint('MBPT: solving the Dyson equation for new G')
+            # note: G0 = G0(r,r';iw)
+            G = solve_dyson_equation(G0, sigma, st)
+
+            pm.sprint('MBPT: transforming G to imaginary time')
+            G = fft_t(G, st, dir='if2it')
+            save(G, "G{}_it".format(cycle))
+
+            break
+            # compute new rho
+            # check convergence...
+
+
+            #h_rho_new = electron_density(pm,G=G_m)
+            #rho_delta = h_rho_new - h_rho
+            #rho_delta_max = np.max(np.abs(rho_delta))
+            #if rho_diff_max < pm.eps_gw:
+            #    converged = True
+            #else:
+            #    pm.sprint("Max. change in rho: {:.2e} > {:.2e}".format(rho_diff_max,pm.eps_gw))
+
     
 
 
@@ -710,6 +732,55 @@ def self_energy(G, W):
     sigma = 1J * G * W
     return sigma
 
+
+
+def solve_dyson_equation(G0, sigma, st):
+    r"""Solves the Dyson equation for G
+
+    .. math::
+
+        G(r,r';i\omega) = \int  \left(\delta(r-r'') - \int  G_0(r,r''';i\omega)
+          Sigma(r''',r'';i\omega) d^3r''' \right)^{-1} G_0(r'',r';i\omega)
+
+    parameters
+    ----------
+    G0: array_like
+      non-interacting Green function G0(r,r';iw)
+    sigma: array_like
+      many-body self-energy sigma(r,r';iw)
+    st: object
+      space-time grid parameters
+
+    returns updated Green function G(r,r';iw)
+    """
+    # 1. Compute A = (1/dx**2 - G0*sigma*dx) * dx
+    # note: A could be made just np.empty((st.x_npt,st.x_npt)),
+    # but this would mean we can't use inverse_r
+    A = np.empty((st.x_npt,st.x_npt,st.tau_npt), dtype=complex)
+    for i in range(st.x_npt):
+        A[i,i,:] += 1.0
+
+    pref = st.x_delta**2
+    for k in range(st.tau_npt):
+        A[:,:,k] = -np.dot(G0[:,:,k], sigma[:,:,k]) * pref
+
+        # Note: the following einsum is equivalent but much slower
+        # (probably einsum first computes scalar products between different k
+        # although it returns only those from the same k in the end)
+        #A = -np.einsum('ijk,jlk->ilk',G0, sigma) * pref
+
+
+    # 2. Solve G = A**(-1)/dx**2 * G0 * dx <=> A*G = G0/dx
+    G = np.empty((st.x_npt,st.x_npt,st.tau_npt), dtype=complex)
+    for k in range(st.tau_npt):
+        G[:,:,k] = np.linalg.solve(A[:,:,k], G0[:,:,k] / st.x_delta)
+
+    ## v2, using matrix inversion
+    #A = inverse_r(A, st)
+    #for k in range(st.tau_npt):
+    #    G[:,:,k] = np.dot(A[:,:,k], G0[:,:,k]) * st.x_delta
+
+    return G
 
 
 #def adjust_self_energy(sigma, v_h, h0_vxc, st, w_flavour='dynamical'):
