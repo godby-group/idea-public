@@ -140,13 +140,11 @@ def main(parameters):
         Note: This needs to be defined *within* main in order to avoid having
         to pass a long list of arguments
         """
-        # For saving diagonals, there is just a switch
         if (shortname in pm.mbpt.save_diag) or force_dg:
             name = "gs_mbpt_{}_dg".format(shortname)
             results.add(bracket_r(O, h0_orbitals, st), name)
             results.save(pm, list=[name])
 
-        # For saving full objects, there is a list
         if shortname in pm.mbpt.save_full:
             name = "gs_mbpt_{}".format(shortname)
             results.add(O, name)
@@ -222,7 +220,7 @@ def main(parameters):
         pm.sprint('MBPT: transforming sigma to imaginary frequency')
         sigma = fft_t(sigma, st, dir='it2if')
 
-        pm.sprint('MBPT: adjusting self energy')
+        pm.sprint('MBPT: updating sigma(iw)')
         # real for real orbitals...
         delta = np.zeros((st.x_npt, st.x_npt), dtype=np.complex)
         np.fill_diagonal(delta, h_vh / st.x_delta)
@@ -241,7 +239,7 @@ def main(parameters):
             qp_shift = 0.5 * (sigma_iw_dg[st.NE-1,0] + sigma_iw_dg[st.NE,0])
             qp_shift = qp_shift.real
             qp_fermi += qp_shift
-            pm.sprint('MBPT: shifting quasi-particle fermi energy by {:.3f} Ha to {:.3f} Ha.'.format(qp_shift, qp_fermi))
+            pm.sprint('MBPT: quasi-particle fermi energy: {:.3f} Ha ({:+.3f} Ha).'.format(qp_fermi,qp_shift))
             for i in range(st.tau_npt):
                 sigma[:,:,i] -= qp_shift
 
@@ -255,24 +253,26 @@ def main(parameters):
             pm.sprint('MBPT: solving the Dyson equation for new G')
             # note: G0 = G0(r,r';iw)
             G = solve_dyson_equation(G0, sigma, st)
+            del sigma # not needed anymore
 
             pm.sprint('MBPT: transforming G to imaginary time')
             G = fft_t(G, st, dir='if2it')
             save(G, "G{}_it".format(cycle))
 
-            break
+            h_rho_new = extrapolate_to_zero(G,st)
+
             # compute new rho
             # check convergence...
 
 
             #h_rho_new = electron_density(pm,G=G_m)
-            #rho_delta = h_rho_new - h_rho
-            #rho_delta_max = np.max(np.abs(rho_delta))
-            #if rho_diff_max < pm.eps_gw:
-            #    converged = True
-            #else:
-            #    pm.sprint("Max. change in rho: {:.2e} > {:.2e}".format(rho_diff_max,pm.eps_gw))
-
+            rho_delta = h_rho_new - h_rho
+            rho_delta_max = np.max(np.abs(rho_delta))
+            if rho_delta_max < pm.mbpt.den_tol:
+                converged = True
+            else:
+                pm.sprint("Max. change in rho: {:.2e} > {:.2e}".format(rho_delta_max,pm.mbpt.den_tol))
+            break
     
 
 
@@ -753,13 +753,10 @@ def solve_dyson_equation(G0, sigma, st):
 
     returns updated Green function G(r,r';iw)
     """
-    # 1. Compute A = (1/dx**2 - G0*sigma*dx) * dx
+    # 1. Compute A = (1/dx - G0*sigma*dx) * dx
     # note: A could be made just np.empty((st.x_npt,st.x_npt)),
     # but this would mean we can't use inverse_r
     A = np.empty((st.x_npt,st.x_npt,st.tau_npt), dtype=complex)
-    for i in range(st.x_npt):
-        A[i,i,:] += 1.0
-
     pref = st.x_delta**2
     for k in range(st.tau_npt):
         A[:,:,k] = -np.dot(G0[:,:,k], sigma[:,:,k]) * pref
@@ -769,18 +766,49 @@ def solve_dyson_equation(G0, sigma, st):
         # although it returns only those from the same k in the end)
         #A = -np.einsum('ijk,jlk->ilk',G0, sigma) * pref
 
+    for i in range(st.x_npt):
+        A[i,i,:] += 1.0
 
-    # 2. Solve G = A**(-1)/dx**2 * G0 * dx <=> A*G = G0/dx
+
+
+    # 2. Solve G = (A/dx)**(-1) / dx**2 * G0 * dx <=> A*G = G0
     G = np.empty((st.x_npt,st.x_npt,st.tau_npt), dtype=complex)
     for k in range(st.tau_npt):
-        G[:,:,k] = np.linalg.solve(A[:,:,k], G0[:,:,k] / st.x_delta)
+        G[:,:,k] = np.linalg.solve(A[:,:,k], G0[:,:,k])
 
-    ## v2, using matrix inversion
+    ## same as above but using matrix inversion
     #A = inverse_r(A, st)
     #for k in range(st.tau_npt):
     #    G[:,:,k] = np.dot(A[:,:,k], G0[:,:,k]) * st.x_delta
 
     return G
+
+# Function to extract the ground-state density from G (using extrapolation to tau=0)
+def extrapolate_to_zero(F, st, order=10, dir='from_below'):
+    """Extrapolate quantities to time point zero
+
+    parameters
+    ----------
+    F: array_like
+      quantity to extrapolate
+    order: int
+      order of polynomial fit
+    dir: string
+      'from_below': extrapolate from negative times (default)
+      'from_above': extrapolate from positive times (default)
+   
+    returns extrapolated value at time zero
+    """
+    density = np.zeros(st.x_npt, dtype='float')
+    for j in xrange(0,st.x_npt):
+       x = []
+       y = []
+       for i in xrange(-order-1,0):
+          x.append(st.tau_grid[i])
+          y.append(F[j][j][i].imag)
+       z = np.poly1d(np.polyfit(np.array(x), np.array(y), order))  
+       density[j] = z(0)
+    return density
 
 
 #def adjust_self_energy(sigma, v_h, h0_vxc, st, w_flavour='dynamical'):
