@@ -198,6 +198,15 @@ def main(parameters):
         P = fft_t(P, st, dir='it2if')
         save(P, "P{}_iw".format(cycle))
 
+
+        #### testing alternative way of computing W
+        # this is completely identical for flavor=dynamical
+        #v_test = np.empty( (st.x_npt, st.x_npt, st.tau_npt), dtype=float)
+        #for i in range(st.tau_npt):
+        #    v_test[:,:,i] = st.coulomb_repulsion
+        #W_test = solve_dyson_equation(v_test,P,st)
+        #save(W_test, "Wt{}_iw".format(cycle))
+
         pm.sprint('MBPT: setting up eps(iw)')
         eps = dielectric_matrix(P, st)
         save(eps, "eps{}_iw".format(cycle))
@@ -240,8 +249,8 @@ def main(parameters):
             qp_shift = qp_shift.real
             qp_fermi += qp_shift
             pm.sprint('MBPT: quasi-particle fermi energy: {:.3f} Ha ({:+.3f} Ha).'.format(qp_fermi,qp_shift))
-            for i in range(st.tau_npt):
-                sigma[:,:,i] -= qp_shift
+            for i in range(st.x_npt):
+                sigma[i,i,:] -= qp_shift / st.x_delta
 
         #TODO: extrapolate full G (not just diagonal) to get h_vx
 
@@ -263,16 +272,27 @@ def main(parameters):
 
             # compute new rho
             # check convergence...
-
+            results.add(h_rho_new, "gs_mbpt_den{}".format(cycle))
+            results.save(pm, list=["gs_mbpt_den{}".format(cycle)])
 
             #h_rho_new = electron_density(pm,G=G_m)
+            rho_norm = np.sum(h_rho_new) * st.x_delta
+            pm.sprint("MBPT: norm of new rho: {:.3f} electrons".format(rho_norm))
             rho_delta = h_rho_new - h_rho
             rho_delta_max = np.max(np.abs(rho_delta))
             if rho_delta_max < pm.mbpt.den_tol:
                 converged = True
             else:
                 pm.sprint("Max. change in rho: {:.2e} > {:.2e}".format(rho_delta_max,pm.mbpt.den_tol))
-            break
+                h_rho = h_rho_new
+                h_vh = hartree_potential(st, rho=h_rho)
+                #TODO: change this
+                h_vx = h_vx
+                # note: this should not be needed anymore for extrapolated h_vx
+                for i in range(st.x_npt):
+                    h_vx[i,i] -= qp_shift / st.x_delta
+
+        #break
     
 
 
@@ -784,7 +804,7 @@ def solve_dyson_equation(G0, sigma, st):
     return G
 
 # Function to extract the ground-state density from G (using extrapolation to tau=0)
-def extrapolate_to_zero(F, st, order=10, dir='from_below'):
+def extrapolate_to_zero(F, st, order=3, dir='from_below'):
     """Extrapolate quantities to time point zero
 
     parameters
