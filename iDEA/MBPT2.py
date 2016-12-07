@@ -174,16 +174,6 @@ def main(parameters):
         del G0, h0_vh, h0_vx, h0_rho
 
 
-
-    #pm.sprint('MBPT: computing Hartree and exchange energies')
-    #rho0 = electron_density(pm, G=G0_m)
-    #results.add(rho0, name="rho0")
-    #h_energies = hartree_energies(pm, orbitals=orbitals, rho=rho0)
-    #results.add(h_energies, name="h_energies")
-    #x_energies = exchange_energies(pm,orbitals=orbitals,G=G0_m)
-    #results.add(x_energies, name="x_energies")
-
-
     ### GW self-consistency loop
     converged = False
     cycle = 0
@@ -252,45 +242,47 @@ def main(parameters):
             for i in range(st.x_npt):
                 sigma[i,i,:] -= qp_shift / st.x_delta
 
+        if pm.mbpt.flavour == 'G0W0':
+            break
         #TODO: extrapolate full G (not just diagonal) to get h_vx
 
         cycle = cycle + 1
+        pm.sprint('MBPT: Entering self-consistency cycle #{}'.format(cycle))
 
-        if pm.mbpt.flavour == 'G0W0':
-            break
-        elif pm.mbpt.flavour in ['GW','GW0']:
-            pm.sprint('MBPT: solving the Dyson equation for new G')
-            # note: G0 = G0(r,r';iw)
-            G = solve_dyson_equation(G0, sigma, st)
-            del sigma # not needed anymore
+        pm.sprint('MBPT: solving the Dyson equation for new G')
+        # note: G0 = G0(r,r';iw)
+        G = solve_dyson_equation(G0, sigma, st)
+        del sigma # not needed anymore
 
-            pm.sprint('MBPT: transforming G to imaginary time')
-            G = fft_t(G, st, dir='if2it')
-            save(G, "G{}_it".format(cycle))
+        pm.sprint('MBPT: transforming G to imaginary time')
+        G = fft_t(G, st, dir='if2it')
+        save(G, "G{}_it".format(cycle))
 
-            h_rho_new = extrapolate_to_zero(G,st)
+        G_tau0_im = extrapolate_to_zero(G,st)
+        h_rho_new = np.diagonal(G_tau0_im)
 
-            # compute new rho
-            # check convergence...
-            results.add(h_rho_new, "gs_mbpt_den{}".format(cycle))
-            results.save(pm, list=["gs_mbpt_den{}".format(cycle)])
+        # compute new rho
+        # check convergence...
+        results.add(h_rho_new, "gs_mbpt_den{}".format(cycle))
+        results.save(pm, list=["gs_mbpt_den{}".format(cycle)])
 
-            #h_rho_new = electron_density(pm,G=G_m)
-            rho_norm = np.sum(h_rho_new) * st.x_delta
-            pm.sprint("MBPT: norm of new rho: {:.3f} electrons".format(rho_norm))
-            rho_delta = h_rho_new - h_rho
-            rho_delta_max = np.max(np.abs(rho_delta))
-            if rho_delta_max < pm.mbpt.den_tol:
-                converged = True
-            else:
-                pm.sprint("Max. change in rho: {:.2e} > {:.2e}".format(rho_delta_max,pm.mbpt.den_tol))
-                h_rho = h_rho_new
-                h_vh = hartree_potential(st, rho=h_rho)
-                #TODO: change this
-                h_vx = h_vx
-                # note: this should not be needed anymore for extrapolated h_vx
-                for i in range(st.x_npt):
-                    h_vx[i,i] -= qp_shift / st.x_delta
+        #h_rho_new = electron_density(pm,G=G_m)
+        rho_norm = np.sum(h_rho_new) * st.x_delta
+        pm.sprint("MBPT: norm of new rho: {:.3f} electrons".format(rho_norm))
+        rho_delta = h_rho_new - h_rho
+        rho_delta_max = np.max(np.abs(rho_delta))
+        if rho_delta_max < pm.mbpt.den_tol:
+            converged = True
+        else:
+            pm.sprint("Max. change in rho: {:.2e} > {:.2e}".format(rho_delta_max,pm.mbpt.den_tol))
+            h_rho = h_rho_new
+            h_vh = hartree_potential(st, rho=h_rho)
+            #TODO: change this
+            h_vx = -G_tau0_im * st.coulomb_repulsion
+            #h_vx = h_vx
+            # note: this should not be needed anymore for extrapolated h_vx
+            #for i in range(st.x_npt):
+            #    h_vx[i,i] -= qp_shift / st.x_delta
 
         #break
     
@@ -514,7 +506,7 @@ def bracket_r(O, orbitals, st, mode='diagonal'):
     return bracket_r
 
 
-def fft_t(F, st, dir, phase_shift=True):
+def fft_t(F, st, dir, phase_shift=False):
     r"""Performs 1d Fourier transform of F(r,r';t) along time dimension.
 
     Can handle forward & backward transforms in real & imaginary time.
@@ -803,7 +795,6 @@ def solve_dyson_equation(G0, sigma, st):
 
     return G
 
-# Function to extract the ground-state density from G (using extrapolation to tau=0)
 def extrapolate_to_zero(F, st, order=3, dir='from_below'):
     """Extrapolate quantities to time point zero
 
@@ -812,23 +803,28 @@ def extrapolate_to_zero(F, st, order=3, dir='from_below'):
     F: array_like
       quantity to extrapolate
     order: int
-      order of polynomial fit
+      order of polynomial fit (order+1 parameters)
     dir: string
       'from_below': extrapolate from negative times (default)
       'from_above': extrapolate from positive times (default)
    
     returns extrapolated value at time zero
     """
-    density = np.zeros(st.x_npt, dtype='float')
-    for j in xrange(0,st.x_npt):
-       x = []
-       y = []
-       for i in xrange(-order-1,0):
-          x.append(st.tau_grid[i])
-          y.append(F[j][j][i].imag)
-       z = np.poly1d(np.polyfit(np.array(x), np.array(y), order))  
-       density[j] = z(0)
-    return density
+    if dir == 'from_below':
+        istart = st.tau_npt - order - 1
+        iend = st.tau_npt
+    elif dir == 'from_above':
+        istart = 0
+        iend = order + 1
+
+    out = np.zeros((st.x_npt,st.x_npt), dtype=np.float)
+    for i in xrange(0,st.x_npt):
+        for j in xrange(0,st.x_npt):
+           x = st.tau_grid[istart:iend]
+           y = F[i,j, istart:iend].imag
+           z = np.poly1d(np.polyfit(x, y, order))  
+           out[i,j] = z(0)
+    return out
 
 
 #def adjust_self_energy(sigma, v_h, h0_vxc, st, w_flavour='dynamical'):
