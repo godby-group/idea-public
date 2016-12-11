@@ -16,6 +16,7 @@
 ######################################################################################
 
 # Library imports
+from __future__ import division
 import copy
 import pickle
 import numpy as np
@@ -32,7 +33,7 @@ class SpaceTime:
       self.tau_max = pm.mbpt.tau_max
       self.tau_N = pm.mbpt.tau_N
       self.dtau = float(2*pm.mbpt.tau_max)/float(pm.mbpt.tau_N-1)
-      self.tau_grid = np.append(np.linspace(self.dtau/2.0,self.tau_max,self.tau_N/2),np.linspace(-self.tau_max,-self.dtau/2.0,self.tau_N/2))
+      self.tau_grid = np.fft.fftfreq(self.tau_N)*(2.0*(self.tau_max+self.dtau/2.0))
       self.x_max = pm.sys.xmax
       self.x_N = pm.sys.grid
       self.dx = float(2*pm.sys.xmax)/float(pm.sys.grid-1)
@@ -53,7 +54,6 @@ def constructV(st):
    else:
       name = 'gs_{}_vks'.format(pm.mbpt.starting_orbitals)
       data = rs.Results.read(name, pm)
-      #input_file = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_' + str(pm.sys.NE) + 'gs_' + str(pm.mbpt.starting_orbitals) + '_vks.db','r')
       Vdiagonal = data.real
       V = sps.spdiags(Vdiagonal, 0, st.x_N, st.x_N, format='csr')
    return V
@@ -81,6 +81,8 @@ def non_interacting_greens_function(st, occupied, occupied_energies, empty, empt
          for i in xrange(0,st.x_N):
             for j in xrange(0,st.x_N):
                G0[k,i,j] = 1.0j*np.sum(occupied_tensor[:,i,j] * np.exp(-occupied_energies[:]*tau))
+   # Construct G0 for tau = 0
+   G0[0,i,j] = 1.0j*np.sum(occupied_tensor[:,i,j])
    print
    return G0
 
@@ -92,13 +94,33 @@ def coulomb_interaction(st):
          v_f[:,i,j] = 1.0/(abs(st.x_grid[j]-st.x_grid[i])+pm.sys.acon) # Softened coulomb interaction
    return v_f
 
+# Function to return G(tau=0) continued from empty states
+def continue_G(st,G):
+   G_zero = np.zeros((st.x_N,st.x_N), dtype='complex')
+   order = 3 # Order of polynomial used for fitting
+   points = 10 # Number of points to take before G(0)
+   for j in xrange(0,st.x_N):
+      for k in xrange(0,st.x_N):
+         x = []
+         y = []
+         for i in range(points-1,0,-1):
+            x.append(st.tau_grid[i])
+            y.append(G[i][j][k].imag)
+         z = np.poly1d(np.polyfit(np.array(x), np.array(y),order))  
+         G_zero[j,k] = 1.0j*z(0)
+   return G_zero
+   
 # Function to calculate the irreducible polarizability P in the time domain
 def irreducible_polarizability(st,G,iteration):
    P = np.zeros((st.tau_N,st.x_N,st.x_N), dtype='complex')
    for k in xrange(0,st.tau_N):
       for i in xrange(0,st.x_N):
          for j in xrange(0,st.x_N):
-            P[k,i,j] = -1.0j*G[k,i,j]*G[-k-1,j,i]
+            P[k,i,j] = -1.0j*G[k,i,j]*G[-k,j,i]
+   G_alt = continue_G(st,G)
+   for i in xrange(0,st.x_N):
+      for j in xrange(0,st.x_N):
+         P[0,i,j] = -1.0j*G[0,i,j]*G_alt[j,i]
    return P
 
 # Function to calculate the screened interaction W_f in the frequency domain
@@ -108,12 +130,23 @@ def screened_interaction(st,v_f,P_f,iteration):
       W_f[k,:,:] = np.dot(npl.inv(np.eye(st.x_N,dtype='complex') - np.dot(v_f[k,:,:],P_f[k,:,:])*st.dx*st.dx),v_f[k,:,:])
    return W_f
 
+# Function to calculate the screening matrix Sc in the frequency domain
+def screening_matrix(st,W_f,v_f):
+	Sc = W_f - v_f
+	return Sc
+	
 # Function to calculate the self energy S in the time domain
-def self_energy(st,G,W,iteration):
+def self_energy(st,G,Sc,iteration):
    S = np.zeros((st.tau_N,st.x_N,st.x_N), dtype='complex')
-   S[:,:,:] = 1.0j*G[:,:,:]*W[:,:,:] # GW approximation
+   S[:,:,:] = 1.0j*G[:,:,:]*Sc[:,:,:] 
    return S
-
+   
+# Function to correct diagrams of sigmal in the frequency domain
+def add_exchange(st,S_f,G,v_f):
+   for k in xrange(0,st.tau_N):
+      S_f[k,:,:] = S_f[k,:,:] + 1.0j*G[0,:,:]*v_f[0,:,:]
+   return S_f
+   
 # Function to correct diagrams of sigmal in the frequency domain
 def correct_diagrams(st,S_f,v_f,density):
    V_h = np.dot(v_f[0,:,:],density)*st.dx
@@ -132,12 +165,13 @@ def correct_diagrams(st,S_f,v_f,density):
 def hedin_shift(st,S_f,occupied,empty):
    state = np.zeros(st.x_N, dtype='complex')
    state[:] = occupied[:,-1]
-   expectation_value1 = np.vdot(state,np.dot(S_f[0,:,:],state.transpose()))*st.dx*st.dx # Calculates the expectation value of S(0) in the HOMO state
+   expectation_value1 = np.vdot(state,np.dot(S_f[0,:,:],np.conjugate(state).transpose()))*st.dx*st.dx # Calculates the expectation value of S(0) in the HOMO state
    state[:] = empty[:,0]
-   expectation_value2 = np.vdot(state,np.dot(S_f[0,:,:],state.transpose()))*st.dx*st.dx # Calculates the expectation value of S(0) in the LUMO state
+   expectation_value2 = np.vdot(state,np.dot(S_f[0,:,:],np.conjugate(state).transpose()))*st.dx*st.dx # Calculates the expectation value of S(0) in the LUMO state
    expectation_value = (expectation_value1 + expectation_value2)/2.0 # Calculates the expectation value of S(0) at the fermi energy
+   print expectation_value
    for i in xrange(0,st.x_N):
-      S_f[:,i,i] = S_f[:,i,i] - expectation_value/st.dx
+      S_f[:,i,i] = S_f[:,i,i] - expectation_value.real/st.dx
    return S_f
 
 # Function to solve the dyson equation in the frequency domain to update G
@@ -146,39 +180,20 @@ def dyson_equation(st,G0_f,S_f,iteration):
    for k in xrange(0,st.tau_N): # At each frequency slice perform G = (I - G0 S)^-1 G0
       G_f[k,:,:] = np.dot(npl.inv(np.eye(st.x_N,dtype='complex') - np.dot(G0_f[k,:,:],S_f[k,:,:])*st.dx*st.dx),G0_f[k,:,:])
    return G_f
-
-# Function to generate the phase factors due to the offset time grid
-def generate_phase_factors(st):
-   phase_factors = np.zeros(st.tau_N, dtype='complex')
-   for n in xrange(0,st.tau_N):
-      phase_factors[n] = np.exp(-1.0j*np.pi*(n/st.tau_N))
-   return phase_factors
-
+   
 # Function to fourier transform a given quantity
-def fourier(st, A, inverse, phase_factors):
-   transform =  np.zeros((st.tau_N,st.x_N,st.x_N), dtype='complex')
+def fourier(st, A, inverse):
    if(inverse == 0):
       a = -1.0j*np.fft.fft(A,axis=0)*st.dtau
-      for k in xrange(0,st.tau_N):
-         transform[k,:,:] = a[k,:,:]*phase_factors[k]  
    if(inverse == 1):
-      a = 1.0j*np.fft.ifft(A,axis=0)/st.dtau
-      for k in xrange(0,st.tau_N):
-         transform[k,:,:] = a[k,:,:]*np.conjugate(phase_factors[k])  
-   return transform   
+      a = 1.0j*np.fft.ifft(A,axis=0)/st.dtau    
+   return a  
 
 # Function to extract the ground-state density from G (using extrapolation to tau=0)
 def extract_density(st,G):
-   density = np.zeros(st.x_N, dtype='float')
-   order = 10 # Order of polynomial used for fitting
-   for j in xrange(0,st.x_N):
-      x = []
-      y = []
-      for i in xrange(-order-1,0):
-         x.append(st.tau_grid[i])
-         y.append(G[i][j][j].imag)
-      z = np.poly1d(np.polyfit(np.array(x), np.array(y), order))  
-      density[j] = z(0)
+   density = np.zeros(st.x_N,dtype='float')
+   for i in xrange(0,st.x_N):
+      density[i] = G[0][i][i].imag
    return density
 
 # Function to test for convergence
@@ -217,6 +232,8 @@ def output_quantities(G0,G0_f,P,P_f,Sc_f,S_f,G):
 
 # Main function
 def main(parameters):
+	
+	# Construct parameters object
    global pm
    pm = parameters
 
@@ -265,16 +282,13 @@ def main(parameters):
    occupied_energies[:] = occupied_energies[:] - E
    empty_energies[:] = empty_energies[:] - E
 
-   # Compute phase factors for this grid
-   phase_factors = generate_phase_factors(st)
-
    # Calculate the coulomb interaction in the frequency domain
    print 'MBPT: computing coulomb interaction v'
    v_f = coulomb_interaction(st) 
 
    # Calculate the non-interacting green's function in imaginary time
    G0 = non_interacting_greens_function(st, occupied, occupied_energies, empty, empty_energies)
-   G0_f = fourier(st,G0,0,phase_factors) 
+   G0_f = fourier(st,G0,0) 
 
    # Initial guess for the green's function
    print 'MBPT: constructing initial greens function G'
@@ -294,15 +308,17 @@ def main(parameters):
    while(iteration < max_iterations and converged == False):
       if(iteration == 0 or pm.mbpt.update_w == True):
          P = irreducible_polarizability(st,G,iteration) # Calculate P in the time domain
-         P_f = fourier(st,P,0,phase_factors) # Fourier transform to get P in the frequency domain
+         P_f = fourier(st,P,0) # Fourier transform to get P in the frequency domain
          W_f = screened_interaction(st,v_f,P_f,iteration) # Calculate W in the frequency domain
-         W = fourier(st,W_f,1,phase_factors) # Fourier transform to get W in the time domain
-      S = self_energy(st,G,W,iteration) # Calculate S in the time domain
-      S_f = fourier(st,S,0,phase_factors) # Fourier transform to get S in the frequency domain
+         Sc_f = screening_matrix(st,W_f,v_f) # Calculate Sc in the frequency domain
+         Sc = fourier(st,Sc_f,1) # Fourier transform to get Sc in the time domain
+      S = self_energy(st,G,Sc,iteration) # Calculate S in the time domain
+      S_f = fourier(st,S,0) # Fourier transform to get S in the frequency domain
+      S_f = add_exchange(st,S_f,G,v_f)
       S_f = correct_diagrams(st,S_f,v_f,extract_density(st,G)) # Correct diagrams to S in the frequency domain
       S_f = hedin_shift(st,S_f,occupied,empty) # Apply the hedin shift to S in the frequency domain
       G_f = dyson_equation(st,G0_f,S_f,iteration) # Solve the dyson equation in the frequency domain
-      G = fourier(st,G_f,1,phase_factors) # Fourier transform to get G in the time domain
+      G = fourier(st,G_f,1) # Fourier transform to get G in the time domain
       if(iteration > 0):
          converged = has_converged(density,extract_density(st,G),iteration) # Test for converence
       density = extract_density(st,G) # Extract the ground-state density from G
