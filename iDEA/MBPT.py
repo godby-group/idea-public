@@ -837,7 +837,7 @@ def solve_dyson_equation(G0, S, st):
 
     return G
 
-def extrapolate_to_zero(F, st, dir='from_below', order=1, points=2):
+def extrapolate_to_zero(F, st, dir='from_below', order=6, points=7):
     """Extrapolate F(r,r';it) to it=0
 
     Note: Only the imaginary part is extrapolated.
@@ -852,7 +852,7 @@ def extrapolate_to_zero(F, st, dir='from_below', order=1, points=2):
     order: int
       order of polynomial fit (order+1 parameters)
     points: int
-      number of data points for polynomial fit
+      choose points=order+1 unless you face instability issues
    
     returns extrapolated value at time zero
     """
