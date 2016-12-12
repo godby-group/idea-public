@@ -50,7 +50,6 @@ class SystemSection(InputSection):
         return np.linspace(-self.xmax,self.xmax,self.grid)
 
 
-
 class Input(object):
     """Stores variables of input parameters file
 
@@ -181,6 +180,22 @@ class Input(object):
         mbpt.update_w = True            #: Update screening
         mbpt.tolerance = 1e-12          #: Tolerance of the self-consistent algorithm
         mbpt.max_iterations = 100       #: Maximum number of iterations in full self-consistency
+        mbpt.RE = False                 #: Reverse engineer mbpt density
+
+        ### MBPT2 parameters
+        self.mbpt = InputSection()
+        mbpt = self.mbpt
+        mbpt.h0 = 'non'                 #: starting hamiltonian: 'non','ha','hf','lda'
+        mbpt.tau_max = 40.0             #: Maximum value of imaginary time
+        mbpt.tau_npt = 800              #: Number of imaginary time points (must be even)
+        mbpt.norb = 25                  #: Number of orbitals to use
+        mbpt.flavour = 'G0W0'           #: 'G0W0', 'GW', 'G0W', 'GW0'
+        mbpt.den_tol = 1e-12            #: density tolerance of self-consistent algorithm
+        mbpt.max_iter = 100             #: Maximum number of self-consistent algorithm
+        mbpt.save_diag = ['sigma0_iw']  #: whether to save diagonal components of all space-time quantities
+        mbpt.save_full = []             #: which space-time quantities to save fully
+        mbpt.w = 'dynamical'            #: whether to compute 'full' or 'dynamical' W
+        mbpt.hedin_shift = True         #: whether to perform Hedin shift
         mbpt.RE = False                 #: Reverse engineer mbpt density
         
         # LAN parameters

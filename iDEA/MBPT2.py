@@ -24,7 +24,8 @@ class SpaceTimeGrid:
         # particular, this grid *always* starts with tau=dt/2.
         #   tau_grid = [dt/2,dt+dt/2,...,T/2+dt/2,-T/2+dt/2,...,-dt/2] # tau_npt odd
         #   tau_grid = [dt/2,dt+dt/2,...,T/2-dt/2,-T/2+dt/2,...,-dt/2] # tau_npt even
-        self.tau_grid = 2*self.tau_max * np.fft.fftfreq(self.tau_npt) + self.tau_delta/2.0
+        #self.tau_grid = 2*self.tau_max * np.fft.fftfreq(self.tau_npt) + self.tau_delta/2.0
+        self.tau_grid = 2*self.tau_max * np.fft.fftfreq(self.tau_npt)
         
         # (imaginary) frequency
         self.omega_max = np.pi / self.tau_delta
@@ -151,8 +152,8 @@ def main(parameters):
             results.save(pm, list=[name])
 
     # compute G0
-    pm.sprint('MBPT: setting up G0(it)')
-    G0 = non_interacting_green_function(h0_orbitals, h0_energies, st)
+    pm.sprint('MBPT: setting up G0(it)',0)
+    G0, G0_pzero = non_interacting_green_function(h0_orbitals, h0_energies, st, zero='both')
     save(G0,"G0_it")
 
     # prepare variables
@@ -161,12 +162,14 @@ def main(parameters):
         G = copy.deepcopy(G0)
         G0 = fft_t(G0, st, dir='it2if') # needed for dyson equation
         save(G0,"G0_iw")
+        G_pzero = G0_pzero
         h_vh = copy.deepcopy(h0_vh)
         h_vx = copy.deepcopy(h0_vx)
         h_rho = copy.deepcopy(h0_rho)
     else:
         # we need only G0 but will call it G
         G = G0
+        G_pzero = G0_pzero
         h_vh = h0_vh
         h_vx = h0_vx
         h_rho = h0_rho
@@ -180,11 +183,11 @@ def main(parameters):
     qp_fermi = e_fermi
     while not converged:
 
-        pm.sprint('MBPT: setting up P(it)')
-        P = irreducible_polarizability(G)
+        pm.sprint('MBPT: setting up P(it)',0)
+        P = irreducible_polarizability(G, G_pzero)
         save(P, "P{}_it".format(cycle))
 
-        pm.sprint('MBPT: transforming P to imaginary frequency')
+        pm.sprint('MBPT: transforming P to imaginary frequency',0)
         P = fft_t(P, st, dir='it2if')
         save(P, "P{}_iw".format(cycle))
 
@@ -197,29 +200,29 @@ def main(parameters):
         #W_test = solve_dyson_equation(v_test,P,st)
         #save(W_test, "Wt{}_iw".format(cycle))
 
-        pm.sprint('MBPT: setting up eps(iw)')
+        pm.sprint('MBPT: setting up eps(iw)',0)
         eps = dielectric_matrix(P, st)
         save(eps, "eps{}_iw".format(cycle))
         del P # not needed anymore
 
-        pm.sprint('MBPT: setting up W(iw)')
+        pm.sprint('MBPT: setting up W(iw)',0)
         W = screened_interaction(st, epsilon=eps, w_flavour=pm.mbpt.w)
         save(W, "W{}_iw".format(cycle))
         del eps # not needed anymore
 
-        pm.sprint('MBPT: transforming W to imaginary time')
+        pm.sprint('MBPT: transforming W to imaginary time',0)
         W = fft_t(W, st, dir='if2it')
         save(W, "W{}_it".format(cycle))
 
-        pm.sprint('MBPT: computing sigma(it)')
+        pm.sprint('MBPT: computing sigma(it)',0)
         sigma = self_energy(G, W)
         save(sigma, "sigma{}_it".format(cycle))
         del W # not needed anymore
 
-        pm.sprint('MBPT: transforming sigma to imaginary frequency')
+        pm.sprint('MBPT: transforming sigma to imaginary frequency',0)
         sigma = fft_t(sigma, st, dir='it2if')
 
-        pm.sprint('MBPT: updating sigma(iw)')
+        pm.sprint('MBPT: updating sigma(iw)',0)
         # real for real orbitals...
         delta = np.zeros((st.x_npt, st.x_npt), dtype=np.complex)
         np.fill_diagonal(delta, h_vh / st.x_delta)
@@ -233,7 +236,7 @@ def main(parameters):
         save(sigma, "sigma{}_iw".format(cycle), force_dg=True)
 
         if pm.mbpt.hedin_shift:
-            pm.sprint('MBPT: performing Hedin shift')
+            pm.sprint('MBPT: performing Hedin shift',0)
             sigma_iw_dg = getattr(results, "gs_mbpt_sigma{}_iw_dg".format(cycle))
             qp_shift = 0.5 * (sigma_iw_dg[st.NE-1,0] + sigma_iw_dg[st.NE,0])
             qp_shift = qp_shift.real
@@ -244,22 +247,23 @@ def main(parameters):
 
         if pm.mbpt.flavour == 'G0W0':
             break
-        #TODO: extrapolate full G (not just diagonal) to get h_vx
 
         cycle = cycle + 1
+        pm.sprint(''.format(cycle))
         pm.sprint('MBPT: Entering self-consistency cycle #{}'.format(cycle))
 
-        pm.sprint('MBPT: solving the Dyson equation for new G')
+        pm.sprint('MBPT: solving the Dyson equation for new G',0)
         # note: G0 = G0(r,r';iw)
         G = solve_dyson_equation(G0, sigma, st)
         del sigma # not needed anymore
 
-        pm.sprint('MBPT: transforming G to imaginary time')
+        pm.sprint('MBPT: transforming G to imaginary time',0)
         G = fft_t(G, st, dir='if2it')
         save(G, "G{}_it".format(cycle))
 
-        G_tau0_im = extrapolate_to_zero(G,st)
-        h_rho_new = np.diagonal(G_tau0_im)
+        #G_tau0_im = extrapolate_to_zero(G,st)
+        G_mzero = G[:,:,0] #extrapolate_to_zero(G,st)
+        h_rho_new = np.diagonal(G_mzero.imag)
 
         # compute new rho
         # check convergence...
@@ -268,7 +272,7 @@ def main(parameters):
 
         #h_rho_new = electron_density(pm,G=G_m)
         rho_norm = np.sum(h_rho_new) * st.x_delta
-        pm.sprint("MBPT: norm of new rho: {:.3f} electrons".format(rho_norm))
+        pm.sprint("MBPT: norm of new density: {:.3f} electrons".format(rho_norm))
         rho_delta = h_rho_new - h_rho
         rho_delta_max = np.max(np.abs(rho_delta))
         if rho_delta_max < pm.mbpt.den_tol:
@@ -277,8 +281,12 @@ def main(parameters):
             pm.sprint("Max. change in rho: {:.2e} > {:.2e}".format(rho_delta_max,pm.mbpt.den_tol))
             h_rho = h_rho_new
             h_vh = hartree_potential(st, rho=h_rho)
-            #TODO: change this
-            h_vx = -G_tau0_im * st.coulomb_repulsion
+            h_vx = -G_mzero.imag * st.coulomb_repulsion
+
+            eps = np.max(np.abs(G.real))
+            if eps > 1e-6:
+                st.sprint("MBPT: Warning: Discarding real part with max. {:.3e} during extrapolation".format(eps))
+            G_pzero = extrapolate_to_zero(G, st, 'from_above')
             #h_vx = h_vx
             # note: this should not be needed anymore for extrapolated h_vx
             #for i in range(st.x_npt):
@@ -409,7 +417,7 @@ def non_interacting_green_function(orbitals, energies, st, zero='0-'):
     r"""Calculates non-interacting Green function G0(r,r';it).
 
     :math:`G_0(r,r';i\tau)` is constructed from a set of eigenvectors
-    and eigenenergies of a single-particle Hamiltonian.
+    and eigenenergies of a single-particle Hamiltonian in imaginary time.
 
     .. math ::
         G_0(r,r';i\tau) = (-i) \sum_s^{empty} \varphi_s(r) \varphi_s(r') e^{-\varepsilon_s\tau} \theta(\tau)
@@ -429,19 +437,42 @@ def non_interacting_green_function(orbitals, energies, st, zero='0-'):
         corresponding single-particle energies
     st : object
         contains space-time parameters
+    zero : string
+        How to treat it=0
+        '0+': :math:`G(0) = \lim_{t\downarrow 0}G(it)`,
+            determined by empty states
+        '0-': :math:`G(0) = \lim_{t\uparrow 0}G(it)`,
+            determined by occupied states with :math:`(-i)G(r,r,0)=\rho(r)`
+        'both': return '0-' Green function *and* it=0 slice of '0+' Green function
     """
     coef = np.zeros((st.norb,st.tau_npt), dtype=complex)
+    coef_zero = np.zeros(st.norb, dtype=complex)
     for i in range(st.norb):
         en = energies[i]
 
+        # first handle special case tau=0 (k=0)
+        if zero == '0+' and en > 0:
+            # put empty states into tau=0
+            coef[i,0] = -1J
+        elif zero == '0-' and en < 0:
+            # put occupied states into tau=0
+            coef[i,0] = +1J
+        elif zero == 'both':
+            if en > 0:
+                # put empty states into tau=0 slice
+                coef_zero[i] = -1J
+            elif en < 0:
+                # put occupied states into tau=0
+                coef[i,0] = +1J
+
         # note: this could still be vectorized
-        for k in range(0,st.tau_npt):
+        for k in range(1,st.tau_npt):
             tau = st.tau_grid[k]
 
             if en > 0 and tau > 0:
                 # tau > 0, empty states
                 coef[i,k] = -1J * np.exp(-en * tau)
-            elif en < 0 and tau < 0:
+            elif en < 0 and tau <= 0:
                 # tau < 0, occupied states
                 coef[i,k] = +1J * np.exp(-en * tau)
 
@@ -455,7 +486,12 @@ def non_interacting_green_function(orbitals, energies, st, zero='0-'):
     #G0 = np.einsum('ij,jl->il',orb_mat.reshape(st.x_npt*st.x_npt, norb),coef)
     G0 = np.dot(orb_mat_r,coef).reshape(st.x_npt,st.x_npt,st.tau_npt)
 
-    return G0
+    if zero == 'both':
+        G0_pzero = np.dot(orb_mat_r,coef_zero).reshape(st.x_npt, st.x_npt)
+        return G0, G0_pzero
+
+    else:
+        return G0
 
 
 def bracket_r(O, orbitals, st, mode='diagonal'):
@@ -583,7 +619,7 @@ def fft_t(F, st, dir, phase_shift=False):
     return out
 
 
-def irreducible_polarizability(G):
+def irreducible_polarizability(G, G_pzero):
     r"""Calculates irreducible polarizability P(r,r',it).
 
     .. math:: P(r,r';i\tau) = -iG(r,r';i\tau) G(r',r;-i\tau)
@@ -592,6 +628,8 @@ def irreducible_polarizability(G):
     ----------
     G : array
         Green function
+    G_pzero : array
+        it=0 component of Green function with :math:`G(0) = \lim_{t\downarrow 0}G(it)`
 
     FLOPS: grid**2 * tau_npt * 3
 
@@ -600,7 +638,9 @@ def irreducible_polarizability(G):
 
     G_rev = copy.copy(G)
     G_rev = G_rev.swapaxes(0,1)
+    G_rev[:,:,0] = G_pzero
     # need t=0 to become the *last* index for ::-1
+    G_rev = np.roll(G, -1, axis=2)
     P =  -1J * G * G_rev[:,:,::-1]
 
     # v2 done in python, significantly slower...
@@ -795,18 +835,20 @@ def solve_dyson_equation(G0, sigma, st):
 
     return G
 
-def extrapolate_to_zero(F, st, order=3, dir='from_below'):
+def extrapolate_to_zero(F, st, dir='from_below', order=3, points=3):
     """Extrapolate quantities to time point zero
 
     parameters
     ----------
     F: array_like
       quantity to extrapolate
-    order: int
-      order of polynomial fit (order+1 parameters)
     dir: string
       'from_below': extrapolate from negative times (default)
       'from_above': extrapolate from positive times (default)
+    order: int
+      order of polynomial fit (order+1 parameters)
+    points: int
+      number of data points for polynomial fit
    
     returns extrapolated value at time zero
     """
@@ -814,9 +856,10 @@ def extrapolate_to_zero(F, st, order=3, dir='from_below'):
         istart = st.tau_npt - order - 1
         iend = st.tau_npt
     elif dir == 'from_above':
-        istart = 0
-        iend = order + 1
+        istart = 1
+        iend = 1 + order + 1
 
+    #TODO: optimise for performance
     out = np.zeros((st.x_npt,st.x_npt), dtype=np.float)
     for i in xrange(0,st.x_npt):
         for j in xrange(0,st.x_npt):
@@ -824,7 +867,7 @@ def extrapolate_to_zero(F, st, order=3, dir='from_below'):
            y = F[i,j, istart:iend].imag
            z = np.poly1d(np.polyfit(x, y, order))  
            out[i,j] = z(0)
-    return out
+    return 1J * out
 
 
 #def adjust_self_energy(sigma, v_h, h0_vxc, st, w_flavour='dynamical'):
