@@ -144,12 +144,14 @@ def main(parameters):
         if (shortname in pm.mbpt.save_diag) or force_dg:
             name = "gs_mbpt_{}_dg".format(shortname)
             results.add(bracket_r(O, h0_orbitals, st), name)
-            results.save(pm, list=[name])
+            if pm.run.save:
+                results.save(pm, list=[name])
 
         if shortname in pm.mbpt.save_full:
             name = "gs_mbpt_{}".format(shortname)
             results.add(O, name)
-            results.save(pm, list=[name])
+            if pm.run.save:
+                results.save(pm, list=[name])
 
     # compute G0
     pm.sprint('MBPT: setting up G0(it)',0)

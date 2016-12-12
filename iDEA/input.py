@@ -6,6 +6,7 @@ import importlib
 import os
 import pprint
 import sys
+import results as rs
 
 def input_string(key,value):
     """Prints a line of the input file"""
@@ -237,8 +238,8 @@ class Input(object):
             If False, overwrite the last line
         """
         verbosity = self.run.verbosity
+        self.log += string + '\n'
         if priority >= self.priority_dict[verbosity]:
-            self.log += string + '\n'
             if newline:
                 print(string)
             else:
@@ -281,3 +282,129 @@ class Input(object):
         """Returns full path to output directory
         """
         return 'outputs/{}'.format(self.run.name)
+
+
+    ##########################################
+    #######  Running the input file       ####
+    ##########################################
+
+    def make_dirs(self):
+        """Set up ouput directory structure"""
+        import os
+        import shutil
+        import errno
+        pm = self
+
+        def mkdir_p(path):
+            try:
+                os.makedirs(path)
+            except OSError as exc:
+                if exc.errno == errno.EEXIST and os.path.isdir(path):
+                    pass
+                else: raise
+
+        #version = 'ver' + str(pm.run.code_version)
+
+        output_dirs = ['data', 'raw', 'plots', 'animations']
+        for d in output_dirs:
+            path = '{}/{}'.format(pm.output_dir,d)
+            mkdir_p(path)
+            setattr(pm,d,path)
+
+        # Copy parameters file to output folder, if there is one
+        if os.path.isfile(pm.filename):
+            shutil.copy2(pm.filename,pm.output_dir)
+          
+        # Copy ViDEO file to output folder
+        vfile = 'iDEA/ViDEO.py'
+        if os.path.isfile(vfile):
+			   # Note: this doesn't work, when using iDEA as a system module
+            shutil.copy2('iDEA/ViDEO.py',pm.output_dir)
+        else:
+            s  = "Warning: Unable to copy ViDEO.py since running iDEA as python module."
+            s += " Simply add the iDEA folder to your PATH variable to use ViDEO.py anywhere"
+            pm.sprint(s,1)
+        
+
+    def execute(self):
+        """Run this job"""
+        pm = self
+        pm.check()
+        pm.make_dirs()
+
+        # Draw splash to screen
+        import splash
+        splash.draw(pm)
+        pm.sprint('run name: ' + str(pm.run.name),1)
+
+        self.results = rs.Results()
+        results = self.results
+
+        # Execute required jobs
+        if(pm.sys.NE == 1):
+           if(pm.run.EXT == True):
+              import SPiDEA
+              results.add(SPiDEA.main(pm), name='EXT')
+           if(pm.ext.RE == True):
+              import RE
+              results.add(RE.main(pm,'ext'), name='RE')
+        elif(pm.sys.NE == 2):
+           if(pm.run.EXT == True):
+              import EXT2
+              results.add(EXT2.main(pm), name='EXT')
+           if(pm.ext.RE == True):
+              import RE
+              results.add(RE.main(pm,'ext'), name='RE')
+        elif(pm.sys.NE == 3):
+           if(pm.run.EXT == True):
+              import EXT3
+              results.add(EXT3.main(pm), name='EXT')
+           if(pm.ext.RE == True):
+              import RE
+              results.add(RE.main(pm,'ext'), name='RE')
+        elif(pm.sys.NE >= 4):
+           if(pm.run.EXT == True):
+              print('EXT: cannot run exact with more than 3 electrons')
+
+        if(pm.run.NON == True):
+              import NON
+              results.add(NON.main(pm), name='NON')
+        if(pm.non.RE == True):
+              import RE
+              results.add(RE.main(pm,'non'), name='RE')
+
+        if(pm.run.LDA == True):
+              import LDA
+              results.add(LDA.main(pm), name='LDA')
+        if(pm.run.MLP == True):
+              import MLP
+              MLP.main(pm)
+
+        if(pm.run.HF == True):
+              import HF
+              results.add(HF.main(pm), name='HF')
+        if(pm.hf.RE == True):
+              import RE
+              results.add(RE.main(pm,'hf'), name='RE')
+
+        if(pm.run.MBPT == True):
+              import MBPT
+              results.add(MBPT.main(pm), name='MBPT')
+        if(pm.mbpt.RE == True):
+              import RE
+              results.add(RE.main(pm,'mbpt'), name='RE')
+
+        if(pm.run.LAN == True):
+              import LAN
+              results.add(LAN.main(pm), name='LAN')
+
+        # All jobs done
+        # store log in file
+        f = open(pm.output_dir + '/iDEA.log', 'w')
+        f.write(pm.log)
+        f.close()
+
+        string = 'all jobs done \n'
+        pm.sprint(string,1)
+
+        return results
