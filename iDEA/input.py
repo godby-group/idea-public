@@ -172,19 +172,6 @@ class Input(object):
         ### MBPT parameters
         self.mbpt = InputSection()
         mbpt = self.mbpt
-        mbpt.starting_orbitals = 'non'  #: Orbitals to constuct G0 from
-        mbpt.tau_max = 40.0             #: Maximum value of imaginary time
-        mbpt.tau_N = 800                #: Number of imaginary time points (must be even)
-        mbpt.number_empty = 25          #: Number of unoccupied orbitals to use
-        mbpt.self_consistent = 0        #: (0 = one-shot, 1 = fully self-consistent)
-        mbpt.update_w = True            #: Update screening
-        mbpt.tolerance = 1e-12          #: Tolerance of the self-consistent algorithm
-        mbpt.max_iterations = 100       #: Maximum number of iterations in full self-consistency
-        mbpt.RE = False                 #: Reverse engineer mbpt density
-
-        ### MBPT2 parameters
-        self.mbpt = InputSection()
-        mbpt = self.mbpt
         mbpt.h0 = 'non'                 #: starting hamiltonian: 'non','ha','hf','lda'
         mbpt.tau_max = 40.0             #: Maximum value of imaginary time
         mbpt.tau_npt = 800              #: Number of imaginary time points (must be even)
@@ -212,6 +199,11 @@ class Input(object):
                 self.sprint('HF: Warning - time-dependence not implemented!')
             if pm.run.MBPT == True:
                 self.sprint('MBPT: Warning - time-dependence not implemented!')
+
+        if pm.run.MBPT == True:
+            if pm.mbpt.norb < pm.sys.NE:
+                self.sprint('MBPT: Warning - using {} orbitals for {} electrons'\
+                        .format(pm.mbpt.norb, pm.sys.NE))
 
 
     def __str__(self):
