@@ -95,9 +95,8 @@ def main(parameters):
 
     if h0_energies.dtype == np.complex:
         im_max = np.max(np.abs(h0_energies.imag))
-        s  = "MBPT: Warning: single-particle energies are complex "
-        s += "(maximum imaginary component: {:.3e}). ".format(im_max)
-        s += "Casting to real."
+        s  = "MBPT: Warning: single-particle energies are complex (maximum "
+        s += "imaginary component: {:.3e}). Casting to real. ".format(im_max)
         pm.sprint(s)
         h0_energies = h0_energies.real
 
@@ -126,8 +125,8 @@ def main(parameters):
         t2 = -np.log(1e-2)/(lumo-e_fermi)
         s  = "MBPT: Warning: Width of tau-grid for G(it) is too small "
         s += "for HOMO-LUMO gap {:.3f} Ha. ".format(gap)
-        s += "Increase tau_max to {:.1f} for decay to 1e-1 ".format(t1)
-        s +=  "or {:.1f} for decay to 1e-2".format(t2)
+        s += "Increase tau_max to {:.1f} for decay to 10% ".format(t1)
+        s +=  "or {:.1f} for decay to 1%".format(t2)
         pm.sprint(s)
 
     # computing/reading potentials
@@ -159,7 +158,7 @@ def main(parameters):
     save(G0,"G0_it")
 
     # prepare variables
-    if pm.mbpt.flavour in ['GW', 'GW0', 'QSGW']:
+    if pm.mbpt.flavour in ['GW', 'QSGW']:
         # we need both G and G0 separately
         G = copy.deepcopy(G0)
         G0 = fft_t(G0, st, dir='it2if') # needed for dyson equation
@@ -168,7 +167,7 @@ def main(parameters):
         h_vh = copy.deepcopy(h0_vh)
         h_vx = copy.deepcopy(h0_vx)
         h_rho = copy.deepcopy(h0_rho)
-    else:
+    elif pm.mbpt.flavour in ['G0W0']:
         # we need only G0 but will call it G
         G = G0
         G_pzero = G0_pzero
@@ -177,6 +176,9 @@ def main(parameters):
         h_rho = h0_rho
 
         del G0, h0_vh, h0_vx, h0_rho
+    else:
+        raise ValueError("MBPT mode {} not implemented".format(pm.mbpt.flavour))
+
 
 
     ### GW self-consistency loop
@@ -268,17 +270,19 @@ def main(parameters):
 
         # extract density
         G_mzero = G[:,:,0]
-        h_rho_new = np.diagonal(G_mzero.imag)
+        h_rho_new = np.diagonal(G_mzero.imag).copy()
 
         # compute new rho
         # check convergence...
         results.add(h_rho_new, "gs_mbpt_den{}".format(cycle))
-        results.save(pm, list=["gs_mbpt_den{}".format(cycle)])
+        if pm.run.save:
+            results.save(pm, list=["gs_mbpt_den{}".format(cycle)])
 
         rho_norm = np.sum(h_rho_new) * st.x_delta
         pm.sprint("MBPT: norm of new density: {:.3f} electrons".format(rho_norm))
         rho_delta_max = np.max(np.abs(h_rho_new - h_rho))
         if rho_delta_max < pm.mbpt.den_tol:
+            pm.sprint("MBPT: convergence reached, exiting self-consistency cycle",0)
             converged = True
         else:
             pm.sprint("Max. change in rho: {:.2e} > {:.2e}".format(rho_delta_max,pm.mbpt.den_tol))
@@ -296,19 +300,13 @@ def main(parameters):
             #for i in range(st.x_npt):
             #    h_vx[i,i] -= qp_shift / st.x_delta
 
-        #break
     
+    # normalise and save density
+    h_rho_new *= st.NE / rho_norm
+    results.add(h_rho_new, "gs_mbpt_den")
+    if pm.run.save:
+        results.save(pm, list=["gs_mbpt_den"])
 
-
-    #if pm.mbpt.flavour == 'G0W0':
-
-    #    results = G0W0(pm, results)
-    #elif pm.mbpt.flavour == 'GW':
-    #    results = SCGW(pm, results)
-    #elif pm.mbpt.flavour == 'QSGW':
-    #    results = QSGW_imaginary_time(orbitals, sp_energies, pm, results)
-    #else:
-    #    raise ValueError("MBPT mode {} is not implemented".format(pm.mbpt.flavour))
 
     return results
 
@@ -644,7 +642,7 @@ def irreducible_polarizability(G, G_pzero):
     G_rev = G_rev.swapaxes(0,1)
     G_rev[:,:,0] = G_pzero
     # need t=0 to become the *last* index for ::-1
-    G_rev = np.roll(G, -1, axis=2)
+    G_rev = np.roll(G_rev, -1, axis=2)
     P =  -1J * G * G_rev[:,:,::-1]
 
     # v2 done in python, significantly slower...
@@ -839,16 +837,18 @@ def solve_dyson_equation(G0, S, st):
 
     return G
 
-def extrapolate_to_zero(F, st, dir='from_below', order=3, points=3):
-    """Extrapolate quantities to time point zero
+def extrapolate_to_zero(F, st, dir='from_below', order=1, points=2):
+    """Extrapolate F(r,r';it) to it=0
+
+    Note: Only the imaginary part is extrapolated.
 
     parameters
     ----------
     F: array_like
       quantity to extrapolate
     dir: string
-      'from_below': extrapolate from negative times (default)
-      'from_above': extrapolate from positive times (default)
+      'from_below': extrapolate from negative imaginary times (default)
+      'from_above': extrapolate from positive imaginary times
     order: int
       order of polynomial fit (order+1 parameters)
     points: int
@@ -857,20 +857,21 @@ def extrapolate_to_zero(F, st, dir='from_below', order=3, points=3):
     returns extrapolated value at time zero
     """
     if dir == 'from_below':
-        istart = st.tau_npt - order - 1
+        istart = st.tau_npt - points - 1
         iend = st.tau_npt
     elif dir == 'from_above':
         istart = 1
-        iend = 1 + order + 1
+        iend = 1 + points + 1
 
     #TODO: optimise for performance
     out = np.zeros((st.x_npt,st.x_npt), dtype=np.float)
-    for i in xrange(0,st.x_npt):
-        for j in xrange(0,st.x_npt):
+    for i in range(st.x_npt):
+        for j in range(st.x_npt):
            x = st.tau_grid[istart:iend]
            y = F[i,j, istart:iend].imag
            z = np.poly1d(np.polyfit(x, y, order))  
            out[i,j] = z(0)
+
     return 1J * out
 
 
