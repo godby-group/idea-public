@@ -18,5 +18,5 @@ for i in range(na):
         authors_short += ', {}. {}'.format(first[0].upper(), last)
     else:
         authors_long += ' and {}'.format(authors[i])
-        authors_short += '{}. {}'.format(first[0].upper(), last)
+        authors_short += ', {}. {}'.format(first[0].upper(), last)
 
