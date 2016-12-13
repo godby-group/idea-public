@@ -1,8 +1,9 @@
 """Computes Green function and self-energy in the GW approximation
 
-Different flavours of GW (G0W0, scGW, QSGW) are available.  The implementation
+Different flavours of GW (G0W0, GW) are available.  The implementation
 follows the GW-space-time approach detailed in [Rojas1995]_ and  [Rieger1999]_.
 """
+
 from __future__ import division
 import copy
 import numpy as np
@@ -14,28 +15,30 @@ class SpaceTimeGrid:
     """Stores spatial and frequency grids"""
 
     def __init__(self,pm):
+
         # (imaginary) time
         self.tau_max = pm.mbpt.tau_max
         self.tau_npt = pm.mbpt.tau_npt
         self.tau_delta = 2.0*self.tau_max / self.tau_npt
+        self.tau_grid = 2*self.tau_max * np.fft.fftfreq(self.tau_npt)
 
-        # We use an offset grid for tau, since G0(it) is discontinuous at it=0.
+        # For offset grid (no longer used): offset grid for tau, since G0(it) is discontinuous at it=0.
         # The grid is laid out in a way appropriate for numpy's fft, and in
         # particular, this grid *always* starts with tau=dt/2.
         #   tau_grid = [dt/2,dt+dt/2,...,T/2+dt/2,-T/2+dt/2,...,-dt/2] # tau_npt odd
         #   tau_grid = [dt/2,dt+dt/2,...,T/2-dt/2,-T/2+dt/2,...,-dt/2] # tau_npt even
         #self.tau_grid = 2*self.tau_max * np.fft.fftfreq(self.tau_npt) + self.tau_delta/2.0
-        self.tau_grid = 2*self.tau_max * np.fft.fftfreq(self.tau_npt)
         
         # (imaginary) frequency
         self.omega_max = np.pi / self.tau_delta
-        # no shift for the frequency grid
+        self.omega_npt= self.tau_npt
+        self.omega_delta = (2*np.pi) / (2*self.tau_max)
         self.omega_grid = 2*self.omega_max * np.fft.fftfreq(self.tau_npt)
-        self.omega_delta = 2*np.pi / 2*self.tau_max
-        # phase factors for Fourier transform
+
+        # phase factors for Fourier transform (no longer used)
         # numpy forward transform has minus sign in exponent
-        self.phase_forward= np.exp(-1J * np.pi * np.fft.fftfreq(self.tau_npt))
-        self.phase_backward= np.conj(self.phase_forward)
+        #self.phase_forward= np.exp(-1J * np.pi * np.fft.fftfreq(self.tau_npt))
+        #self.phase_backward= np.conj(self.phase_forward)
 
         # space
         self.x_max = pm.sys.xmax
@@ -48,7 +51,7 @@ class SpaceTimeGrid:
         for i in range(self.x_npt):
             for j in range(self.x_npt):
                 tmp[i,j] = np.abs(i - j)
-        self.coulomb_repulsion = 1/(tmp * self.x_delta + pm.sys.acon)
+        self.coulomb_repulsion = 1.0/(tmp * self.x_delta + pm.sys.acon)
 
         # orbitals
         self.norb = pm.mbpt.norb
@@ -79,14 +82,14 @@ def main(parameters):
     => W(rr';i\tau)
     => S(rr';i\tau)
     => S(rr';i\omega)
-    => G(rr';i\omega) (for self-consistent calculation)
+    => G(rr';i\omega)
  
     """
     pm = parameters
     results = rs.Results()
 
     st = SpaceTimeGrid(pm)
-    pm.sprint(str(st))
+    pm.sprint(str(st),0)
 
     # read eigenvalues and eigenfunctions of starting Hamiltonian
     h0_energies = rs.Results.read('gs_{}_eigv'.format(pm.mbpt.h0), pm)
@@ -107,12 +110,13 @@ def main(parameters):
         h0_energies = h0_energies[:st.norb]
         h0_orbitals = h0_orbitals[:st.norb]
 
+    # Shifting energies such that E=0 is half way between homo and lumo 
     homo = h0_energies[st.NE-1]
     lumo = h0_energies[st.NE]
     gap = lumo - homo
-    pm.sprint('MBPT: single-particle gap: {:.3f} Ha'.format(gap))
+    pm.sprint('MBPT: single-particle gap: {:.3f} Ha'.format(gap),0)
     e_fermi = homo + gap / 2
-    pm.sprint('MBPT: single-particle Fermi energy: {:.3f} Ha'.format(e_fermi))
+    pm.sprint('MBPT: single-particle Fermi energy: {:.3f} Ha'.format(e_fermi),0)
     h0_energies -= e_fermi
     results.add(h0_energies, name="gs_mbpt_eigv0")
     results.add(h0_orbitals, name="gs_mbpt_eigf0")
@@ -153,7 +157,7 @@ def main(parameters):
                 results.save(pm, list=[name])
 
     # compute G0
-    pm.sprint('MBPT: setting up G0(it)',0)
+    pm.sprint('MBPT: setting up G0(it)',1)
     G0, G0_pzero = non_interacting_green_function(h0_orbitals, h0_energies, st, zero='both')
     save(G0,"G0_it")
 
@@ -177,11 +181,11 @@ def main(parameters):
 
         del G0, h0_vh, h0_vx, h0_rho
     else:
-        raise ValueError("MBPT mode {} not implemented".format(pm.mbpt.flavour))
+        raise ValueError("MBPT: flavour {} not implemented".format(pm.mbpt.flavour))
 
 
 
-    ### GW self-consistency loop
+    ####### GW self-consistency loop #######
     converged = False
     cycle = 0
     qp_fermi = e_fermi
@@ -239,6 +243,7 @@ def main(parameters):
             S[:,:,i] += delta
         save(S, "S{}_iw".format(cycle), force_dg=True)
 
+        # Align fermi energy of input and output Green function
         if pm.mbpt.hedin_shift:
             pm.sprint('MBPT: performing Hedin shift',0)
             S_iw_dg = getattr(results, "gs_mbpt_S{}_iw_dg".format(cycle))
@@ -300,13 +305,11 @@ def main(parameters):
             #for i in range(st.x_npt):
             #    h_vx[i,i] -= qp_shift / st.x_delta
 
-    
     # normalise and save density
     h_rho_new *= st.NE / rho_norm
     results.add(h_rho_new, "gs_mbpt_den")
     if pm.run.save:
         results.save(pm, list=["gs_mbpt_den"])
-
 
     return results
 
@@ -348,7 +351,7 @@ def hartree_exchange_correlation_potential(h0, orbitals, h0_vh, h0_vx, st):
         # Hartree: v_Hxc = v_H
         tmp = rs.Results.read('gs_{}_vh'.format(h0), pm)
         np.fill_diagonal(h0_vhxc, tmp / st.x_delta)
-    elif h0 == 'lda' or h0 == 'ext':
+    elif h0 == 'lda' or h0 == 'ext' or h0 == 'hf':
         # KS-DFT: v_Hxc = v_H + v_xc
         tmp = rs.Results.read('gs_{}_vh'.format(h0), pm)
         tmp += rs.Results.read('gs_{}_vxc'.format(h0), pm)
@@ -375,8 +378,7 @@ def hartree_potential(st, rho=None, G=None):
     if rho is not None:
         pass
     elif G is not None:
-        #TODO: to implement!
-        rho = electron_density(pm, G=G)
+        rho = np.diagonal(G[:,:,0].imag).copy()
     else:
         raise IOError("Need to provide either rho or G.")
 
@@ -400,9 +402,8 @@ def exchange_potential(st, G=None, orbitals=None):
     returns v_x(r,r')
     """
     if G is not None:
-        #TODO: need extrapolated G here!
         # default multiplication is element-wise
-        v_x = 1J * G[:, :, 0] * st.coulomb_repulsion
+        v_x = 1J * G[:,:,0] * st.coulomb_repulsion
     elif orbitals is not None:
         v_x = np.zeros((st.x_npt,st.x_npt),dtype=complex)
         for i in range(st.NE):
@@ -494,7 +495,6 @@ def non_interacting_green_function(orbitals, energies, st, zero='0-'):
 
     else:
         return G0
-
 
 def bracket_r(O, orbitals, st, mode='diagonal'):
     r"""Calculate expectationvalues of O(r,r';t) for each t wrt orbitals
@@ -645,12 +645,12 @@ def irreducible_polarizability(G, G_pzero):
     G_rev = np.roll(G_rev, -1, axis=2)
     P =  -1J * G * G_rev[:,:,::-1]
 
-    # v2 done in python, significantly slower...
-    #P = np.zeros((pm.grid, pm.grid, pm.tau_npt), dtype=complex)
-    #for i in range(pm.grid):
-    #    for j in range(pm.grid):
-    #        for k in range(pm.tau_npt):
-    #            P[i, j, k] = -1J * G_m[i, j, k] * G_m[j, i, -k]
+    # loop in python, significantly slower... (but crisp)
+    #P = np.empty((st.x_npt, st.x_npt, st.tau_npt), dtype=complex)
+    #for i in range(st.x_npt):
+    #    for j in range(st.x_npt):
+    #        for k in range(st.tau_npt):
+    #            P[i,j,k] = -1J * G[i,j,k] * G[j,i,-k]
 
     return P
 
