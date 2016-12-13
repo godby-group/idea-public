@@ -1,6 +1,6 @@
 """Computes Green function and self-energy in the GW approximation
 
-Different flavours of GW (G0W0, GW) are available.  The implementation
+Different flavours of GW (G0W0, GW, GW0) are available.  The implementation
 follows the GW-space-time approach detailed in [Rojas1995]_ and  [Rieger1999]_.
 """
 
@@ -68,6 +68,11 @@ class SpaceTimeGrid:
                 format(self.NE, self.norb - self.NE, self.norb/self.x_npt*100)
         return s
 
+
+class Container:
+    """Stores quantities for GW cycle"""
+    pass
+
         
 def main(parameters):
     r"""Runs GW calculation
@@ -91,52 +96,11 @@ def main(parameters):
     st = SpaceTimeGrid(pm)
     pm.sprint(str(st),0)
 
-    # read eigenvalues and eigenfunctions of starting Hamiltonian
-    h0_energies = rs.Results.read('gs_{}_eigv'.format(pm.mbpt.h0), pm)
-    h0_orbitals = rs.Results.read('gs_{}_eigf'.format(pm.mbpt.h0), pm)
-    h0_rho = rs.Results.read('gs_{}_den'.format(pm.mbpt.h0), pm)
-
-    if h0_energies.dtype == np.complex:
-        im_max = np.max(np.abs(h0_energies.imag))
-        s  = "MBPT: Warning: single-particle energies are complex (maximum "
-        s += "imaginary component: {:.3e}). Casting to real. ".format(im_max)
-        pm.sprint(s)
-        h0_energies = h0_energies.real
-
-    norb = len(h0_energies)
-    if norb < st.norb:
-        raise ValueError("Not enough orbitals: {} computed, {} requested.".format(norb,st.norb))
-    else:
-        h0_energies = h0_energies[:st.norb]
-        h0_orbitals = h0_orbitals[:st.norb]
-
-    # Shifting energies such that E=0 is half way between homo and lumo 
-    homo = h0_energies[st.NE-1]
-    lumo = h0_energies[st.NE]
-    gap = lumo - homo
-    pm.sprint('MBPT: single-particle gap: {:.3f} Ha'.format(gap),0)
-    e_fermi = homo + gap / 2
-    pm.sprint('MBPT: single-particle Fermi energy: {:.3f} Ha'.format(e_fermi),0)
-    h0_energies -= e_fermi
-    results.add(h0_energies, name="gs_mbpt_eigv0")
-    results.add(h0_orbitals, name="gs_mbpt_eigf0")
-    results.add(e_fermi, name="gs_mbpt_efermi0")
-
-    # check that G(it) is well described
-    exp_factor = np.exp(-(lumo-e_fermi)*st.tau_max)
-    if exp_factor > 1e-1:
-        t1 = -np.log(1e-1)/(lumo-e_fermi)
-        t2 = -np.log(1e-2)/(lumo-e_fermi)
-        s  = "MBPT: Warning: Width of tau-grid for G(it) is too small "
-        s += "for HOMO-LUMO gap {:.3f} Ha. ".format(gap)
-        s += "Increase tau_max to {:.1f} for decay to 10% ".format(t1)
-        s +=  "or {:.1f} for decay to 1%".format(t2)
-        pm.sprint(s)
-
-    # computing/reading potentials
-    h0_vh = hartree_potential(st, rho=h0_rho)
-    h0_vx = exchange_potential(st, orbitals=h0_orbitals)
-    h0_vhxc = hartree_exchange_correlation_potential(pm.mbpt.h0, h0_orbitals, h0_vh, h0_vx, st)
+    # read eigenvalues and eigenfunctions and potentials of starting Hamiltonian
+    h0 = read_input_quantities(pm,st)
+    results.add(h0.energies, name="gs_mbpt_eigv0")
+    results.add(h0.orbitals, name="gs_mbpt_eigf0")
+    results.add(h0.e_fermi, name="gs_mbpt_efermi0")
 
     def save(O, shortname, force_dg=False):
         """Auxiliary function for saving 3d objects
@@ -146,7 +110,7 @@ def main(parameters):
         """
         if (shortname in pm.mbpt.save_diag) or force_dg:
             name = "gs_mbpt_{}_dg".format(shortname)
-            results.add(bracket_r(O, h0_orbitals, st), name)
+            results.add(bracket_r(O, h0.orbitals, st), name)
             if pm.run.save:
                 results.save(pm, list=[name])
 
@@ -158,74 +122,72 @@ def main(parameters):
 
     # compute G0
     pm.sprint('MBPT: setting up G0(it)',1)
-    G0, G0_pzero = non_interacting_green_function(h0_orbitals, h0_energies, st, zero='both')
+    G0, G0_pzero = non_interacting_green_function(h0.orbitals, h0.energies, st, zero='both')
     save(G0,"G0_it")
 
     # prepare variables
-    if pm.mbpt.flavour in ['GW', 'QSGW']:
+    if pm.mbpt.flavour in ['GW', 'GW0', 'QSGW']:
         # we need both G and G0 separately
         G = copy.deepcopy(G0)
         G0 = fft_t(G0, st, dir='it2if') # needed for dyson equation
         save(G0,"G0_iw")
         G_pzero = G0_pzero
-        h_vh = copy.deepcopy(h0_vh)
-        h_vx = copy.deepcopy(h0_vx)
-        h_rho = copy.deepcopy(h0_rho)
+        H = copy.deepcopy(h0)
     elif pm.mbpt.flavour in ['G0W0']:
         # we need only G0 but will call it G
         G = G0
         G_pzero = G0_pzero
-        h_vh = h0_vh
-        h_vx = h0_vx
-        h_rho = h0_rho
+        H = h0
 
-        del G0, h0_vh, h0_vx, h0_rho
+        del G0, G0_pzero
     else:
         raise ValueError("MBPT: flavour {} not implemented".format(pm.mbpt.flavour))
 
 
 
     ####### GW self-consistency loop #######
-    converged = False
     cycle = 0
-    qp_fermi = e_fermi
-    while not converged:
 
-        pm.sprint('MBPT: setting up P(it)',0)
-        P = irreducible_polarizability(G, G_pzero)
-        save(P, "P{}_it".format(cycle))
+    while True:
 
-        pm.sprint('MBPT: transforming P to imaginary frequency',0)
-        P = fft_t(P, st, dir='it2if')
-        save(P, "P{}_iw".format(cycle))
+        # For GW0, no need to recompute W
+        if not (pm.mbpt.flavour == 'GW0' and cycle > 0):
+            pm.sprint('MBPT: setting up P(it)',0)
+            P = irreducible_polarizability(G, G_pzero)
+            save(P, "P{}_it".format(cycle))
+
+            pm.sprint('MBPT: transforming P to imaginary frequency',0)
+            P = fft_t(P, st, dir='it2if')
+            save(P, "P{}_iw".format(cycle))
 
 
-        #### testing alternative way of computing W
-        # this is completely identical for flavor=dynamical
-        #v_test = np.empty( (st.x_npt, st.x_npt, st.tau_npt), dtype=float)
-        #for i in range(st.tau_npt):
-        #    v_test[:,:,i] = st.coulomb_repulsion
-        #W_test = solve_dyson_equation(v_test,P,st)
-        #save(W_test, "Wt{}_iw".format(cycle))
+            #### testing alternative way of computing W
+            # this is completely identical for flavor=dynamical
+            #v_test = np.empty( (st.x_npt, st.x_npt, st.tau_npt), dtype=float)
+            #for i in range(st.tau_npt):
+            #    v_test[:,:,i] = st.coulomb_repulsion
+            #W_test = solve_dyson_equation(v_test,P,st)
+            #save(W_test, "Wt{}_iw".format(cycle))
 
-        pm.sprint('MBPT: setting up eps(iw)',0)
-        eps = dielectric_matrix(P, st)
-        save(eps, "eps{}_iw".format(cycle))
-        del P # not needed anymore
+            pm.sprint('MBPT: setting up eps(iw)',0)
+            eps = dielectric_matrix(P, st)
+            save(eps, "eps{}_iw".format(cycle))
+            del P # not needed anymore
 
-        pm.sprint('MBPT: setting up W(iw)',0)
-        W = screened_interaction(st, epsilon=eps, w_flavour=pm.mbpt.w)
-        save(W, "W{}_iw".format(cycle))
-        del eps # not needed anymore
+            pm.sprint('MBPT: setting up W(iw)',0)
+            W = screened_interaction(st, epsilon=eps, w_flavour=pm.mbpt.w)
+            save(W, "W{}_iw".format(cycle))
+            del eps # not needed anymore
 
-        pm.sprint('MBPT: transforming W to imaginary time',0)
-        W = fft_t(W, st, dir='if2it')
-        save(W, "W{}_it".format(cycle))
+            pm.sprint('MBPT: transforming W to imaginary time',0)
+            W = fft_t(W, st, dir='if2it')
+            save(W, "W{}_it".format(cycle))
 
         pm.sprint('MBPT: computing S(it)',0)
         S = self_energy(G, W)
         save(S, "S{}_it".format(cycle))
-        del W # not needed anymore
+        if not pm.mbpt.flavour == 'GW0':
+            del W # not needed anymore
 
         pm.sprint('MBPT: transforming S to imaginary frequency',0)
         S = fft_t(S, st, dir='it2if')
@@ -233,32 +195,27 @@ def main(parameters):
         pm.sprint('MBPT: updating S(iw)',0)
         # real for real orbitals...
         delta = np.zeros((st.x_npt, st.x_npt), dtype=np.complex)
-        np.fill_diagonal(delta, h_vh / st.x_delta)
-        delta -= h0_vhxc
+        np.fill_diagonal(delta, H.vh / st.x_delta)
+        delta -= h0.vhxc
         if pm.mbpt.w == 'dynamical':
             # in the frequency domain we can put the exchange back
             # Note: here, we need the extrapolated G(it=0^-)
-            delta += h_vx
+            delta += H.vx
         for i in range(st.tau_npt):
             S[:,:,i] += delta
-        save(S, "S{}_iw".format(cycle), force_dg=True)
+        save(S, "S{}_iw".format(cycle))
+        H.sigma_iw_dg = bracket_r(S, h0.orbitals, st)
 
         # Align fermi energy of input and output Green function
         if pm.mbpt.hedin_shift:
             pm.sprint('MBPT: performing Hedin shift',0)
-            S_iw_dg = getattr(results, "gs_mbpt_S{}_iw_dg".format(cycle))
-            qp_shift = 0.5 * (S_iw_dg[st.NE-1,0] + S_iw_dg[st.NE,0])
-            qp_shift = qp_shift.real
-            qp_fermi += qp_shift
-            pm.sprint('MBPT: quasi-particle fermi energy: {:.3f} Ha ({:+.3f} Ha).'.format(qp_fermi,qp_shift))
+            S_iw_dg = H.sigma_iw_dg
+            H.qp_shift = 0.5 * (S_iw_dg[st.NE-1,0] + S_iw_dg[st.NE,0])
+            H.qp_shift = H.qp_shift.real
+            #pm.sprint('MBPT: quasi-particle fermi energy: {:.3f} Ha ({:+.3f} Ha).'.format(qp_fermi,qp_shift))
+            pm.sprint('MBPT: quasi-particle shift: {:.3f} Ha.'.format(H.qp_shift))
             for i in range(st.x_npt):
-                S[i,i,:] -= qp_shift / st.x_delta
-
-        if pm.mbpt.flavour == 'G0W0':
-            break
-        elif cycle == pm.mbpt.max_iter:
-            pm.sprint("Reached maximum number of iterations. Stopping...")
-            break
+                S[i,i,:] -= H.qp_shift / st.x_delta
 
         cycle = cycle + 1
         pm.sprint(''.format(cycle))
@@ -275,43 +232,112 @@ def main(parameters):
 
         # extract density
         G_mzero = G[:,:,0]
-        h_rho_new = np.diagonal(G_mzero.imag).copy()
-
-        # compute new rho
-        # check convergence...
-        results.add(h_rho_new, "gs_mbpt_den{}".format(cycle))
+        den_new = np.diagonal(G_mzero.imag).copy()
+        results.add(den_new, "gs_mbpt_den{}".format(cycle))
         if pm.run.save:
             results.save(pm, list=["gs_mbpt_den{}".format(cycle)])
 
-        rho_norm = np.sum(h_rho_new) * st.x_delta
-        pm.sprint("MBPT: norm of new density: {:.3f} electrons".format(rho_norm))
-        rho_delta_max = np.max(np.abs(h_rho_new - h_rho))
-        if rho_delta_max < pm.mbpt.den_tol:
-            pm.sprint("MBPT: convergence reached, exiting self-consistency cycle",0)
-            converged = True
-        else:
-            pm.sprint("Max. change in rho: {:.2e} > {:.2e}".format(rho_delta_max,pm.mbpt.den_tol))
-            h_rho = h_rho_new
-            h_vh = hartree_potential(st, rho=h_rho)
-            h_vx = -G_mzero.imag * st.coulomb_repulsion # = iGv
+        den_norm = np.sum(den_new) * st.x_delta
+        pm.sprint("MBPT: norm of new density: {:.3f} electrons".format(den_norm))
+        den_maxdiff = np.max(np.abs(den_new - H.den)) 
+        H.den = den_new
 
-            # extrapolate G(it=0) from above
-            eps = np.max(np.abs(G.real))
-            if eps > pm.mbpt.den_tol:
-                st.sprint("MBPT: Warning: Discarding real part with max. {:.3e} during extrapolation".format(eps))
-            G_pzero = extrapolate_to_zero(G, st, 'from_above')
-            #h_vx = h_vx
-            # note: this should not be needed anymore for extrapolated h_vx
-            #for i in range(st.x_npt):
-            #    h_vx[i,i] -= qp_shift / st.x_delta
+        if pm.mbpt.flavour == 'G0W0':
+            break
+        elif cycle == pm.mbpt.max_iter:
+            pm.sprint("Reached maximum number of iterations. Stopping...")
+            break
+        elif den_maxdiff < pm.mbpt.den_tol:
+            pm.sprint("MBPT: convergence reached, exiting self-consistency cycle",0)
+            break
+
+        pm.sprint("Max. change in den: {:.2e} > {:.2e}".format(den_maxdiff,pm.mbpt.den_tol))
+        H.vh = hartree_potential(st, den=H.den)
+        H.vx = -G_mzero.imag * st.coulomb_repulsion # = iGv
+
+        # extrapolate G(it=0) from above
+        eps = np.max(np.abs(G.real))
+        if eps > pm.mbpt.den_tol:
+            st.sprint("MBPT: Warning: Discarding real part with max. {:.3e} during extrapolation".format(eps))
+        G_pzero = extrapolate_to_zero(G, st, 'from_above')
 
     # normalise and save density
-    h_rho_new *= st.NE / rho_norm
-    results.add(h_rho_new, "gs_mbpt_den")
+    den = H.den * st.NE / (np.sum(H.den) * st.x_delta)
+    results.add(den, "gs_mbpt_den")
     if pm.run.save:
         results.save(pm, list=["gs_mbpt_den"])
 
     return results
+
+
+def read_input_quantities(pm, st):
+    """Reads quantities of starting Hamiltonian h0
+    
+    This includes single-particle energies, orbitals and the density.
+
+    parameters
+    ----------
+    pm : object
+        input parameters
+    st : object
+        space-time grid
+
+    returns Container object
+    """
+    energies = rs.Results.read('gs_{}_eigv'.format(pm.mbpt.h0), pm)
+    orbitals = rs.Results.read('gs_{}_eigf'.format(pm.mbpt.h0), pm)
+    den = rs.Results.read('gs_{}_den'.format(pm.mbpt.h0), pm)
+
+    if energies.dtype == np.complex:
+        im_max = np.max(np.abs(energies.imag))
+        s  = "MBPT: Warning: single-particle energies are complex (maximum "
+        s += "imaginary component: {:.3e}). Casting to real. ".format(im_max)
+        pm.sprint(s)
+        energies = energies.real
+
+    norb = len(energies)
+    if norb < st.norb:
+        raise ValueError("Not enough orbitals: {} computed, {} requested.".format(norb,st.norb))
+    else:
+        energies = energies[:st.norb]
+        orbitals = orbitals[:st.norb]
+
+    # Shifting energies such that E=0 is half way between homo and lumo 
+    homo = energies[st.NE-1]
+    lumo = energies[st.NE]
+    gap = lumo - homo
+    pm.sprint('MBPT: single-particle gap: {:.3f} Ha'.format(gap),0)
+    e_fermi = homo + gap / 2
+    pm.sprint('MBPT: single-particle Fermi energy: {:.3f} Ha'.format(e_fermi),0)
+    energies -= e_fermi
+
+    # check that G(it) is well described
+    exp_factor = np.exp(-(lumo-e_fermi)*st.tau_max)
+    if exp_factor > 1e-1:
+        t1 = -np.log(1e-1)/(lumo-e_fermi)
+        t2 = -np.log(1e-2)/(lumo-e_fermi)
+        s  = "MBPT: Warning: Width of tau-grid for G(it) is too small "
+        s += "for HOMO-LUMO gap {:.3f} Ha. ".format(gap)
+        s += "Increase tau_max to {:.1f} for decay to 10% ".format(t1)
+        s +=  "or {:.1f} for decay to 1%".format(t2)
+        pm.sprint(s)
+
+    # computing & reading potentials
+    vh = hartree_potential(st, den=den)
+    vx = exchange_potential(st, orbitals=orbitals)
+    vhxc = hartree_exchange_correlation_potential(pm.mbpt.h0, orbitals, vh, vx, st)
+
+    h0 = Container()
+    h0.energies = energies
+    h0.orbitals = orbitals
+    h0.den = den
+    h0.e_fermi = e_fermi
+    h0.vh = vh
+    h0.vx = vx
+    h0.vhxc = vhxc
+
+    return h0
+
 
 def hartree_exchange_correlation_potential(h0, orbitals, h0_vh, h0_vx, st):
     r"""Returns Hartree-exchange-correlation potential of h0
@@ -365,7 +391,7 @@ def hartree_exchange_correlation_potential(h0, orbitals, h0_vh, h0_vx, st):
 
     return h0_vhxc
 
-def hartree_potential(st, rho=None, G=None):
+def hartree_potential(st, den=None, G=None):
     r"""Sets up Hartree potential V_H(r) from electron density.
 
     .. math::
@@ -375,14 +401,14 @@ def hartree_potential(st, rho=None, G=None):
     Note: :math:`V_H(r,r';i\tau) = \delta(r-r')\delta(i\tau)V_H(r)` with
     :math:`\delta(i\tau)=i\delta(\tau)`.
     """
-    if rho is not None:
+    if den is not None:
         pass
     elif G is not None:
-        rho = np.diagonal(G[:,:,0].imag).copy()
+        den = np.diagonal(G[:,:,0].imag).copy()
     else:
-        raise IOError("Need to provide either rho or G.")
+        raise IOError("Need to provide either den or G.")
 
-    v_h = np.dot(st.coulomb_repulsion, rho) * st.x_delta
+    v_h = np.dot(st.coulomb_repulsion, den) * st.x_delta
     return v_h
 
 def exchange_potential(st, G=None, orbitals=None):
@@ -685,13 +711,12 @@ def dielectric_matrix(P, st):
     for i in range(st.x_npt):
         eps[i, i, :] += tmp
 
-    # v2 within python
+    # loop within python
     #for k in range(st.tau_npt):
-    #    eps[:, :, k] = -np.dot(v, P[:, :, k]) * st.deltax
-
+    #    eps[:, :, k] = -np.dot(v, P[:, :, k]) * st.x_delta
     #    # add delta(r-r')
     #    for i in range(st.x_npt):
-    #        eps[i, i, k] += 1 / st.deltax
+    #        eps[i, i, k] += 1 / st.x_delta
 
     return eps
 
@@ -837,6 +862,7 @@ def solve_dyson_equation(G0, S, st):
 
     return G
 
+
 def extrapolate_to_zero(F, st, dir='from_below', order=6, points=7):
     """Extrapolate F(r,r';it) to it=0
 
@@ -873,234 +899,3 @@ def extrapolate_to_zero(F, st, dir='from_below', order=6, points=7):
            out[i,j] = z(0)
 
     return 1J * out
-
-
-#def adjust_self_energy(S, v_h, h0_vxc, st, w_flavour='dynamical'):
-#    r"""Calculate the self-energy S(it) within the GW approximation.
-#
-#    Here, the term "self-energy" is meant in the many-body sense, i.e.
-#    :math:`\Delta\Sigma = \mathcal{H}-\mathcal{H}^0` where `\mathcal{H}` is the
-#    many-body Hamiltonian and `\mathcal{H}^0` the single-particle Hamiltonian
-#    (of whatever kind).
-#    This is the self-energy required by the Dyson equation.
-#
-#    In general, we have
-#
-#    .. math::
-#
-#        \Sigma(r,r';i\tau) = iG(r,r';i\tau)W(r,r';i\tau) \\
-#        \Delta\Sigma(r,r';i\omega) = \Sigma(r,r';i\omega) + \delta(r-r') V_H(r) - V_{Hxc}^0(r,r')
-#
-#    where the superscript 0 indicates that the corresponding operator is 
-#    evaluated for the non-interacting Hamiltonian.
-#
-#    Note: :math:`V_H(r,r';i\tau) = \delta(r-r')\delta(i\tau)V_H(r)` with
-#    :math:`\delta(i\tau)=i\delta(\tau)`.
-#
-#
-#    parameters
-#    ----------
-#    S: array_like
-#       S(iw) where S(it) = -iGW
-#    vh: array_like
-#       up-to-date Hartree potential
-#    h0: string
-#      The choice of single-particle Hamiltonian h0
-#       'H'  :  h0 contains external & Hartree potential  (default)
-#       'HF' :  h0 contains external, Hartree & exchange potential
-#       'KS' :  h0 contains external, Hartree & exchange-correlation potential
-#       'NON':  h0 contains only external potential
-#    w_flavor: string
-#      flavor of screened interaction
-#       'full':  including the static exchange interaction
-#       'dynamical':  not including the static exchange interaction
-#    self_consistent:  True, if performing self-consistent calculation
-#    rho0:  single-particle electron-density
-#        needed for self-consistent calculations
-#    Vxc0:  single-particle exchange-correlation potential
-#        needed for self-consistent calculations
-#
-#    """
-#    # constructing static adjustment of self-energy
-#    diff = np.zeros((st.x_npt, st.x_npt), dtype=np.float)
-#
-#    np.fill_diagonal(diff, v_h)
-#    diff -= h0_vhxc
-#
-#    if w_flavour == 'dynamical':
-#        # in the frequency domain, we can put the exchange back
-#        # Note: here, we need the extrapolated G(it=0^-)
-#        diff += exchange_potential(st,G=G)
-#
-#    for i in range(st.tau_npt):
-#        S[:,:,i] += diff
-#
-#    return S
-
-
-#
-## Function to calculate coulomb interaction in the frequency domain
-#def coulomb_interaction(st):
-#   v_f = np.zeros((st.tau_N,st.x_N,st.x_N), dtype='complex')
-#   for i in xrange(0,st.x_N):
-#      for j in xrange(0,st.x_N):
-#         v_f[:,i,j] = 1.0/(abs(st.x_grid[j]-st.x_grid[i])+pm.sys.acon) # Softened coulomb interaction
-#   return v_f
-#
-## Function to calculate the irreducible polarizability P in the time domain
-#def irreducible_polarizability(st,G,iteration):
-#   P = np.zeros((st.tau_N,st.x_N,st.x_N), dtype='complex')
-#   for k in xrange(0,st.tau_N):
-#      for i in xrange(0,st.x_N):
-#         for j in xrange(0,st.x_N):
-#            P[k,i,j] = -1.0j*G[k,i,j]*G[-k-1,j,i]
-#   return P
-#
-## Function to calculate the screened interaction W_f in the frequency domain
-#def screened_interaction(st,v_f,P_f,iteration):
-#   W_f = np.zeros((st.tau_N,st.x_N,st.x_N), dtype='complex')
-#   for k in xrange(0,st.tau_N): # At each frequency slice perform W = (I - v P)^-1 v
-#      W_f[k,:,:] = np.dot(npl.inv(np.eye(st.x_N,dtype='complex') - np.dot(v_f[k,:,:],P_f[k,:,:])*st.dx*st.dx),v_f[k,:,:])
-#   return W_f
-#
-## Function to calculate the self energy S in the time domain
-#def self_energy(st,G,W,iteration):
-#   S = np.zeros((st.tau_N,st.x_N,st.x_N), dtype='complex')
-#   S[:,:,:] = 1.0j*G[:,:,:]*W[:,:,:] # GW approximation
-#   return S
-#
-## Function to perfrom the hedin shift in the frequency domain
-#def hedin_shift(st,S_f,occupied,empty):
-#   state = np.zeros(st.x_N, dtype='complex')
-#   state[:] = occupied[:,-1]
-#   expectation_value1 = np.vdot(state,np.dot(S_f[0,:,:],state.transpose()))*st.dx*st.dx # Calculates the expectation value of S(0) in the HOMO state
-#   state[:] = empty[:,0]
-#   expectation_value2 = np.vdot(state,np.dot(S_f[0,:,:],state.transpose()))*st.dx*st.dx # Calculates the expectation value of S(0) in the LUMO state
-#   expectation_value = (expectation_value1 + expectation_value2)/2.0 # Calculates the expectation value of S(0) at the fermi energy
-#   for i in xrange(0,st.x_N):
-#      S_f[:,i,i] = S_f[:,i,i] - expectation_value/st.dx
-#   return S_f
-#
-## Function to solve the dyson equation in the frequency domain to update G
-#def dyson_equation(st,G0_f,S_f,iteration):
-#   G_f = np.zeros((st.tau_N,st.x_N,st.x_N), dtype='complex') # Greens function in the frequency domain
-#   for k in xrange(0,st.tau_N): # At each frequency slice perform G = (I - G0 S)^-1 G0
-#      G_f[k,:,:] = np.dot(npl.inv(np.eye(st.x_N,dtype='complex') - np.dot(G0_f[k,:,:],S_f[k,:,:])*st.dx*st.dx),G0_f[k,:,:])
-#   return G_f
-#
-#
-#
-## Main function
-#def main(parameters):
-#   global pm
-#   pm = parameters
-#
-#   # Construct space-time grid
-#   st = SpaceTime()
-#   
-#   # Construct the kinetic energy
-#   K = constructK(st)
-#
-#   # Construct the potential
-#   V = constructV(st)
-#
-#   # Constuct the hamiltonian
-#   H = K + V 
-#
-#   # Compute all wavefunctions
-#   print 'MBPT: computing eigenstates of single particle hamiltonian'
-#   solution = spsla.eigsh(H, k=pm.sys.grid-3, which='SA', maxiter=1000000)
-#   energies = solution[0] 
-#   wavefunctions = solution[1]
-#
-#   # Normalise all wavefunctions
-#   length = len(wavefunctions[0,:])
-#   for i in xrange(0,length):
-#      wavefunctions[:,i] = wavefunctions[:,i]/(np.linalg.norm(wavefunctions[:,i])*pm.sys.deltax**0.5)
-#
-#   # Make array of occupied wavefunctions
-#   occupied = np.zeros((pm.sys.grid,pm.sys.NE), dtype='complex')
-#   occupied_energies = np.zeros(pm.sys.NE)
-#   for i in xrange(0,pm.sys.NE):
-#      occupied[:,i] = wavefunctions[:,i]
-#      occupied_energies[i] = energies[i]
-#
-#   # Make array of empty wavefunctions
-#   empty = np.zeros((pm.sys.grid,pm.mbpt.number_empty), dtype='complex')
-#   empty_energies = np.zeros(pm.mbpt.number_empty)
-#   for i in xrange(0,pm.mbpt.number_empty):
-#      s = i + pm.sys.NE
-#      empty[:,i] = wavefunctions[:,s]
-#      empty_energies[i] = energies[s]
-#
-#   # Re-scale energies
-#   E1 = occupied_energies[-1] 
-#   E2 = empty_energies[0]
-#   E = (E2+E1)/2.0
-#   occupied_energies[:] = occupied_energies[:] - E
-#   empty_energies[:] = empty_energies[:] - E
-#
-#   # Compute phase factors for this grid
-#   phase_factors = generate_phase_factors(st)
-#
-#   # Calculate the coulomb interaction in the frequency domain
-#   print 'MBPT: computing coulomb interaction v'
-#   v_f = coulomb_interaction(st) 
-#
-#   # Calculate the non-interacting green's function in imaginary time
-#   G0 = non_interacting_greens_function(st, occupied, occupied_energies, empty, empty_energies)
-#   G0_f = fourier(st,G0,0,phase_factors) 
-#
-#   # Initial guess for the green's function
-#   print 'MBPT: constructing initial greens function G'
-#   G = np.zeros((st.tau_N,st.x_N,st.x_N), dtype='complex')
-#   G[:,:,:] = G0[:,:,:]
-#
-#   # Determine level of self-consistency
-#   converged = False
-#   iteration = 0
-#   if(pm.mbpt.self_consistent == 0):
-#      max_iterations = 1
-#   if(pm.mbpt.self_consistent == 1):
-#      max_iterations = pm.mbpt.max_iterations
-#
-#   # GW self-consistency loop
-#   print 'MBPT: performing first iteration (one-shot)'
-#   while(iteration < max_iterations and converged == False):
-#      if(iteration == 0 or pm.mbpt.update_w == True):
-#         P = irreducible_polarizability(st,G,iteration) # Calculate P in the time domain
-#         P_f = fourier(st,P,0,phase_factors) # Fourier transform to get P in the frequency domain
-#         W_f = screened_interaction(st,v_f,P_f,iteration) # Calculate W in the frequency domain
-#         W = fourier(st,W_f,1,phase_factors) # Fourier transform to get W in the time domain
-#      S = self_energy(st,G,W,iteration) # Calculate S in the time domain
-#      S_f = fourier(st,S,0,phase_factors) # Fourier transform to get S in the frequency domain
-#      S_f = correct_diagrams(st,S_f,v_f,extract_density(st,G)) # Correct diagrams to S in the frequency domain
-#      S_f = hedin_shift(st,S_f,occupied,empty) # Apply the hedin shift to S in the frequency domain
-#      G_f = dyson_equation(st,G0_f,S_f,iteration) # Solve the dyson equation in the frequency domain
-#      G = fourier(st,G_f,1,phase_factors) # Fourier transform to get G in the time domain
-#      if(iteration > 0):
-#         converged = has_converged(density,extract_density(st,G),iteration) # Test for converence
-#      density = extract_density(st,G) # Extract the ground-state density from G
-#      iteration += 1
-#
-#   # Extract the ground-state density from G
-#   if(pm.mbpt.self_consistent == 1):
-#      print
-#   print 'MBPT: computing density from the greens function G'
-#   density = extract_density(st,G)
-#
-#   # Normalise the density
-#   print 'MBPT: normalising density by ' + str(float(pm.sys.NE)/(np.sum(density)*st.dx))
-#   density[:] = (density[:]*float(pm.sys.NE))/(np.sum(density)*st.dx)
-#
-#   # Output ground state density
-#   results = rs.Results()
-#   results.add(density,'gs_mbpt_den')
-#   if pm.run.save:
-#      results.save(pm)
-#      
-#   # Output all hedin quantities
-#   if(pm.mbpt.output_hedin == True):
-#      output_quantities(G0,G0_f,P,P_f,W_f-v_f,S_f,G) 
-#   
-#   return results
