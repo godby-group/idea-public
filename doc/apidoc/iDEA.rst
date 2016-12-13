@@ -116,6 +116,14 @@ iDEA.job module
     :undoc-members:
     :show-inheritance:
 
+iDEA.mklfftwrap module
+----------------------
+
+.. automodule:: iDEA.mklfftwrap
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 iDEA.results module
 -------------------
 
@@ -132,10 +140,34 @@ iDEA.splash module
     :undoc-members:
     :show-inheritance:
 
+iDEA.test_EXT2 module
+---------------------
+
+.. automodule:: iDEA.test_EXT2
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+iDEA.test_MBPT module
+---------------------
+
+.. automodule:: iDEA.test_MBPT
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 iDEA.test_NON module
 --------------------
 
 .. automodule:: iDEA.test_NON
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+iDEA.test_mklfftwrap module
+---------------------------
+
+.. automodule:: iDEA.test_mklfftwrap
     :members:
     :undoc-members:
     :show-inheritance:

@@ -4,18 +4,18 @@ from iDEA.input import InputSection, SystemSection
 
 ### run parameters
 run = InputSection()
-run.name = 'test_101'       #: Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
+run.name = 'run_name'       #: Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
 run.time_dependence = False #: whether to run time-dependent calculation
 run.verbosity = 'high'   #: output verbosity ('low', 'default', 'high')
 run.save = True             #: whether to save results to disk when they are generated
 run.module = 'iDEA'         #: specify alternative folder (in this directory) containing modified iDEA module  
 
-run.EXT = False             #: Run Exact Many-Body calculation
+run.EXT = True              #: Run Exact Many-Body calculation
 run.NON = True              #: Run Non-Interacting approximation
 run.LDA = False             #: Run LDA approximation
 run.MLP = False             #: Run MLP approximation
 run.HF = False              #: Run Hartree-Fock approximation
-run.MBPT = True             #: Run Many-body pertubation theory
+run.MBPT = False            #: Run Many-body pertubation theory
 run.LAN = False             #: Run Landauer approximation
 
 
@@ -107,11 +107,11 @@ mbpt.h0 = 'non'                 #: starting hamiltonian: 'non','ha','hf','lda'
 mbpt.tau_max = 40.0             #: Maximum value of imaginary time
 mbpt.tau_npt = 801              #: Number of imaginary time points (must be even)
 mbpt.norb = 35                  #: Number of orbitals to use
-mbpt.flavour = 'GW'             #: 'G0W0', 'GW', ...
+mbpt.flavour = 'G0W0'           #: 'G0W0', 'GW0', 'GW'
 mbpt.den_tol = 1e-06            #: density tolerance of self-consistent algorithm
-mbpt.max_iter = 2               #: Maximum iterations of self-consistent algorithm
-mbpt.save_full = ['G1_it']      #: save space-time quantities (e.g. 'G2_iw', 'S1_it')
-mbpt.save_diag = ['W0_iw']      #: save diaginal components of space-time quantities
+mbpt.max_iter = 100             #: Maximum iterations of self-consistent algorithm
+mbpt.save_full = []             #: save space-time quantities (e.g. 'G0_iw', 'S1_it')
+mbpt.save_diag = []             #: save diaginal components of space-time quantities
 mbpt.w = 'dynamical'            #: compute 'full' W or 'dynamical' W-v
 mbpt.hedin_shift = True         #: perform Hedin shift
 mbpt.RE = False                 #: Reverse engineer mbpt density
@@ -119,3 +119,7 @@ mbpt.RE = False                 #: Reverse engineer mbpt density
 # LAN parameters
 lan = InputSection()
 lan.start = 'non'               #: Ground-state Kohn-Sham potential to be perturbed
+
+# RE parameters
+re = InputSection()
+re.save_eig = True    #: save Kohn-Sham eigenfunctions and eigenvalues of reverse-engineered potential

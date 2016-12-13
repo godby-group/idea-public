@@ -191,6 +191,11 @@ class Input(object):
         lan = self.lan
         lan.start = 'non'               #: Ground-state Kohn-Sham potential to be perturbed
 
+        # RE parameters
+        self.re = InputSection()
+        re = self.re
+        re.save_eig = True    #: save Kohn-Sham eigenfunctions and eigenvalues of reverse-engineered potential
+
 
     def check(self):
         """Checks validity of input parameters."""

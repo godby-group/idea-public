@@ -72,7 +72,7 @@ def CalculateGroundstate(V,n_T,mu,sqdx,T_s,n):
       n[0,:] += abs(Psi[i,0,:])**2 # Calculate the density from the single-particle wavefunctions
       E_KS += K[i]
    cost_n_GS = sum(abs(n_T[0,:]-n[0,:]))*pm.sys.deltax # Calculate the ground-state cost function 
-   return V,n,cost_n_GS,Psi,E_KS
+   return V,n,cost_n_GS,Psi,E_KS,K
 
 # Function to load or force calculation of the ground-state potential
 def GroundState(n_T,mu,sqdx,T_s,n,approx):
@@ -82,19 +82,19 @@ def GroundState(n_T,mu,sqdx,T_s,n,approx):
    for i in range(pm.sys.grid):
       V_KS[0,i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # Initial guess for KS potential
       V_ext[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax))
-   V_KS,n,cost_n_GS,U,E_KS = CalculateGroundstate(V_KS,n_T,0,sqdx,T_s,n)
+   V_KS,n,cost_n_GS,U,E_KS,K = CalculateGroundstate(V_KS,n_T,0,sqdx,T_s,n)
    pm.sprint('REV: initial guess electron density error = %s' % cost_n_GS,1)
    while cost_n_GS>1e-13:
       cost_old = cost_n_GS
       string = 'REV: electron density error = ' + str(cost_old)
       pm.sprint(string,1,newline=False)
-      V_KS,n,cost_n_GS,U,E_KS = CalculateGroundstate(V_KS,n_T,mu,sqdx,T_s,n)
+      V_KS,n,cost_n_GS,U,E_KS,K = CalculateGroundstate(V_KS,n_T,mu,sqdx,T_s,n)
       if abs(cost_n_GS-cost_old)<1e-15 or cost_n_GS>cost_old:
          mu *= 0.5
       if mu < 1e-15:
          break
    pm.sprint('',1)
-   return V_KS,n,U,V_ext,E_KS
+   return V_KS,n,U,V_ext,E_KS,K
 
 # Function used in calculation of the Hatree potential
 def realspace(vector):
@@ -371,7 +371,7 @@ def main(parameters,approx):
    n_KS = np.zeros((imax,pm.sys.grid),dtype='float')
    n_MB = ReadInput(approx,0,imax) # Read in exact charge density obtained from code
    V_coulomb = coulomb()
-   V_KS,n_KS,Psi,V_ext,E_KS = GroundState(n_MB,mu,sqdx,T,n_KS,approx) # Calculate (or, if already obtained, check) ground-state KS potential
+   V_KS,n_KS,Psi,V_ext,E_KS,eigv = GroundState(n_MB,mu,sqdx,T,n_KS,approx) # Calculate (or, if already obtained, check) ground-state KS potential
    V_h[0,:] = Hartree(n_KS,V_coulomb,0) # Calculate the Hartree potential
    V_Hxc[0,:] = V_KS[0,:]-V_ext[:] # Calculate the Hartree exhange-correlation potential
    V_xc[0,:] = V_Hxc[0,:]-V_h[0,:] # Calculate the exchange-correlation potential
@@ -387,6 +387,11 @@ def main(parameters,approx):
    v_hxc = np.zeros(pm.sys.grid,dtype='float')
    v_hxc[:] = (V_xc[0,:]+V_h[0,:]).real
    results.add(v_hxc[:],'gs_{}_hxc'.format(approx))
+
+   if pm.re.save_eig:
+       results.add(Psi[:,0,:],'gs_{}_eigf'.format(approx))
+       results.add(eigv,'gs_{}_eigv'.format(approx))
+
    if pm.run.save:
       results.save(pm)
 
