@@ -78,7 +78,7 @@ def main(parameters):
     r"""Runs GW calculation
     
     Steps: 
-       {eps_j, psi_j}
+    {eps_j, psi_j}
     => G0(rr';i\tau)
     => P(rr';i\tau)
     => eps(rr';i\tau)
@@ -272,7 +272,7 @@ def main(parameters):
 
 def read_input_quantities(pm, st):
     """Reads quantities of starting Hamiltonian h0
-    
+
     This includes single-particle energies, orbitals and the density.
 
     parameters
@@ -282,7 +282,9 @@ def read_input_quantities(pm, st):
     st : object
         space-time grid
 
-    returns Container object
+    Returns
+    -------
+        Container object
     """
     energies = rs.Results.read('gs_{}_eigv'.format(pm.mbpt.h0), pm)
     orbitals = rs.Results.read('gs_{}_eigf'.format(pm.mbpt.h0), pm)
@@ -351,12 +353,12 @@ def hartree_exchange_correlation_potential(h0, orbitals, h0_vh, h0_vx, st):
       * 'LDA'/'EXT': :math:`V_{Hxc}(r,r') = \delta(r-r') (V_H(r) + V_{xc}(r))`
       * 'H': :math:`V_{Hxc}(r,r') = \delta(r-r') V_H(r)`
       * 'HF': :math:`V_{Hxc}(r,r') = \delta(r-r') V_H(r) + V_x(r,r')`
-      * 'NON': :math:`V_{Hxc}(r,r') = 0
+      * 'NON': :math:`V_{Hxc}(r,r') = 0`
 
     parameters
     ----------
     h0: string
-      The choice of single-particle Hamiltonian h0
+        The choice of single-particle Hamiltonian h0
     h0: string
         input parameters
     st: object
@@ -425,7 +427,9 @@ def exchange_potential(st, G=None, orbitals=None):
     orbitals: array_like
        single-particle orbitals
 
-    returns v_x(r,r')
+    Returns
+    -------
+        v_x(r,r')
     """
     if G is not None:
         # default multiplication is element-wise
@@ -449,7 +453,8 @@ def non_interacting_green_function(orbitals, energies, st, zero='0-'):
     and eigenenergies of a single-particle Hamiltonian in imaginary time.
 
     .. math ::
-        G_0(r,r';i\tau) = (-i) \sum_s^{empty} \varphi_s(r) \varphi_s(r') e^{-\varepsilon_s\tau} \theta(\tau)
+
+        G_0(r,r';i\tau) = (-i) \sum_s^{empty} \varphi_s(r) \varphi_s(r') e^{-\varepsilon_s\tau} \theta(\tau) 
                         +   i  \sum_s^{occupied} \varphi_s(r) \varphi_s(r') e^{-\varepsilon_s\tau} \theta(-\tau)
 
 
@@ -461,18 +466,20 @@ def non_interacting_green_function(orbitals, energies, st, zero='0-'):
     parameters
     ----------
     orbitals : array
-        set of single-particle orbitals
+      set of single-particle orbitals
     energies : array
-        corresponding single-particle energies
+      corresponding single-particle energies
     st : object
-        contains space-time parameters
+      contains space-time parameters
     zero : string
-        How to treat it=0
-        '0+': :math:`G(0) = \lim_{t\downarrow 0}G(it)`,
-            determined by empty states
-        '0-': :math:`G(0) = \lim_{t\uparrow 0}G(it)`,
-            determined by occupied states with :math:`(-i)G(r,r,0)=\rho(r)`
-        'both': return '0-' Green function *and* it=0 slice of '0+' Green function
+      How to treat it=0
+
+      - '0+': :math:`G(0) = \lim_{t\downarrow 0}G(it)`,
+        determined by empty states
+      - '0-': :math:`G(0) = \lim_{t\uparrow 0}G(it)`, 
+        determined by occupied states with :math:`(-i)G(r,r,0)=\rho(r)`
+      - 'both': return '0-' Green function *and* it=0 slice of '0+' Green function
+
     """
     coef = np.zeros((st.norb,st.tau_npt), dtype=complex)
     coef_zero = np.zeros(st.norb, dtype=complex)
@@ -540,11 +547,13 @@ def bracket_r(O, orbitals, st, mode='diagonal'):
     pm: object
         Parameters object
     mode: string
-        if 'diagonal', evaluates <j|O|j> for all j
-        if 'matrix', evaluates <i|O|j> for all i,j
+        - if 'diagonal', evaluates <j|O|j> for all j
+        - if 'matrix', evaluates <i|O|j> for all i,j
 
     Returns
-        bracket_r[i,j]:  i=orbital index, j=index of temporal grid
+    -------
+        bracket_r[i,j]
+            i=orbital index, j=index of temporal grid
     """
     orbs = copy.copy(orbitals) * st.x_delta  # factor needed for integration
 
@@ -579,10 +588,10 @@ def fft_t(F, st, dir, phase_shift=False):
     .. math::
 
         \begin{align}
-        F(\omega) &= \int dt F(t) e^{i\omega t} \\
-        F(t) &= \int \frac{d\omega}{2\pi} F(\omega) e^{-i\omega t}\\
-        F(i\omega) &= -i\int dt F(it) e^{-i\omega t}\\
-        F(it) &= i\int \frac{d\omega}{2\pi} F(i\omega) e^{i\omega t}
+            F(\omega) &= \int dt F(t) e^{i\omega t} \\
+            F(t) &= \int \frac{d\omega}{2\pi} F(\omega) e^{-i\omega t}\\
+            F(i\omega) &= -i\int dt F(it) e^{-i\omega t}\\
+            F(it) &= i\int \frac{d\omega}{2\pi} F(i\omega) e^{i\omega t}
         \end{align}
 
     The infinitesimals :math:`d\tau,d\omega/2\pi` are automatically
@@ -601,16 +610,16 @@ def fft_t(F, st, dir, phase_shift=False):
 
     parameters
     ----------
-      F : array
+      F: array
         will be transformed along last axis
-      dir : string
-        't2f' time to frequency domain
-        'f2t' frequency to time domain
-        'it2if' imaginary time to imaginary frequency domain
-        'if2it' imaginary frequency to imaginary time domain
+      dir: string
+        - 't2f': time to frequency domain
+        - 'f2t': frequency to time domain
+        - 'it2if': imaginary time to imaginary frequency domain
+        - 'if2it': imaginary frequency to imaginary time domain
       phase_shift: bool
-        True: use with shifted tau grid (tau_grid[0] = tau_delta/2)
-        False: use with unshifted tau grid (tau_grid[0] = 0)
+        - True: use with shifted tau grid (tau_grid[0] = tau_delta/2)
+        - False: use with unshifted tau grid (tau_grid[0] = 0)
     """
 
     n = float(F.shape[-1])
@@ -737,16 +746,18 @@ def screened_interaction(st, epsilon_inv=None, epsilon=None, w_flavour='full'):
     parameters
     ----------
     epsilon_inv: array_like
-        inverse dielectric matrix eps_inv(r,r',iw)
-        if provided, we compute W = epsilon_inv v
+        inverse dielectric matrix eps_inv(r,r',iw).
+        If provided, we compute W = epsilon_inv v
     epsilon: array_like
-        dielectric matrix eps(r,r',iw)
-        if provided, we solve epsilon W = v instead
+        dielectric matrix eps(r,r',iw).
+        If provided, we solve epsilon W = v instead
     w_flavour: string
-        'full': for full screened interaction (static and dynamical parts)
-        'dynamical': dynamical part only: W = (eps_inv -1) v
+        - 'full': for full screened interaction (static and dynamical parts)
+        - 'dynamical': dynamical part only: W = (eps_inv -1) v
 
-    returns W
+    Returns
+    -------
+        screened interaction W
     """
     W = np.empty((st.x_npt, st.x_npt, st.tau_npt), dtype=complex)
     v = st.coulomb_repulsion
@@ -830,7 +841,9 @@ def solve_dyson_equation(G0, S, st):
     st: object
       space-time grid parameters
 
-    returns updated Green function G(r,r';iw)
+    Returns
+    -------
+        updated Green function G(r,r';iw)
     """
     # 1. Compute A = (1/dx - G0*S*dx) * dx
     # note: A could be made just np.empty((st.x_npt,st.x_npt)),
@@ -873,14 +886,16 @@ def extrapolate_to_zero(F, st, dir='from_below', order=6, points=7):
     F: array_like
       quantity to extrapolate
     dir: string
-      'from_below': extrapolate from negative imaginary times (default)
-      'from_above': extrapolate from positive imaginary times
+      - 'from_below': extrapolate from negative imaginary times (default)
+      - 'from_above': extrapolate from positive imaginary times
     order: int
       order of polynomial fit (order+1 parameters)
     points: int
       choose points=order+1 unless you face instability issues
    
-    returns extrapolated value at time zero
+    Returns
+    -------
+        extrapolated value F(r,r';it=0)
     """
     if dir == 'from_below':
         istart = st.tau_npt - points - 1
