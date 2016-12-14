@@ -27,8 +27,6 @@ def constructK():
 
 def constructV(td):
    """Constructs the potential energy operator V on the system grid
-    
-   I
 
    parameters
    ----------
@@ -220,4 +218,3 @@ def main(parameters):
    #os.system('rm *.pyc')
 
    return results
-
