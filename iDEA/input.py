@@ -6,6 +6,7 @@ import importlib
 import os
 import pprint
 import sys
+import results as rs
 
 def input_string(key,value):
     """Prints a line of the input file"""
@@ -48,7 +49,6 @@ class SystemSection(InputSection):
     def grid_points(self):
         """Real space grid"""
         return np.linspace(-self.xmax,self.xmax,self.grid)
-
 
 
 class Input(object):
@@ -173,20 +173,28 @@ class Input(object):
         ### MBPT parameters
         self.mbpt = InputSection()
         mbpt = self.mbpt
-        mbpt.starting_orbitals = 'non'  #: Orbitals to constuct G0 from
+        mbpt.h0 = 'non'                 #: starting hamiltonian: 'non','ha','hf','lda'
         mbpt.tau_max = 40.0             #: Maximum value of imaginary time
-        mbpt.tau_N = 800                #: Number of imaginary time points (must be even)
-        mbpt.number_empty = 25          #: Number of unoccupied orbitals to use
-        mbpt.self_consistent = 0        #: (0 = one-shot, 1 = fully self-consistent)
-        mbpt.update_w = True            #: Update screening
-        mbpt.tolerance = 1e-12          #: Tolerance of the self-consistent algorithm
-        mbpt.max_iterations = 100       #: Maximum number of iterations in full self-consistency
+        mbpt.tau_npt = 800              #: Number of imaginary time points (must be even)
+        mbpt.norb = 25                  #: Number of orbitals to use
+        mbpt.flavour = 'G0W0'           #: 'G0W0', 'GW', 'G0W', 'GW0'
+        mbpt.den_tol = 1e-12            #: density tolerance of self-consistent algorithm
+        mbpt.max_iter = 100             #: Maximum number of self-consistent algorithm
+        mbpt.save_diag = ['sigma0_iw']  #: whether to save diagonal components of all space-time quantities
+        mbpt.save_full = []             #: which space-time quantities to save fully
+        mbpt.w = 'dynamical'            #: whether to compute 'full' or 'dynamical' W
+        mbpt.hedin_shift = True         #: whether to perform Hedin shift
         mbpt.RE = False                 #: Reverse engineer mbpt density
         
         # LAN parameters
         self.lan = InputSection()
         lan = self.lan
         lan.start = 'non'               #: Ground-state Kohn-Sham potential to be perturbed
+
+        # RE parameters
+        self.re = InputSection()
+        re = self.re
+        re.save_eig = True    #: save Kohn-Sham eigenfunctions and eigenvalues of reverse-engineered potential
 
 
     def check(self):
@@ -197,6 +205,11 @@ class Input(object):
                 self.sprint('HF: Warning - time-dependence not implemented!')
             if pm.run.MBPT == True:
                 self.sprint('MBPT: Warning - time-dependence not implemented!')
+
+        if pm.run.MBPT == True:
+            if pm.mbpt.norb < pm.sys.NE:
+                self.sprint('MBPT: Warning - using {} orbitals for {} electrons'\
+                        .format(pm.mbpt.norb, pm.sys.NE))
 
 
     def __str__(self):
@@ -230,8 +243,8 @@ class Input(object):
             If False, overwrite the last line
         """
         verbosity = self.run.verbosity
+        self.log += string + '\n'
         if priority >= self.priority_dict[verbosity]:
-            self.log += string + '\n'
             if newline:
                 print(string)
             else:
@@ -274,3 +287,129 @@ class Input(object):
         """Returns full path to output directory
         """
         return 'outputs/{}'.format(self.run.name)
+
+
+    ##########################################
+    #######  Running the input file       ####
+    ##########################################
+
+    def make_dirs(self):
+        """Set up ouput directory structure"""
+        import os
+        import shutil
+        import errno
+        pm = self
+
+        def mkdir_p(path):
+            try:
+                os.makedirs(path)
+            except OSError as exc:
+                if exc.errno == errno.EEXIST and os.path.isdir(path):
+                    pass
+                else: raise
+
+        #version = 'ver' + str(pm.run.code_version)
+
+        output_dirs = ['data', 'raw', 'plots', 'animations']
+        for d in output_dirs:
+            path = '{}/{}'.format(pm.output_dir,d)
+            mkdir_p(path)
+            setattr(pm,d,path)
+
+        # Copy parameters file to output folder, if there is one
+        if os.path.isfile(pm.filename):
+            shutil.copy2(pm.filename,pm.output_dir)
+          
+        # Copy ViDEO file to output folder
+        vfile = 'iDEA/ViDEO.py'
+        if os.path.isfile(vfile):
+			   # Note: this doesn't work, when using iDEA as a system module
+            shutil.copy2('iDEA/ViDEO.py',pm.output_dir)
+        else:
+            s  = "Warning: Unable to copy ViDEO.py since running iDEA as python module."
+            s += " Simply add the iDEA folder to your PATH variable to use ViDEO.py anywhere"
+            pm.sprint(s,1)
+        
+
+    def execute(self):
+        """Run this job"""
+        pm = self
+        pm.check()
+        pm.make_dirs()
+
+        # Draw splash to screen
+        import splash
+        splash.draw(pm)
+        pm.sprint('run name: ' + str(pm.run.name),1)
+
+        self.results = rs.Results()
+        results = self.results
+
+        # Execute required jobs
+        if(pm.sys.NE == 1):
+           if(pm.run.EXT == True):
+              import SPiDEA
+              results.add(SPiDEA.main(pm), name='EXT')
+           if(pm.ext.RE == True):
+              import RE
+              results.add(RE.main(pm,'ext'), name='RE')
+        elif(pm.sys.NE == 2):
+           if(pm.run.EXT == True):
+              import EXT2
+              results.add(EXT2.main(pm), name='EXT')
+           if(pm.ext.RE == True):
+              import RE
+              results.add(RE.main(pm,'ext'), name='RE')
+        elif(pm.sys.NE == 3):
+           if(pm.run.EXT == True):
+              import EXT3
+              results.add(EXT3.main(pm), name='EXT')
+           if(pm.ext.RE == True):
+              import RE
+              results.add(RE.main(pm,'ext'), name='RE')
+        elif(pm.sys.NE >= 4):
+           if(pm.run.EXT == True):
+              print('EXT: cannot run exact with more than 3 electrons')
+
+        if(pm.run.NON == True):
+              import NON
+              results.add(NON.main(pm), name='NON')
+        if(pm.non.RE == True):
+              import RE
+              results.add(RE.main(pm,'non'), name='RE')
+
+        if(pm.run.LDA == True):
+              import LDA
+              results.add(LDA.main(pm), name='LDA')
+        if(pm.run.MLP == True):
+              import MLP
+              MLP.main(pm)
+
+        if(pm.run.HF == True):
+              import HF
+              results.add(HF.main(pm), name='HF')
+        if(pm.hf.RE == True):
+              import RE
+              results.add(RE.main(pm,'hf'), name='RE')
+
+        if(pm.run.MBPT == True):
+              import MBPT
+              results.add(MBPT.main(pm), name='MBPT')
+        if(pm.mbpt.RE == True):
+              import RE
+              results.add(RE.main(pm,'mbpt'), name='RE')
+
+        if(pm.run.LAN == True):
+              import LAN
+              results.add(LAN.main(pm), name='LAN')
+
+        # All jobs done
+        # store log in file
+        f = open(pm.output_dir + '/iDEA.log', 'w')
+        f.write(pm.log)
+        f.close()
+
+        string = 'all jobs done \n'
+        pm.sprint(string,1)
+
+        return results

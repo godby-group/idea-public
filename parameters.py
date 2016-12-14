@@ -6,7 +6,7 @@ from iDEA.input import InputSection, SystemSection
 run = InputSection()
 run.name = 'run_name'       #: Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
 run.time_dependence = False #: whether to run time-dependent calculation
-run.verbosity = 'default'   #: output verbosity ('low', 'default', 'high')
+run.verbosity = 'high'   #: output verbosity ('low', 'default', 'high')
 run.save = True             #: whether to save results to disk when they are generated
 run.module = 'iDEA'         #: specify alternative folder (in this directory) containing modified iDEA module  
 
@@ -23,8 +23,8 @@ run.LAN = False             #: Run Landauer approximation
 ### system parameters
 sys = SystemSection()
 sys.NE = 2                  #: Number of electrons
-sys.grid = 201              #: Number of grid points (must be odd)
-sys.xmax = 10.0             #: Size of the system
+sys.grid = 101              #: Number of grid points (must be odd)
+sys.xmax = 20.0             #: Size of the system
 sys.tmax = 1.0              #: Total real time
 sys.imax = 1000             #: Number of real time iterations
 sys.acon = 1.0              #: Smoothing of the Coloumb interaction
@@ -33,7 +33,8 @@ sys.im = 0                  #: Use imaginary potentials
 
 def v_ext(x):
     """Initial external potential"""
-    return 0.5*(0.25**2)*(x**2)
+    return -1.0/(abs(0.05*x)+1) # "highly correlated atom"
+    #return 0.5*(0.25**2)*(x**2)
 sys.v_ext = v_ext
 
 def v_pert(x): 
@@ -66,16 +67,16 @@ ext = InputSection()
 ext.par = 0            #: Use parallelised solver and multiplication (0: serial, 1: parallel) Note: Recommend using parallel for large runs
 ext.ctol = 1e-14       #: Tolerance of complex time evolution (Recommended: 1e-14)
 ext.rtol = 1e-14       #: Tolerance of real time evolution (Recommended: 1e-14)
-ext.ctmax = 10000.0    #: Total complex time
-ext.cimax = int(0.1*(ext.ctmax/sys.deltat)+1)     #: Complex iterations (DERIVED)
-ext.cdeltat = ext.ctmax/(ext.cimax-1)             #: Complex Time Grid spacing (DERIVED)
+ext.ctmax = 1000.0     #: Total complex time
+ext.cimax = 100000     #: Complex iterations
+ext.cdeltat = ext.ctmax/(ext.cimax-1)    #: Complex Time Grid spacing (DERIVED)
 ext.RE = False         #: Reverse engineer many-body density
 
 
 ### Non-Interacting approximation parameters
 non = InputSection()
 non.rtol = 1e-14        #: Tolerance of real time evolution (Recommended: 1e-14)
-non.save_eig = False    #: save eigenfunctions and eigenvalues of Hamiltonian
+non.save_eig = True     #: save eigenfunctions and eigenvalues of Hamiltonian
 non.RE = False          #: Reverse engineer non-interacting density
 
 ### LDA parameters
@@ -102,16 +103,23 @@ hf.RE = False           #: Reverse engineer hf density
 
 ### MBPT parameters
 mbpt = InputSection()
-mbpt.starting_orbitals = 'non'  #: Orbitals to constuct G0 from
+mbpt.h0 = 'non'                 #: starting hamiltonian: 'non','ha','hf','lda'
 mbpt.tau_max = 40.0             #: Maximum value of imaginary time
-mbpt.tau_N = 800                #: Number of imaginary time points (must be even)
-mbpt.number_empty = 25          #: Number of unoccupied orbitals to use
-mbpt.self_consistent = 0        #: (0 = one-shot, 1 = fully self-consistent)
-mbpt.update_w = True            #: Update screening
-mbpt.tolerance = 1e-12          #: Tolerance of the self-consistent algorithm
-mbpt.max_iterations = 100       #: Maximum number of iterations in full self-consistency
+mbpt.tau_npt = 801              #: Number of imaginary time points (must be even)
+mbpt.norb = 35                  #: Number of orbitals to use
+mbpt.flavour = 'G0W0'           #: 'G0W0', 'GW0', 'GW'
+mbpt.den_tol = 1e-06            #: density tolerance of self-consistent algorithm
+mbpt.max_iter = 100             #: Maximum iterations of self-consistent algorithm
+mbpt.save_full = []             #: save space-time quantities (e.g. 'G0_iw', 'S1_it')
+mbpt.save_diag = []             #: save diaginal components of space-time quantities
+mbpt.w = 'dynamical'            #: compute 'full' W or 'dynamical' W-v
+mbpt.hedin_shift = True         #: perform Hedin shift
 mbpt.RE = False                 #: Reverse engineer mbpt density
 
 # LAN parameters
 lan = InputSection()
 lan.start = 'non'               #: Ground-state Kohn-Sham potential to be perturbed
+
+# RE parameters
+re = InputSection()
+re.save_eig = True    #: save Kohn-Sham eigenfunctions and eigenvalues of reverse-engineered potential

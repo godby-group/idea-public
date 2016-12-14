@@ -1,25 +1,7 @@
-######################################################################################
-# Name: Non-interacting approximation                                                #
-######################################################################################
-# Author(s): Jack Wetherell                                                          #
-######################################################################################
-# Description:                                                                       #
-# Computes non interacting density for given system (n electrons)                    #
-#                                                                                    #
-#                                                                                    #
-######################################################################################
-# Notes:                                                                             #
-#                                                                                    #
-#                                                                                    #
-#                                                                                    #
-######################################################################################
+"""Computes non interacting density for given system (n electrons) 
 
-# Do not run stand-alone
-if(__name__ == '__main__'):
-    print('do not run stand-alone')
-    quit()
+"""
 
-# Library imports
 import os
 import numpy as np
 import scipy as sp
@@ -30,11 +12,32 @@ import results as rs
 
 # Function to construct the kinetic energy K
 def constructK():
+   """Constructs the kinetic energy operator K on the system grid
+    
+   This is constructed using a second-order stencil yielding a tri-diagonal matrix
+
+   parameters
+   ----------
+
+   returns array_like
+   """
+
    K = -0.5*sps.diags([1, -2, 1],[-1, 0, 1], shape=(pm.sys.grid,pm.sys.grid), format='csr')/(pm.sys.deltax**2)
    return K
 
-# Function to construct the potential V
 def constructV(td):
+   """Constructs the potential energy operator V on the system grid
+    
+   I
+
+   parameters
+   ----------
+   td : bool
+       if False, construct external potential
+       if True, construct perturbed potential 
+
+   returns array_like
+   """
    xgrid = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
    Vdiagonal = []
    if(td == 0):

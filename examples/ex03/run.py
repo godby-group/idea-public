@@ -1,7 +1,6 @@
 from iDEA.input import Input
-from iDEA.job import Job
 
-# use default values for parameters
+# use default values for all parameters
 inp = Input()
 
 inp.run.NON = True
@@ -19,8 +18,6 @@ for xmax in [4,6,8,10]:
     # print sys section of input file
     #print(inp.sys)
 
-    # pass parameters to job
-    job = Job(inp)
-    job.run()
-    E = job.results.NON.gs_non_E
+    inp.execute()
+    E = inp.results.NON.gs_non_E
     print(" xmax = {:4.1f}, E = {:6.4f} Ha".format(xmax,E))

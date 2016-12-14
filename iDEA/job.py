@@ -22,13 +22,8 @@ class Job(object):
         self.pm = inp
 
 
-    def run(self):
-        """Run this job"""
-        import os
-        import shutil
-        import errno
-        pm = self.pm
-        pm.check()
+    def make_dirs(self):
+        """Set up ouput directory structure"""
 
         def mkdir_p(path):
             try:
@@ -42,10 +37,34 @@ class Job(object):
 
         output_dirs = ['data', 'raw', 'plots', 'animations']
         for d in output_dirs:
-            path = '{}/{}'.format(self.pm.output_dir,d)
+            path = '{}/{}'.format(pm.output_dir,d)
             mkdir_p(path)
             setattr(pm,d,path)
 
+        # Copy parameters file to output folder, if there is one
+        if os.path.isfile(pm.filename):
+            shutil.copy2(pm.filename,pm.output_dir)
+          
+        # Copy ViDEO file to output folder
+        vfile = 'iDEA/ViDEO.py'
+        if os.path.isfile(vfile):
+			   # Note: this doesn't work, when using iDEA as a system module
+            shutil.copy2('iDEA/ViDEO.py',pm.output_dir)
+        else:
+            s  = "Warning: Unable to copy ViDEO.py since running iDEA as python module."
+            s += " Simply add the iDEA folder to your PATH variable to use ViDEO.py anywhere"
+            pm.sprint(s,1)
+        
+
+    def run(self):
+        """Run this job"""
+        import os
+        import shutil
+        import errno
+        pm = self.pm
+        pm.check()
+
+        self.make_dirs()
 
         ## Store copy of input
         ## Doesn't work like that -- can't pickle module objects...
@@ -59,25 +78,10 @@ class Job(object):
         splash.draw(pm)
         pm.sprint('run name: ' + str(pm.run.name),1)
 
-        # Copy parameters file and ViDEO script to output folder
-        # Note: this doesn't work, when there is no actual parameters file
-        if os.path.isfile(pm.filename):
-            shutil.copy2(pm.filename,pm.output_dir)
-          
-        vfile = 'iDEA/ViDEO.py'
-        if os.path.isfile(vfile):
-			   # Note: this doesn't work, when using iDEA as a system module
-            shutil.copy2('iDEA/ViDEO.py',pm.output_dir)
-        else:
-            s  = "Warning: Unable to copy ViDEO.py since running iDEA as python module."
-            s += " Simply add the iDEA folder to your PATH variable to use ViDEO.py anywhere"
-            pm.sprint(s,1)
-        
-        # Execute required jobs
         self.results = rs.Results()
         results = self.results
+
         # Execute required jobs
-          
         if(pm.sys.NE == 1):
            if(pm.run.EXT == True):
               import SPiDEA

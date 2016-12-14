@@ -65,15 +65,16 @@ ext = InputSection()
 ext.par = 0            #: Use parallelised solver and multiplication (0: serial, 1: parallel) Note: Recommend using parallel for large runs
 ext.ctol = 1e-14       #: Tolerance of complex time evolution (Recommended: 1e-14)
 ext.rtol = 1e-14       #: Tolerance of real time evolution (Recommended: 1e-14)
-ext.ctmax = 10000.0    #: Total complex time
-ext.cimax = int(0.1*(ext.ctmax/sys.deltat)+1)     #: Complex iterations (DERIVED)
-ext.cdeltat = ext.ctmax/(ext.cimax-1)             #: Complex Time Grid spacing (DERIVED)
+ext.ctmax = 1000.0     #: Total complex time
+ext.cimax = 100000     #: Complex iterations
+ext.cdeltat = ext.ctmax/(ext.cimax-1)    #: Complex Time Grid spacing (DERIVED)
 ext.RE = False         #: Reverse engineer many-body density
 
 
 ### Non-Interacting approximation parameters
 non = InputSection()
 non.rtol = 1e-14        #: Tolerance of real time evolution (Recommended: 1e-14)
+non.save_eig = True     #: save eigenfunctions and eigenvalues of Hamiltonian
 non.RE = False          #: Reverse engineer non-interacting density
 
 ### LDA parameters
@@ -81,6 +82,7 @@ lda = InputSection()
 lda.NE = 2              #: Number of electrons used in construction of the LDA
 lda.mix = 0.0           #: Self consistent mixing parameter (default 0, only use if doesn't converge)
 lda.tol = 1e-12         #: Self-consistent convergence tolerance
+lda.save_eig = False    #: save eigenfunctions and eigenvalues of Hamiltonian
 
 ### MLP parameters
 mlp = InputSection()
@@ -94,18 +96,22 @@ hf = InputSection()
 hf.fock = 1             #: Include Fock term (0 = Hartree approximation, 1 = Hartree-Fock approximation)
 hf.con = 1e-12          #: Tolerance
 hf.nu = 0.9             #: Mixing term
+hf.save_eig = False    #: save eigenfunctions and eigenvalues of Hamiltonian
 hf.RE = False           #: Reverse engineer hf density
 
 ### MBPT parameters
 mbpt = InputSection()
-mbpt.starting_orbitals = 'non'  #: Orbitals to constuct G0 from
+mbpt.h0 = 'non'                 #: starting hamiltonian: 'non','ha','hf','lda'
 mbpt.tau_max = 40.0             #: Maximum value of imaginary time
-mbpt.tau_N = 800                #: Number of imaginary time points (must be even)
-mbpt.number_empty = 25          #: Number of unoccupied orbitals to use
-mbpt.self_consistent = 0        #: (0 = one-shot, 1 = fully self-consistent)
-mbpt.update_w = True            #: Update screening
-mbpt.tolerance = 1e-12          #: Tolerance of the self-consistent algorithm
-mbpt.max_iterations = 100       #: Maximum number of iterations in full self-consistency
+mbpt.tau_npt = 801              #: Number of imaginary time points (must be even)
+mbpt.norb = 35                  #: Number of orbitals to use
+mbpt.flavour = 'GW'             #: 'G0W0', 'GW', ...
+mbpt.den_tol = 1e-06            #: density tolerance of self-consistent algorithm
+mbpt.max_iter = 100             #: Maximum iterations of self-consistent algorithm
+mbpt.save_full = ['P0_it']      #: save space-time quantities (e.g. 'G2_iw', 'S1_it')
+mbpt.save_diag = ['W0_iw']      #: save diaginal components of space-time quantities
+mbpt.w = 'dynamical'            #: compute 'full' W or 'dynamical' W-v
+mbpt.hedin_shift = True         #: perform Hedin shift
 mbpt.RE = False                 #: Reverse engineer mbpt density
 
 # LAN parameters
