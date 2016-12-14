@@ -36,8 +36,8 @@ everywhere, if you let your python installation know where the package is locate
 Here, we are running iDEA much in the same way as before but your
 :code:`$test_folder` can be located anywhere on your computer.
 
-Using iDEA package in a python script
--------------------------------------
+Using the iDEA package in a python script
+-----------------------------------------
 
 The main advantage of having an iDEA python package is that you can access its
 functionality directly in a python script.
@@ -54,5 +54,6 @@ In order to run this example, do
     cd $path_to_iDEA/examples/ex02
     python run.py  # assuming you already added iDEA to your PYTHONPATH
 
-
-
+An easy way to find out what kind of results are returned by iDEA is to work in
+the interactive python shell (:code:`ipython`) and to use the autocompletion
+feature on the :code:`results` object.
