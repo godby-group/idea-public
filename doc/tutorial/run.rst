@@ -48,6 +48,7 @@ calculation of a test system of non-interacting electrons in a harmonic well.
 .. literalinclude:: /../examples/ex02/run.py
 
 In order to run this example, do
+
 .. code-block:: bash
 
     cd $path_to_iDEA/examples/ex02
