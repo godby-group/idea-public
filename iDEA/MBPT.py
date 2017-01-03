@@ -1,4 +1,5 @@
-"""Computes Green function and self-energy in the GW approximation
+"""Computes ground-state charge density of a system using the GW approximation within many-body pertubation theory along 
+with the Green function and self-energy of the system.
 
 Different flavours of GW (G0W0, GW, GW0) are available.  The implementation
 follows the GW-space-time approach detailed in [Rojas1995]_ and  [Rieger1999]_.
@@ -88,7 +89,14 @@ def main(parameters):
     => S(rr';i\tau)
     => S(rr';i\omega)
     => G(rr';i\omega)
- 
+    
+   parameters
+   ----------
+   parameters : object
+      Parameters object
+
+   returns object
+      Results object
     """
     pm = parameters
     results = rs.Results()
@@ -357,18 +365,16 @@ def hartree_exchange_correlation_potential(h0, orbitals, h0_vh, h0_vx, st):
 
     parameters
     ----------
-    h0: string
+    h0 : string
         The choice of single-particle Hamiltonian h0
-    h0: string
-        input parameters
-    st: object
-        space-time grid
     orbitals : array_like
         orbitals of non-interacting hamiltonian
-    h0_vh: array_like
+    h0_vh : array_like
         Hartree potential V_H(r) of non-interacting density
-    h0_vx: array_like
+    h0_vx : array_like
         Fock exchange operator V_x(r,r') of non-interacting density
+    st : object
+        space-time grid
     """
 
     h0_vhxc = np.zeros((st.x_npt, st.x_npt), dtype=np.float)
@@ -420,15 +426,14 @@ def exchange_potential(st, G=None, orbitals=None):
 
     parameters
     ----------
-    st: object
+    st : object
        space-time grid
-    G: array_like
+    G : array_like
        Green function G(r,r';it) (or G(r,r';t))
-    orbitals: array_like
+    orbitals : array_like
        single-particle orbitals
 
-    Returns
-    -------
+    Returns array_like
         v_x(r,r')
     """
     if G is not None:
@@ -610,16 +615,16 @@ def fft_t(F, st, dir, phase_shift=False):
 
     parameters
     ----------
-      F: array
-        will be transformed along last axis
-      dir: string
-        - 't2f': time to frequency domain
-        - 'f2t': frequency to time domain
-        - 'it2if': imaginary time to imaginary frequency domain
-        - 'if2it': imaginary frequency to imaginary time domain
-      phase_shift: bool
-        - True: use with shifted tau grid (tau_grid[0] = tau_delta/2)
-        - False: use with unshifted tau grid (tau_grid[0] = 0)
+    F: array
+      will be transformed along last axis
+    dir: string
+      - 't2f': time to frequency domain
+      - 'f2t': frequency to time domain
+      - 'it2if': imaginary time to imaginary frequency domain
+      - 'if2it': imaginary frequency to imaginary time domain
+    phase_shift: bool
+      - True: use with shifted tau grid (tau_grid[0] = tau_delta/2)
+      - False: use with unshifted tau grid (tau_grid[0] = 0)
     """
 
     n = float(F.shape[-1])
@@ -680,12 +685,12 @@ def irreducible_polarizability(G, G_pzero):
     G_rev = np.roll(G_rev, -1, axis=2)
     P =  -1J * G * G_rev[:,:,::-1]
 
-    # loop in python, significantly slower... (but crisp)
+    # for information, the same loop in python, significantly slower but equivalent to the above code
     #P = np.empty((st.x_npt, st.x_npt, st.tau_npt), dtype=complex)
     #for i in range(st.x_npt):
     #    for j in range(st.x_npt):
     #        for k in range(st.tau_npt):
-    #            P[i,j,k] = -1J * G[i,j,k] * G[j,i,-k]
+    #            P[i,j,k] = -1.0j * G[i,j,k] * G[j,i,-k]
 
     return P
 
@@ -720,7 +725,7 @@ def dielectric_matrix(P, st):
     for i in range(st.x_npt):
         eps[i, i, :] += tmp
 
-    # loop within python
+    # for information, the same loop in python, significantly slower but equivalent to the above code
     #for k in range(st.tau_npt):
     #    eps[:, :, k] = -np.dot(v, P[:, :, k]) * st.x_delta
     #    # add delta(r-r')
@@ -868,7 +873,7 @@ def solve_dyson_equation(G0, S, st):
     for k in range(st.tau_npt):
         G[:,:,k] = np.linalg.solve(A[:,:,k], G0[:,:,k])
 
-    ## same as above but using matrix inversion
+    # for information, using explicit matix inversion, significantly slower but equivalent to the above code
     #A = inverse_r(A, st)
     #for k in range(st.tau_npt):
     #    G[:,:,k] = np.dot(A[:,:,k], G0[:,:,k]) * st.x_delta

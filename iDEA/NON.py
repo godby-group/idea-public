@@ -1,6 +1,8 @@
-"""Computes non interacting density for given system (n electrons) 
-
+"""Computes non-interacting charge density for given system. For ground state calculations the code outputs the non-interacting orbitals 
+and energies of the system and the ground-state charge density. For time dependent calculation the code also outputs the time-dependent charge and current
+densities.
 """
+
 
 import os
 import numpy as np
@@ -10,88 +12,177 @@ import scipy.sparse as sps
 import scipy.sparse.linalg as spsla
 import results as rs
 
-# Function to construct the kinetic energy K
+
 def constructK():
-   """Constructs the kinetic energy operator K on the system grid
+   r"""Constructs the kinetic energy operator K on the system grid
     
-   This is constructed using a second-order stencil yielding a tri-diagonal matrix
+   This is constructed using a second-order stencil yielding a tri-diagonal NxN matrix (where 
+   N is the number of grid points). For example with N=6:
+   
+   .. math::
+
+       K = -\frac{1}{2} \frac{d^2}{dx^2}=
+       -\frac{1}{2} \begin{pmatrix}
+       -2 & 1 & 0 & 0 & 0 & 0 \\
+       1 & -2 & 1 & 0 & 0 & 0 \\
+       0 & 1 & -2 & 1 & 0 & 0 \\
+       0 & 0 & 1 & -2 & 1 & 0 \\
+       0 & 0 & 0 & 1 & -2 & 1 \\
+       0 & 0 & 0 & 0 & 1 & -2 
+       \end{pmatrix}
+       \frac{1}{\Delta x^2}
 
    parameters
    ----------
 
-   returns array_like
+   returns sparse_matrix
    """
-
    K = -0.5*sps.diags([1, -2, 1],[-1, 0, 1], shape=(pm.sys.grid,pm.sys.grid), format='csr')/(pm.sys.deltax**2)
    return K
 
+
 def constructV(td):
-   """Constructs the potential energy operator V on the system grid
+   r"""Constructs the potential energy operator V on the system grid
+   
+   V will contain V(x) sampled on the system grid along the diagonal yielding a NxN diagonal matrix (where 
+   N is the number of grid points).
 
    parameters
    ----------
    td : bool
-       if False, construct external potential
-       if True, construct perturbed potential 
+        - 'False': Construct external potential
+        - 'True': Construct peturbed potential
 
-   returns array_like
+   returns sparse_matrix
    """
    xgrid = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
-   Vdiagonal = []
+   Vdiagonal = np.empty(pm.sys.grid)
    if(td == 0):
-      for i in range(0,len(xgrid)):
-         Vdiagonal.append(pm.sys.v_ext(xgrid[i]))
+      Vdiagonal[:] = pm.sys.v_ext(xgrid[:])
    if(td == 1):
-      for i in range(0,len(xgrid)):
-         Vdiagonal.append(pm.sys.v_ext(xgrid[i]) + pm.sys.v_pert(xgrid[i]))
+      Vdiagonal[:] = (pm.sys.v_ext(xgrid[:]) + pm.sys.v_pert(xgrid[:]))
    V = sps.spdiags(Vdiagonal, 0, pm.sys.grid, pm.sys.grid, format='csr')
    return V
 
-# Function to construct the matrix A from the hamiltonain H
+
 def constructA(H):
+   r"""Constructs the matrix A to be used in the crank-nicholson solution of Ax=b when evolving the wavefunction in time
+
+   .. math::
+
+       A = I + i \frac{dt}{2} H
+
+   parameters
+   ----------
+   H: sparse_matrix
+        The Hamiltonian matrix
+
+   returns sparse_matrix
+   """
    I = sps.identity(pm.sys.grid)
    A = I + 1.0j*(pm.sys.deltat/2.0)*H
    return A
 
-# Function to construct the matrix C from the hamiltonain H
+
 def constructC(H):
+   r"""Constructs the matrix C to be used in the crank-nicholson solution of Ax_n=b (where b = C*x_(n-1) where x_(n-1) is 
+   the wavefunction from the last timestep) when evolving the wavefunction in time
+
+    .. math::
+
+       C = I - i \frac{dt}{2} H
+
+   parameters
+   ----------
+   H : sparse_matrix
+        The Hamiltonian matrix
+
+   returns sparse_matrix
+   """
    I = sps.identity(pm.sys.grid)
    C = I - 1.0j*(pm.sys.deltat/2.0)*H
    return C
 
-# Function the calculate the density for a given wavefunction
+
 def calculateDensity(wavefunction):
-   density = np.zeros(len(wavefunction))
-   for i in range(0,len(density)):
-      density[i] = abs(wavefunction[i])**2
+   r"""Calculates the electron density from a given wavefunction
+
+   .. math::
+
+       n \left(x \right) = |\psi \left( x\right)|^2
+
+   parameters
+   ----------
+   wavefunction : array_like
+        The wavefunction
+
+   returns array_like
+   """
+   density = np.empty(pm.sys.grid)
+   density[:] = abs(wavefunction[:])**2
    return density
 
-# Function to calculate the current density
+
 def calculateCurrentDensity(total_td_density):
-    current_density = []
-    for i in range(0,len(total_td_density)-1):
-         string = 'NON: computing time dependent current density t = ' + str(i*pm.sys.deltat)
-         pm.sprint(string,1,newline=False)
-         J = np.zeros(pm.sys.grid)
-         J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,total_td_density[i+1],total_td_density[i])
-         if pm.sys.im==1:
-             for j in range(pm.sys.grid):
-                 for k in range(j+1):
-                     x = k*pm.sys.deltax-pm.sys.xmax
-                     J[j] -= abs(pm.sys.im_petrb(x))*total_td_density[i][k]*pm.sys.deltax
-         current_density.append(J)
-    return current_density
+   r"""Calculates the current density of a time evolving wavefunction by solving the continuity equation.
 
-# Function to combine densities
+   .. math::
+
+       \frac{\partial n}{\partial t} + \nabla \cdot j = 0
+       
+   Note: This function requires RE_Utilities.so
+
+   parameters
+   ----------
+   total_td_density : array_like
+      Time dependent density of the system indexed as total_td_density[time_index][space_index]
+
+   returns array_like
+      Time dependent current density indexed as current_density[time_index][space_index]
+   """
+   current_density = []
+   for i in range(0,len(total_td_density)-1):
+      string = 'NON: computing time dependent current density t = ' + str(i*pm.sys.deltat)
+      pm.sprint(string,1,newline=False)
+      J = np.zeros(pm.sys.grid)
+      J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,total_td_density[i+1],total_td_density[i])
+      if pm.sys.im==1: # Here we take account of the decay of the density due to the imaginary boundary consitions (if present)
+         for j in range(pm.sys.grid):
+            for k in range(j+1):
+               x = k*pm.sys.deltax-pm.sys.xmax
+               J[j] -= abs(pm.sys.im_petrb(x))*total_td_density[i][k]*pm.sys.deltax
+      current_density.append(J)
+   return np.asarray(current_density)
+
+
 def addDensities(densities):
-   density = [0.0] * int(len(densities[0]))
-   for i in range(0,len(densities[0])):
-      for d in densities:
-         density[i] += d[i]
+   r"""Adds together all of the occupied densities to give the total system density
+
+   parameters
+   ----------
+   densities : array_like
+      Array of densities to be added indexed as densities[electron_index][space_index]
+
+   returns array_like
+      Total system density
+   """
+   density = np.zeros(pm.sys.grid)
+   for i in range(pm.sys.NE):
+      density[:] += densities[i][:]
    return density
 
-# Main function
+
 def main(parameters):
+   r"""Performs calculation of the non-interacting density
+
+   parameters
+   ----------
+   parameters : object
+      Parameters object
+
+   returns object
+      Results object
+   """
    global pm
    pm = parameters
 
@@ -107,20 +198,19 @@ def main(parameters):
    # Compute wavefunctions
    pm.sprint('NON: computing ground state density',1)
    energies, wavefunctions = spsla.eigs(H, k=pm.sys.grid-2, which='SR', maxiter=1000000)
+   
    # Order by energy
    indices = np.argsort(energies)
    energies = energies[indices]
-   wavefunctions = ((wavefunctions.T)[indices]).T # I hate this ordering of indices
+   wavefunctions = ((wavefunctions.T)[indices]).T 
 
-   # Normalise wavefunctions (already normalised to 1)
+   # Normalise wavefunctions
    wavefunctions /= pm.sys.deltax**0.5
 
    # Compute first N densities
-   length = pm.sys.NE
-   densities = []
-   for i in range(0,length):
-      d = calculateDensity(wavefunctions[:,i])
-      densities.append(d)
+   densities = np.empty((pm.sys.NE,pm.sys.grid))
+   for i in range(0,pm.sys.NE):
+      densities[i,:] = calculateDensity(wavefunctions[:,i])
 
    # Compute total density
    density = addDensities(densities)
@@ -214,7 +304,5 @@ def main(parameters):
          l = ['td_non_den', 'td_non_cur']
          results.save(pm, list=l)
 
-   ## Program complete
-   #os.system('rm *.pyc')
-
    return results
+

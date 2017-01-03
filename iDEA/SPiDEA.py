@@ -1,25 +1,9 @@
-######################################################################################
-# Name: 1 electron Many Body. Single Particle iDEA (SPiDEA)                          #
-######################################################################################
-# Author(s): Jack Wetherell                                                          #
-######################################################################################
-# Description:                                                                       #
-# Computes exact many body wavefunction and density for one electron systems         #
-#                                                                                    #
-#                                                                                    #
-######################################################################################
-# Notes:                                                                             #
-# Use this to aid understanding of MB calculations                                   #
-#                                                                                    #
-#                                                                                    #
-######################################################################################
+"""Computes charge density for given one-electron system. For ground state calculations the code outputs the ground state charge density
+and energy of the system and the system's external potential. For time dependent calculation the code also outputs the time-dependent charge and current
+densities.
+"""
 
-# Do not run stand-alone
-if(__name__ == '__main__'):
-    print('do not run stand-alone')
-    quit()
 
-# Library imports
 import os
 import sys
 import math
@@ -32,47 +16,126 @@ import scipy.sparse as sps
 import scipy.sparse.linalg as spsla
 import results as rs
 
-# Function to construct the potential V
-def constructV(time):
+
+def constructK():
+   r"""Constructs the kinetic energy operator K on the system grid
+    
+   This is constructed using a second-order stencil yielding a tri-diagonal NxN matrix (where 
+   N is the number of grid points). For example with N=6:
+   
+   .. math::
+
+       K = -\frac{1}{2} \frac{d^2}{dx^2}=
+       -\frac{1}{2} \begin{pmatrix}
+       -2 & 1 & 0 & 0 & 0 & 0 \\
+       1 & -2 & 1 & 0 & 0 & 0 \\
+       0 & 1 & -2 & 1 & 0 & 0 \\
+       0 & 0 & 1 & -2 & 1 & 0 \\
+       0 & 0 & 0 & 1 & -2 & 1 \\
+       0 & 0 & 0 & 0 & 1 & -2 
+       \end{pmatrix}
+       \frac{1}{\Delta x^2}
+
+   parameters
+   ----------
+
+   returns sparse_matrix
+   """
+   K = -0.5*sps.diags([1, -2, 1],[-1, 0, 1], shape=(pm.sys.grid,pm.sys.grid), format='csr')/(pm.sys.deltax**2)
+   return K
+
+
+def constructV(td):
+   r"""Constructs the potential energy operator V on the system grid
+   
+   V will contain V(x) sampled on the system grid along the diagonal yielding a NxN diagonal matrix (where 
+   N is the number of grid points).
+
+   parameters
+   ----------
+   td : bool
+        - 'False': Construct external potential
+        - 'True': Construct peturbed potential
+
+   returns sparse_matrix
+   """
    xgrid = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
-   V = []
-   if(time =='i'):
-      for i in range(0,len(xgrid)):
-         V.append(pm.sys.v_ext(xgrid[i]))
-   if(time =='r'):
-      for i in range(0,len(xgrid)):
-         V.append(pm.sys.v_ext(xgrid[i]) + pm.sys.v_pert(xgrid[i]))
+   Vdiagonal = np.empty(pm.sys.grid)
+   if(td == 0):
+      Vdiagonal[:] = pm.sys.v_ext(xgrid[:])
+   if(td == 1):
+      Vdiagonal[:] = (pm.sys.v_ext(xgrid[:]) + pm.sys.v_pert(xgrid[:]))
+   V = sps.spdiags(Vdiagonal, 0, pm.sys.grid, pm.sys.grid, format='csr')
    return V
 
-# Function to construct the hamiltonain H
-def constructH(time):
-   xgrid = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
-   K = -0.5*sps.diags([1, -2, 1],[-1, 0, 1],shape=(pm.sys.grid,pm.sys.grid))/(pm.sys.deltax**2)
-   Vdiagonal = constructV(time)
-   V = sps.spdiags(Vdiagonal, 0, pm.sys.grid, pm.sys.grid, format='csr')
-   H = K + V
-   return H
 
-# Function to construct the matrix A from the hamiltonain H
-def constructA(H,time):
+def constructA(H,td):
+   r"""Constructs the matrix A to be used in the crank-nicholson solution of Ax=b when evolving the wavefunction in time
+
+   .. math::
+
+       A = I + i \frac{dt}{2} H
+
+   parameters
+   ----------
+   H : sparse_matrix
+        The Hamiltonian matrix
+   td : bool
+        - 'False': Construct for imaginary-time propagation
+        - 'True': Construct for real-time propagation
+
+   returns sparse_matrix
+   """
    I = sps.identity(pm.sys.grid)
-   if(time == 'i'):   
+   if(td == 0):   
       A = I + 1.0*(pm.ext.cdeltat/2.0)*H
-   if(time =='r'):   
+   if(td == 1):   
       A = I + 1.0j*(pm.sys.deltat/2.0)*H
    return A
 
-# Function to construct the matrix C from the hamiltonain H
-def constructC(H,time):
+
+def constructC(H,td):
+   r"""Constructs the matrix C to be used in the crank-nicholson solution of Ax=b when evolving the wavefunction in time
+
+   .. math::
+
+       C = I - i \frac{dt}{2} H
+
+   parameters
+   ----------
+   H : sparse_matrix
+        The Hamiltonian matrix
+   td : bool
+        - 'False': Construct for imaginary-time propagation
+        - 'True': Construct for real-time propagation
+
+   returns sparse_matrix
+   """
    I = sps.identity(pm.sys.grid)
-   if(time == 'i'):   
+   if(td == 0):   
       C = I - 1.0*(pm.ext.cdeltat/2.0)*H
-   if(time == 'r'):   
+   if(td == 1):   
       C = I - 1.0j*(pm.sys.deltat/2.0)*H
    return C
 
-# Function to return the energy of a wavefunction given the hamiltonain H
+
 def calculateEnergy(H,wavefunction):
+   r"""Calculates the energy of a given single particle wavefunction by ensuring
+
+   .. math::
+
+       H \psi = E \psi
+
+   parameters
+   ----------
+   H : sparse_matrix
+        The Hamiltonian matrix
+   wavefunction : array_like
+        Single particle wavefunction 
+
+   returns double
+      Energy
+   """
    A = H*wavefunction
    B = wavefunction
    energies = []
@@ -81,53 +144,98 @@ def calculateEnergy(H,wavefunction):
    energy = np.average(np.array(energies))
    return energy
 
-# Function the calculate the density for a given wavefunction
+
 def calculateDensity(wavefunction):
-   density = np.zeros(len(wavefunction))
-   for i in range(0,len(density)):
-      density[i] = abs(wavefunction[i])**2
+   r"""Calculates the electron density from a given wavefunction
+
+   .. math::
+
+       n \left(x \right) = |\psi \left( x\right)|^2
+
+   parameters
+   ----------
+   wavefunction : array_like
+        The wavefunction
+
+   returns array_like
+   """
+   density = np.empty(pm.sys.grid)
+   density[:] = abs(wavefunction[:])**2
    return density
 
-# Function to calculate the current density
+
 def calculateCurrentDensity(total_td_density):
-    current_density = []
-    for i in range(0,len(total_td_density)-1):
-         string = 'MB: computing time dependent current density t = ' + str(i*pm.sys.deltat)
-         sprint(string)
-         J = np.zeros(pm.sys.grid)
-         J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,total_td_density[i+1],total_td_density[i])
-         if pm.sys.im == 1:
-             for j in range(pm.sys.grid):
-                 for k in range(j+1):
-                     x = k*pm.sys.deltax-pm.sys.xmax
-                     J[j] -= abs(pm.sys.im_petrb(x))*total_td_density[i][k]*pm.sys.deltax
-         current_density.append(J)
-    return current_density
+   r"""Calculates the current density of a time evolving wavefunction by solving the continuity equation.
 
-# Function the return the value of the initial wavefunction at a given x
+   .. math::
+
+       \frac{\partial n}{\partial t} + \nabla \cdot j = 0
+       
+   Note: This function requires RE_Utilities.so
+
+   parameters
+   ----------
+   total_td_density : array_like
+      Time dependent density of the system indexed as total_td_density[time_index][space_index]
+
+   returns array_like
+      Time dependent current density indexed as current_density[time_index][space_index]
+   """
+   current_density = []
+   for i in range(0,len(total_td_density)-1):
+      string = 'NON: computing time dependent current density t = ' + str(i*pm.sys.deltat)
+      pm.sprint(string,1,newline=False)
+      J = np.zeros(pm.sys.grid)
+      J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,total_td_density[i+1],total_td_density[i])
+      if pm.sys.im==1: # Here we take account of the decay of the density due to the imaginary boundary consitions (if present)
+         for j in range(pm.sys.grid):
+            for k in range(j+1):
+               x = k*pm.sys.deltax-pm.sys.xmax
+               J[j] -= abs(pm.sys.im_petrb(x))*total_td_density[i][k]*pm.sys.deltax
+      current_density.append(J)
+   return np.asarray(current_density)
+
+
 def initialWavefunction(x):
-    return (1.0/math.sqrt(2.0*math.pi))*(math.e**(-0.5*x**2))
+   r"""Calculates the value of the initial wavefunction at a given x
 
-# Function to print to screen replacing the current line
-def sprint(text):
-   sys.stdout.write('\033[K')
-   sys.stdout.flush()
-   sys.stdout.write('\r' + text)
-   sys.stdout.flush()
 
-# Main function
+   parameters
+   ----------
+   x : float
+      given x
+
+   returns array_like
+      Initial guess for wavefunction
+   """
+   return (1.0/math.sqrt(2.0*math.pi))*(math.e**(-0.5*x**2))
+
+
 def main(parameters):
+   r"""Performs calculation of the one-electron density
+
+   parameters
+   ----------
+   parameters : object
+      Parameters object
+
+   returns object
+      Results object
+   """
    global pm
    pm = parameters
 
    # Create the grid
    xgrid = np.linspace(-0.5*pm.sys.xmax,0.5*pm.sys.xmax,pm.sys.grid)
 
+   # Construct the kinetic energy
+   K = constructK()
+   
    # Construct the potential
-   V = constructV('i')
+   V = constructV(0)
 
    # Construct matrices
-   H = constructH('i')
+   H = K + V
    A = constructA(H,'i')
    C = constructC(H,'i')
 
@@ -157,7 +265,8 @@ def main(parameters):
 
       # Calculate the wavefunction convergence
       convergence = np.linalg.norm(wavefunction-old_wavefunction)
-      sprint('many body complex time: t = ' + str(i*pm.ext.cdeltat) + ', convergence = ' + str(convergence))
+      string = 'many body complex time: t = ' + str(i*pm.ext.cdeltat) + ', convergence = ' + str(convergence)
+      pm.sprint(string,1,newline=False)
       
       # iterate
       i = i + 1
@@ -178,10 +287,10 @@ def main(parameters):
       results.save(pm)
 
    # Construct the potential
-   V = constructV('r')
+   V = constructV(1)
 
    # Construct matrices
-   H = constructH('r')
+   H = K + V
    A = constructA(H,'r')
    C = constructC(H,'r')
 
@@ -212,8 +321,9 @@ def main(parameters):
 
       # Calculate the wavefunction normalisation
       normalisation = (np.linalg.norm(wavefunction)*pm.sys.deltax**0.5)
-      sprint('many body real time: t = ' + str(i*pm.sys.deltat) + ', normalisation = ' + str(normalisation))
-
+      string = 'many body real time: t = ' + str(i*pm.sys.deltat) + ', normalisation = ' + str(normalisation)
+      pm.sprint(string,1,newline=False)
+      
       # iterate
       i = i + 1
 
@@ -235,3 +345,4 @@ def main(parameters):
    os.system('rm *.pyc')
 
    return results
+

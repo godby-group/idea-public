@@ -1,34 +1,20 @@
-######################################################################################
-# Name: Landauer approximation                                                       #
-#                                                                                    #
-######################################################################################
-# Authors: Matt Hodgson, Jack Wetherell                                              #
-#                                                                                    #
-######################################################################################
-# Description:                                                                       #
-# Computes time-dependent Landauer density                                           #
-#                                                                                    #
-######################################################################################
-# Notes:                                                                             #
-# This code requires an inital KS potential.                                         #
-#                                                                                    #
-######################################################################################
+"""Computes time-dependent charge density of a system using the Landauer-Buttiker approximation. The code outputs the time-dependent charge and current density 
+of the system. 
+"""
 
-# Import librarys
+
 import pickle
 import numpy as np
 import RE_Utilities
 import results as rs
-
 import scipy.linalg as spla
 import scipy.sparse as sps
 import scipy.special as spec
 import scipy.sparse.linalg as spsla
 
-# Function to read inputs
+# Function to read input
 def ReadInput(approx):
-   V = np.zeros((pm.sys.imax,pm.sys.grid),dtype='complex')       # Only a ground-state to read in
-
+   V = np.zeros((pm.sys.imax,pm.sys.grid),dtype='complex') # Only a ground-state to read in
    name = 'gs_{}_vks'.format(approx)
    data = rs.Results.read(name, pm)
    V[0,:]=data

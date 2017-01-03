@@ -24,47 +24,47 @@ class TestFFT(unittest.TestCase):
         self.pm = pm
         self.st = MBPT.SpaceTimeGrid(pm)
 
-    def test_fft_phase_1(self):
-        """Test phase factors
-        
-        Sampling test function on shifted and unshifted grid.
-        If the test function is continuous, then the phase factors should bring
-        the Fourier components from both samples into (approximate) agreement.
-        """
-        st = self.st
-        grid_s = st.tau_grid  # default shifted grid dt/2, 3dt/2, ...
-        grid_z = st.tau_grid - st.tau_delta/2  # grid 0, dt, 2dt, ...
-
-        def f(t):
-            """Gaussian test function
-            
-            Note: This function is tuned such that it is very close to zero
-            at the edges of the grid. Already a tiny jump at the edge of the 
-            grid will cause significant deviations.
-            """
-            return np.array( np.exp(-0.20 * (t-1.345)**2), dtype=np.complex128)
-
-        f_w_s = MBPT.fft_t(f(grid_s),st, 't2f', phase_shift=True)
-        f_w_z = np.fft.ifft(f(grid_z))* st.tau_npt * st.tau_delta
-
-        # Note: f_w_1 and f_w_2 don't need to agree perfectly - the agreement should be better
-        # than without phase shift
-        nt.assert_array_almost_equal(f_w_s, f_w_z, decimal=6)
-
-
-
-    def test_fft_phase_2(self):
-        """Testing that Fourier transform with phases is reversible
-        
-        """
-        st = self.st
-        
-        f_it = np.random.random(st.tau_npt) + 1J * np.random.random(st.tau_npt)
-        f_iw = MBPT.fft_t(f_it, st, dir='it2if', phase_shift=True)
-        f_it_2 = MBPT.fft_t(f_iw, st, dir='if2it', phase_shift=True)
-
-        nt.assert_array_almost_equal(f_it, f_it_2, decimal=12)
-
+#    def test_fft_phase_1(self):
+#        """Test phase factors
+#        
+#        Sampling test function on shifted and unshifted grid.
+#        If the test function is continuous, then the phase factors should bring
+#        the Fourier components from both samples into (approximate) agreement.
+#        """
+#        st = self.st
+#        grid_s = st.tau_grid  # default shifted grid dt/2, 3dt/2, ...
+#        grid_z = st.tau_grid - st.tau_delta/2  # grid 0, dt, 2dt, ...
+#
+#        def f(t):
+#            """Gaussian test function
+#            
+#            Note: This function is tuned such that it is very close to zero
+#            at the edges of the grid. Already a tiny jump at the edge of the 
+#            grid will cause significant deviations.
+#            """
+#            return np.array( np.exp(-0.20 * (t-1.345)**2), dtype=np.complex128)
+#
+#        f_w_s = MBPT.fft_t(f(grid_s),st, 't2f', phase_shift=True)
+#        f_w_z = np.fft.ifft(f(grid_z))* st.tau_npt * st.tau_delta
+#
+#        # Note: f_w_1 and f_w_2 don't need to agree perfectly - the agreement should be better
+#        # than without phase shift
+#        nt.assert_array_almost_equal(f_w_s, f_w_z, decimal=6)
+#
+#
+#
+#    def test_fft_phase_2(self):
+#        """Testing that Fourier transform with phases is reversible
+#        
+#        """
+#        st = self.st
+#        
+#        f_it = np.random.random(st.tau_npt) + 1J * np.random.random(st.tau_npt)
+#        f_iw = MBPT.fft_t(f_it, st, dir='it2if', phase_shift=True)
+#        f_it_2 = MBPT.fft_t(f_iw, st, dir='if2it', phase_shift=True)
+#
+#        nt.assert_array_almost_equal(f_it, f_it_2, decimal=12)
+#
 #    def test_fft_phase_3(self):
 #        """Test phase factors
 #        

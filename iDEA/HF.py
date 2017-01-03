@@ -1,21 +1,8 @@
-######################################################################################
-# Name: Hartree-Fock                                                                 #
-######################################################################################
-# Author(s): Matt Hodgson                                                            #
-######################################################################################
-# Description:                                                                       #
-# Computes ground-state density of a system using the Hartree-Fock approximation     #
-#                                                                                    #
-#                                                                                    #
-#                                                                                    #
-######################################################################################
-# Notes:                                                                             #
-#                                                                                    #
-#                                                                                    #
-#                                                                                    #
-######################################################################################
+"""Computes ground-state charge density of a system using the Hartree-Fock approximation. The code outputs the ground-state charge density, the 
+energy of the system and the Hartree-Fock orbitals. 
+"""
 
-# Library imports
+
 import copy
 import pickle
 import numpy as np
@@ -23,12 +10,39 @@ import scipy as sp
 import scipy.linalg as spla
 import results as rs
 
-# Function to add the hartree potential in the time domain
+
 def hartree(U,density):
+   r"""Constructs the hartree potential for a given density
+
+   .. math::
+
+       V_{H} \left( x \right) = \int_{\forall} U\left( x,x' \right) n \left( x'\right) dx'
+
+   parameters
+   ----------
+   U : array_like
+        Coulomb matrix
+        
+   density : array_like
+        given density
+
+   returns array_like
+   """
    return np.dot(U,density)*dx
 
-# Function to construct coulomb matrix
+
 def coulomb():
+   r"""Constructs the coulomb matrix
+
+   .. math::
+
+       U \left( x,x' \right) = \frac{1}{|x-x'| + 1}
+
+   parameters
+   ----------
+
+   returns array_like
+   """
    for i in range(Nx):
       xi = i*dx-0.5*L
       for j in range(Nx):
@@ -36,8 +50,23 @@ def coulomb():
          U[i,j] = 1.0/(abs(xi-xj) + pm.sys.acon)
    return U
 
-# Construct fock operator
-def Fock(Psi, U):
+
+def fock(Psi, U):
+   r"""Constructs the fock operator from a set of orbitals
+
+    .. math:: F(x,x') = \sum_{k} \psi_{k}(x) U(x,x') \psi_{k}(x')
+                       
+
+   parameters
+   ----------
+   Psi : array_like
+        orbitals indexed as Psi[orbital_number][space_index]
+   
+   U : array_like
+        Coulomb matrix
+
+   returns array_like
+   """
    F[:,:] = 0
    for k in range(pm.sys.NE):
       for j in range(Nx):
@@ -45,8 +74,25 @@ def Fock(Psi, U):
             F[i,j] += -(np.conjugate(Psi[k,i])*U[i,j]*Psi[k,j])*dx
    return F
 
-# Compute ground-state
-def Groundstate(V, F, nu):	 						
+
+def groundstate(V, F):	 	
+   r"""Calculates the oribitals and ground state density for the system for a given Fock operator
+
+    .. math:: H = K + V + F \\
+              H \psi_{i} = E_{i} \psi_{i}
+                       
+
+   parameters
+   ----------
+   V : array_like
+        potential
+   
+   F : array_like
+        Coulomb matrix
+
+   returns array_like, array_like, array_like, array_like
+        density, normalised orbitals indexed as Psi[orbital_number][space_index], potential, energies
+   """					
    HGS = copy.copy(T)	
    for i in range(Nx):
       HGS[i,i] += V[i]
@@ -61,6 +107,16 @@ def Groundstate(V, F, nu):
 
 
 def main(parameters):
+   r"""Performs Hartree-fock calculation
+
+   parameters
+   ----------
+   parameters : object
+      Parameters object
+
+   returns object
+      Results object
+   """
    global verbosity, Nx, Nt, L, dx, sqdx, c, nu
    global T, n_x, n_old, n_MB, V, F, V_H, V_ext, V_add, U
    global pm
@@ -103,7 +159,7 @@ def main(parameters):
       x = i*dx-0.5*L
       V[i] = pm.sys.v_ext(x)
    V_ext[:] = V[:] 
-   n_x, Psi, V, K = Groundstate(V, F, nu)
+   n_x, Psi, V, K = groundstate(V, F)
    con = 1
    
    # Construct coulomb matrix
@@ -113,14 +169,14 @@ def main(parameters):
    while con > pm.hf.con:
       n_old[:] = n_x[:]
       V_H = hartree(U,n_x)
-      F = Fock(Psi, U)
+      F = fock(Psi, U)
       V_add[:] = V_ext[:] + V_H[:]
       V[:] = (1-nu)*V[:] + nu*V_add[:]
       for i in range(2):		 # Smooth the edges of the system
          V[i] = V[2]
       for i in range(Nx-2,Nx):
          V[i] = V[Nx-2]
-      n_x, Psi, V, K = Groundstate(V, F, nu)
+      n_x, Psi, V, K = groundstate(V, F)
       con = sum(abs(n_x[:]-n_old[:]))
       string = 'HF: computing ground-state density, convergence = ' + str(con)
       pm.sprint(string,1,newline=False)
@@ -151,3 +207,4 @@ def main(parameters):
       results.save(pm)
  
    return results
+
