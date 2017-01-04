@@ -47,7 +47,7 @@ def ReadInput(approx,GS,imax):
       Read_n = np.zeros(((imax-1),pm.sys.grid),dtype='float')
       # Then read im the time-dependent density
       name = 'td_{}_den'.format(approx)
-      data = rs.Results.read(name, pm.output_dir+'/raw')
+      data = rs.Results.read(name, pm)
       Read_n[:,:] = data
       for k in range(1,imax):
          n[k,:] = Read_n[k-1,:] # Accounts for the difference in convention between MB and RE (for RE t=0 is the ground-state)
@@ -378,19 +378,21 @@ def main(parameters,approx):
    E_xc = xcenergy(approx,n_KS,V_h,V_xc,E_KS) # Calculate the exchange-correlation energy
 
    # Store results
+   approxre = approx + 're'
    results = rs.Results()
-   results.add(V_KS[0,:].real,'gs_{}_vks'.format(approx))
-   results.add(V_h[0,:], 'gs_{}_vh'.format(approx))
-   results.add(V_xc[0,:].real, 'gs_{}_vxc'.format(approx))
-   results.add(E_xc.real, 'gs_{}_Exc'.format(approx))
+   results.add(n_MB[0,:],'gs_{}_den'.format(approxre))
+   results.add(V_KS[0,:].real,'gs_{}_vks'.format(approxre))
+   results.add(V_h[0,:], 'gs_{}_vh'.format(approxre))
+   results.add(V_xc[0,:].real, 'gs_{}_vxc'.format(approxre))
+   results.add(E_xc.real, 'gs_{}_Exc'.format(approxre))
 
    v_hxc = np.zeros(pm.sys.grid,dtype='float')
    v_hxc[:] = (V_xc[0,:]+V_h[0,:]).real
-   results.add(v_hxc[:],'gs_{}_hxc'.format(approx))
+   results.add(v_hxc[:],'gs_{}_hxc'.format(approxre))
 
    if pm.re.save_eig:
-       results.add(Psi[:,0,:],'gs_{}_eigf'.format(approx))
-       results.add(eigv,'gs_{}_eigv'.format(approx))
+       results.add(Psi[:,0,:],'gs_{}_eigf'.format(approxre))
+       results.add(eigv,'gs_{}_eigv'.format(approxre))
 
    if pm.run.save:
       results.save(pm)
@@ -418,12 +420,13 @@ def main(parameters,approx):
          pm.sprint('',1)
          pm.sprint('REV: Stopped at timestep ' + str(counter) + '! Outputing all quantities',1)
 
-      results.add( V_KS[:,:].real, 'gs_{}_vks'.format(approx)) 
-      results.add(V_h[:,:], 'gs_{}_vh'.format(approx)) 
-      results.add( V_xc[:,:].real, 'gs_{}_vxc'.format(approx))
+      results.add(n_MB[:,:],'td_{}_den'.format(approxre))
+      results.add( V_KS[:,:].real, 'td_{}_vks'.format(approxre)) 
+      results.add(V_h[:,:], 'td_{}_vh'.format(approxre)) 
+      results.add( V_xc[:,:].real, 'td_{}_vxc'.format(approxre))
       if pm.run.save:
          # No need to save previous results again
-         l = ['gs_{}_vks'.format(approx),'gs_{}_vh'.format(approx),'gs_{}_vxc'.format(approx)]
+         l = ['td_{}_vks'.format(approxre),'td_{}_vh'.format(approxre),'td_{}_vxc'.format(approxre)]
          results.save(pm, list=l)
 
    return results

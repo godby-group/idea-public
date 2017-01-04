@@ -283,6 +283,18 @@ def read_input_quantities(pm, st):
 
     This includes single-particle energies, orbitals and the density.
 
+    .. math ::
+        
+        \mathcal{H}_0 = T + V_{ext}(r) + V_{Hxc}(r,r') \\
+        V_{Hxc}(r,r') = \delta(r-r')V_H(r) + V_x(r,r') + V_c(r,r')
+
+    Possible flavours of pm.mbpt.h0 are
+      * 'lda'/'ext': :math:`V_{Hxc}(r,r') = \delta(r-r') (V_H(r) + V_{xc}(r))`
+         This form also applies to any reverse-engineered input.
+      * 'h': :math:`V_{Hxc}(r,r') = \delta(r-r') V_H(r)`
+      * 'hf': :math:`V_{Hxc}(r,r') = \delta(r-r') V_H(r) + V_x(r,r')`
+      * 'non': :math:`V_{Hxc}(r,r') = 0`
+
     parameters
     ----------
     pm : object
@@ -294,9 +306,11 @@ def read_input_quantities(pm, st):
     -------
         Container object
     """
-    energies = rs.Results.read('gs_{}_eigv'.format(pm.mbpt.h0), pm)
-    orbitals = rs.Results.read('gs_{}_eigf'.format(pm.mbpt.h0), pm)
-    den = rs.Results.read('gs_{}_den'.format(pm.mbpt.h0), pm)
+    flavour = pm.mbpt.h0
+
+    energies = rs.Results.read('gs_{}_eigv'.format(flavour), pm)
+    orbitals = rs.Results.read('gs_{}_eigf'.format(flavour), pm)
+    den = rs.Results.read('gs_{}_den'.format(flavour), pm)
 
     if energies.dtype == np.complex:
         im_max = np.max(np.abs(energies.imag))
@@ -305,8 +319,11 @@ def read_input_quantities(pm, st):
         pm.sprint(s)
         energies = energies.real
 
-    norb = len(energies)
-    if norb < st.norb:
+    nener = len(energies)
+    norb = len(orbitals)
+    if nener != norb:
+        raise ValueError("Number of starting orbitals {} doesn't equal number of starting energies {}".format(norb, nener))
+    elif norb < st.norb:
         raise ValueError("Not enough orbitals: {} computed, {} requested.".format(norb,st.norb))
     else:
         energies = energies[:st.norb]
@@ -335,7 +352,24 @@ def read_input_quantities(pm, st):
     # computing & reading potentials
     vh = hartree_potential(st, den=den)
     vx = exchange_potential(st, orbitals=orbitals)
-    vhxc = hartree_exchange_correlation_potential(pm.mbpt.h0, orbitals, vh, vx, st)
+    vhxc = np.zeros((st.x_npt, st.x_npt), dtype=np.float)
+    if flavour == 'non':
+        # non-interacting: v_Hxc = 0
+        np.fill_diagonal(vhxc, np.zeros(st.x_npt))
+    elif flavour == 'h':
+        # Hartree: v_Hxc = v_H
+        np.fill_diagonal(vhxc, vh / st.x_delta)
+    elif flavour == 'lda' or flavour in ['nonre', 'hre', 'ldare', 'extre', 'hfre']:
+        # KS-DFT: v_Hxc = v_H + v_xc
+        # (or any reverse-engineered starting point)
+        tmp = vh + rs.Results.read('gs_{}_vxc'.format(flavour), pm)
+        np.fill_diagonal(vhxc, tmp / st.x_delta)
+    elif flavour == 'hf':
+        # Hartree-Fock: v_Hxc = v_H + v_x
+        np.fill_diagonal(vhxc, vh / st.x_delta)
+        vhxc += vx
+    else:
+        raise ValueError("Unknown h0 flavour '{}'".format(flavour))
 
     h0 = Container()
     h0.energies = energies
@@ -348,56 +382,6 @@ def read_input_quantities(pm, st):
 
     return h0
 
-
-def hartree_exchange_correlation_potential(h0, orbitals, h0_vh, h0_vx, st):
-    r"""Returns Hartree-exchange-correlation potential of h0
-
-    .. math ::
-        
-        \mathcal{H}_0 = T + V_{ext}(r) + V_{Hxc}(r,r') \\
-        V_{Hxc}(r,r') = \delta(r-r')V_H(r) + V_x(r,r') + V_c(r,r')
-
-    Possible choices for h0 are
-      * 'LDA'/'EXT': :math:`V_{Hxc}(r,r') = \delta(r-r') (V_H(r) + V_{xc}(r))`
-      * 'H': :math:`V_{Hxc}(r,r') = \delta(r-r') V_H(r)`
-      * 'HF': :math:`V_{Hxc}(r,r') = \delta(r-r') V_H(r) + V_x(r,r')`
-      * 'NON': :math:`V_{Hxc}(r,r') = 0`
-
-    parameters
-    ----------
-    h0 : string
-        The choice of single-particle Hamiltonian h0
-    orbitals : array_like
-        orbitals of non-interacting hamiltonian
-    h0_vh : array_like
-        Hartree potential V_H(r) of non-interacting density
-    h0_vx : array_like
-        Fock exchange operator V_x(r,r') of non-interacting density
-    st : object
-        space-time grid
-    """
-
-    h0_vhxc = np.zeros((st.x_npt, st.x_npt), dtype=np.float)
-    if h0 == 'non':
-        # non-interacting: v_Hxc = 0
-        np.fill_diagonal(h0_vhxc, np.zeros(st.x_npt))
-    elif h0 == 'h':
-        # Hartree: v_Hxc = v_H
-        tmp = rs.Results.read('gs_{}_vh'.format(h0), pm)
-        np.fill_diagonal(h0_vhxc, tmp / st.x_delta)
-    elif h0 == 'lda' or h0 == 'ext' or h0 == 'hf':
-        # KS-DFT: v_Hxc = v_H + v_xc
-        tmp = rs.Results.read('gs_{}_vh'.format(h0), pm)
-        tmp += rs.Results.read('gs_{}_vxc'.format(h0), pm)
-        np.fill_diagonal(h0_vhxc, tmp / st.x_delta)
-    elif h0 == 'hf':
-        # Hartree-Fock: v_Hxc = v_H + v_x
-        np.fill_diagonal(h0_vhxc, h0_vh / st.x_delta)
-        h0_vhxc += h0_vx
-    else:
-        raise ValueError("Unknown h0 flavor '{}'".format(h0))
-
-    return h0_vhxc
 
 def hartree_potential(st, den=None, G=None):
     r"""Sets up Hartree potential V_H(r) from electron density.
