@@ -321,13 +321,13 @@ class Input(object):
             shutil.copy2(pm.filename,pm.output_dir)
           
         # Copy ViDEO file to output folder
-        vfile = 'iDEA/ViDEO.py'
+        vfile = 'scripts/ViDEO.py'
         if os.path.isfile(vfile):
 			   # Note: this doesn't work, when using iDEA as a system module
-            shutil.copy2('iDEA/ViDEO.py',pm.output_dir)
+            shutil.copy2('scripts/ViDEO.py',pm.output_dir)
         else:
             s  = "Warning: Unable to copy ViDEO.py since running iDEA as python module."
-            s += " Simply add the iDEA folder to your PATH variable to use ViDEO.py anywhere"
+            s += " Simply add the scripts folder to your PATH variable to use ViDEO.py anywhere"
             pm.sprint(s,1)
         
 
