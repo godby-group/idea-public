@@ -1,5 +1,10 @@
 """Contains information on version, authors, etc."""
-version = 'v2.0b'
+# The short X.Y version.
+version = '2.0'
+# The full version, including alpha/beta/rc tags.
+release = '2.0b'
+
+
 authors = ['Piers Lillystone', 'James Ramsden', 'Matt Hodgson', 
     'Jacob Chapman', 'Thomas Durrant', 'Jack Wetherell', 'Mike Entwistle',
     'Matthew Smith', 'Leopold Talirz']
