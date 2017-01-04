@@ -21,10 +21,10 @@ Installing iDEA
    git clone user@rwgu1.york.ac.uk:~jw1294/iDEAL .
    git checkout v2.0  # move to current development branch
    # add current working directory to PYTHONPATH
-   # note: this will take effect at next login
    echo "export PYTHONPATH=\$PYTHONPATH:`pwd`" >> ~/.bashrc
    # add scripts directory to your PATH
    echo "export PATH=\$PATH:`pwd`/scripts" >> ~/.bashrc
+   source ~/.bashrc
 
    cd iDEA
    make  # makes Fortran MKL libraries
@@ -34,8 +34,8 @@ Generating documentation
 
 .. code-block:: bash
 
-   cd doc
    # build documentation in doc/_build/html
+   cd doc
    bash make_doc.sh  
 
 Run unit tests

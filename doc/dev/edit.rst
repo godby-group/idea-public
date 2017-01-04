@@ -31,8 +31,9 @@ Once you are done editing the .rst files, do
 
 .. code-block:: bash
 
-    cd iDEA/doc
-    make html # runs sphinx-build
+    cd doc
+    # runs sphinx-apidoc and sphinx-build
+    bash make_doc.sh 
 
 |
 
