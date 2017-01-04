@@ -54,7 +54,7 @@ def ReadInput(approx,GS,imax):
    return n
 
 # Function to calculate the ground-state potential
-def CalculateGroundstate(V,n_T,mu,sqdx,T_s,n):
+def CalculateGroundState(V,n_T,mu,sqdx,T_s,n):
    #Build Hamiltonian
    p = 0.05 # Determines the rate of convergence of the ground-state RE
    HGS = copy.copy(T_s)
@@ -62,9 +62,10 @@ def CalculateGroundstate(V,n_T,mu,sqdx,T_s,n):
    HGS[0,:] += V[0,:]
    # Solve KS equations
    K,U = spla.eig_banded(HGS,True)
+   U /= sqdx # Normalise
    Psi = np.zeros((pm.sys.NE,2,pm.sys.grid), dtype='complex')
    for i in range(pm.sys.NE):
-      Psi[i,0,:] = U[:,i]/sqdx # Normalise
+      Psi[i,0,:] = U[:,i]
    # Calculate density and cost function
    n[0,:] = 0
    E_KS = 0.0
@@ -72,7 +73,7 @@ def CalculateGroundstate(V,n_T,mu,sqdx,T_s,n):
       n[0,:] += abs(Psi[i,0,:])**2 # Calculate the density from the single-particle wavefunctions
       E_KS += K[i]
    cost_n_GS = sum(abs(n_T[0,:]-n[0,:]))*pm.sys.deltax # Calculate the ground-state cost function 
-   return V,n,cost_n_GS,Psi,E_KS,K
+   return V,n,cost_n_GS,Psi,E_KS,K,U
 
 # Function to load or force calculation of the ground-state potential
 def GroundState(n_T,mu,sqdx,T_s,n,approx):
@@ -82,19 +83,19 @@ def GroundState(n_T,mu,sqdx,T_s,n,approx):
    for i in range(pm.sys.grid):
       V_KS[0,i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # Initial guess for KS potential
       V_ext[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax))
-   V_KS,n,cost_n_GS,U,E_KS,K = CalculateGroundstate(V_KS,n_T,0,sqdx,T_s,n)
+   V_KS,n,cost_n_GS,Psi,E_KS,K,U = CalculateGroundState(V_KS,n_T,0,sqdx,T_s,n)
    pm.sprint('REV: initial guess electron density error = %s' % cost_n_GS,1)
    while cost_n_GS>1e-13:
       cost_old = cost_n_GS
       string = 'REV: electron density error = ' + str(cost_old)
       pm.sprint(string,1,newline=False)
-      V_KS,n,cost_n_GS,U,E_KS,K = CalculateGroundstate(V_KS,n_T,mu,sqdx,T_s,n)
+      V_KS,n,cost_n_GS,Psi,E_KS,K,U = CalculateGroundState(V_KS,n_T,mu,sqdx,T_s,n)
       if abs(cost_n_GS-cost_old)<1e-15 or cost_n_GS>cost_old:
          mu *= 0.5
       if mu < 1e-15:
          break
    pm.sprint('',1)
-   return V_KS,n,U,V_ext,E_KS,K
+   return V_KS,n,Psi,V_ext,E_KS,K,U
 
 # Function used in calculation of the Hatree potential
 def realspace(vector):
@@ -329,7 +330,7 @@ def CalculateKS(V_KS,A_KS,J,Psi,j,upper_bound,frac1,frac2,z,tol,n_T,J_T,cost_n,c
 # Main control function
 def main(parameters,approx):
    global sqdx, upper_bound, imax, T, J_MB, cost_n, cost_J, exp, CNRHS, CNLHS
-   global Mat, Matin, V_h, V_xc, V_Hxc, A_KS, A_min, U_KS, U_MB, petrb, U
+   global Mat, Matin, V_h, V_xc, V_Hxc, A_KS, A_min, U_KS, U_MB, petrb
    global pm
 
    pm = parameters
@@ -360,7 +361,6 @@ def main(parameters,approx):
    U_KS = np.zeros((imax,pm.sys.grid),dtype='float')
    U_MB = np.zeros((imax,pm.sys.grid),dtype='float')
    petrb = np.zeros(pm.sys.grid,dtype='complex')
-   U = np.zeros((pm.sys.grid,pm.sys.grid))
 
 
    z = 0
@@ -371,7 +371,7 @@ def main(parameters,approx):
    n_KS = np.zeros((imax,pm.sys.grid),dtype='float')
    n_MB = ReadInput(approx,0,imax) # Read in exact charge density obtained from code
    V_coulomb = coulomb()
-   V_KS,n_KS,Psi,V_ext,E_KS,eigv = GroundState(n_MB,mu,sqdx,T,n_KS,approx) # Calculate (or, if already obtained, check) ground-state KS potential
+   V_KS,n_KS,Psi,V_ext,E_KS,eigv,eigf = GroundState(n_MB,mu,sqdx,T,n_KS,approx) # Calculate (or, if already obtained, check) ground-state KS potential
    V_h[0,:] = Hartree(n_KS,V_coulomb,0) # Calculate the Hartree potential
    V_Hxc[0,:] = V_KS[0,:]-V_ext[:] # Calculate the Hartree exhange-correlation potential
    V_xc[0,:] = V_Hxc[0,:]-V_h[0,:] # Calculate the exchange-correlation potential
@@ -391,7 +391,7 @@ def main(parameters,approx):
    results.add(v_hxc[:],'gs_{}_hxc'.format(approxre))
 
    if pm.re.save_eig:
-       results.add(Psi[:,0,:],'gs_{}_eigf'.format(approxre))
+       results.add(eigf.T,'gs_{}_eigf'.format(approxre))
        results.add(eigv,'gs_{}_eigv'.format(approxre))
 
    if pm.run.save:
