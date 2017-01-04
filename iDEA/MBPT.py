@@ -259,7 +259,7 @@ def main(parameters):
             pm.sprint("MBPT: convergence reached, exiting self-consistency cycle",0)
             break
 
-        pm.sprint("Max. change in den: {:.2e} > {:.2e}".format(den_maxdiff,pm.mbpt.den_tol))
+        pm.sprint("MBPT: Max. change in den: {:.2e} > {:.2e}".format(den_maxdiff,pm.mbpt.den_tol))
         H.vh = hartree_potential(st, den=H.den)
         H.vx = -G_mzero.imag * st.coulomb_repulsion # = iGv
 

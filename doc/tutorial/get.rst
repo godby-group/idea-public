@@ -11,7 +11,7 @@ Installation requirements
  * *(optional)* Parallel execution requires the 
    `Intel MKL  <https://software.intel.com/en-us/intel-mkl>`_ 11.3 or later
  * *(optional)* Generating the documentation requires
-   `Sphinx <http://sphinx-doc.org>`_ 1.3.3 or later
+   `Sphinx <http://sphinx-doc.org>`_ 1.4 or later
 
 Installing iDEA
 ----------------

@@ -84,14 +84,6 @@ iDEA.SPiDEA module
     :undoc-members:
     :show-inheritance:
 
-iDEA.ViDEO module
------------------
-
-.. automodule:: iDEA.ViDEO
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 iDEA.info module
 ----------------
 
@@ -104,14 +96,6 @@ iDEA.input module
 -----------------
 
 .. automodule:: iDEA.input
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-iDEA.job module
----------------
-
-.. automodule:: iDEA.job
     :members:
     :undoc-members:
     :show-inheritance:
