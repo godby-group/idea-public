@@ -326,9 +326,11 @@ class Input(object):
 			   # Note: this doesn't work, when using iDEA as a system module
             shutil.copy2('scripts/ViDEO.py',pm.output_dir)
         else:
-            s  = "Warning: Unable to copy ViDEO.py since running iDEA as python module."
-            s += " Simply add the scripts folder to your PATH variable to use ViDEO.py anywhere"
-            pm.sprint(s,1)
+            pass
+            # No longer needed as ViDEO.py is in scrips directory and can be added to PATH
+            #s  = "Warning: Unable to copy ViDEO.py since running iDEA as python module."
+            #s += " Simply add the scripts folder to your PATH variable to use ViDEO.py anywhere"
+            #pm.sprint(s,1)
         
 
     def execute(self):
