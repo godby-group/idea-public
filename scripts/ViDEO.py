@@ -135,8 +135,8 @@ if __name__ == '__main__':
     run_name = pm.run.name
     NE = int(input('number of electrons: '))
     td = bool(input('is the data ground state or time dependant (gs=0,td=1): '))
-    approx = int(input('enter which approximation to use (exact=0,NON=1,LDA=2,MLP=3,HF=4,MBPT=5,LAN=6): '))
-    data = int(input('enter which quantity to plot (DEN=0,CUR=1,VXT=2,VKS=3,VH=4,VXC=5,ELF=6): '))
+    approx = str(raw_input('enter which approximation to use (ext,non,lda,hf,hfre...): '))
+    data = str(raw_input('enter which quantity to plot (den,cur,vxt,vks,vh,vxc,elf...): '))
     N = pm.sys.grid
     L = pm.sys.xmax*2
     dx = float(L/(N-1))
@@ -146,34 +146,8 @@ if __name__ == '__main__':
        filename = filename + 'td_'
     else:
        filename = filename + 'gs_' 
-    if(approx == 0):
-       filename = filename + 'ext_'
-    if(approx == 1):
-       filename = filename + 'non_'
-    if(approx == 2):
-       filename = filename + 'lda_'
-    if(approx == 3):
-       filename = filename + 'mlp_'
-    if(approx == 4):
-       filename = filename + 'hf_'
-    if(approx == 5):
-       filename = filename + 'mbpt_'
-    if(approx == 6):
-       filename = filename + 'lan_'
-    if(data == 0):
-       filename = filename + 'den'
-    if(data == 1):
-       filename = filename + 'cur'
-    if(data == 2):
-       filename = filename + 'vxt'
-    if(data == 3):
-       filename = filename + 'vks'
-    if(data == 4):
-       filename = filename + 'vh'
-    if(data == 5):
-       filename = filename + 'vxc'
-    if(data == 6):
-       filename = filename + 'elf'
+    filename = filename + approx + '_'
+    filename = filename + data
 
     # Determine what the user wants to be processed
     if(td==0):

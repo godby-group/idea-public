@@ -351,59 +351,59 @@ class Input(object):
         if(pm.sys.NE == 1):
            if(pm.run.EXT == True):
               import SPiDEA
-              results.add(SPiDEA.main(pm), name='EXT')
+              results.add(SPiDEA.main(pm), name='ext')
            if(pm.ext.RE == True):
               import RE
-              results.add(RE.main(pm,'ext'), name='RE')
+              results.add(RE.main(pm,'ext'), name='extre')
         elif(pm.sys.NE == 2):
            if(pm.run.EXT == True):
               import EXT2
-              results.add(EXT2.main(pm), name='EXT')
+              results.add(EXT2.main(pm), name='ext')
            if(pm.ext.RE == True):
               import RE
-              results.add(RE.main(pm,'ext'), name='RE')
+              results.add(RE.main(pm,'ext'), name='extre')
         elif(pm.sys.NE == 3):
            if(pm.run.EXT == True):
               import EXT3
-              results.add(EXT3.main(pm), name='EXT')
+              results.add(EXT3.main(pm), name='ext')
            if(pm.ext.RE == True):
               import RE
-              results.add(RE.main(pm,'ext'), name='RE')
+              results.add(RE.main(pm,'ext'), name='extre')
         elif(pm.sys.NE >= 4):
            if(pm.run.EXT == True):
               print('EXT: cannot run exact with more than 3 electrons')
 
         if(pm.run.NON == True):
               import NON
-              results.add(NON.main(pm), name='NON')
+              results.add(NON.main(pm), name='non')
         if(pm.non.RE == True):
               import RE
-              results.add(RE.main(pm,'non'), name='RE')
+              results.add(RE.main(pm,'non'), name='nonre')
 
         if(pm.run.LDA == True):
               import LDA
-              results.add(LDA.main(pm), name='LDA')
+              results.add(LDA.main(pm), name='lda')
         if(pm.run.MLP == True):
               import MLP
               MLP.main(pm)
 
         if(pm.run.HF == True):
               import HF
-              results.add(HF.main(pm), name='HF')
+              results.add(HF.main(pm), name='hf')
         if(pm.hf.RE == True):
               import RE
-              results.add(RE.main(pm,'hf'), name='RE')
+              results.add(RE.main(pm,'hf'), name='hfre')
 
         if(pm.run.MBPT == True):
               import MBPT
-              results.add(MBPT.main(pm), name='MBPT')
+              results.add(MBPT.main(pm), name='mbpt')
         if(pm.mbpt.RE == True):
               import RE
-              results.add(RE.main(pm,'mbpt'), name='RE')
+              results.add(RE.main(pm,'mbpt'), name='mbptre')
 
         if(pm.run.LAN == True):
               import LAN
-              results.add(LAN.main(pm), name='LAN')
+              results.add(LAN.main(pm), name='lan')
 
         # All jobs done
         # store log in file
