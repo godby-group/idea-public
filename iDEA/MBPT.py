@@ -1,8 +1,12 @@
-"""Computes ground-state charge density of a system using the GW approximation within many-body pertubation theory along 
-with the Green function and self-energy of the system.
+"""Computes ground-state charge density in the GW approximation
 
-Different flavours of GW (G0W0, GW, GW0) are available.  The implementation
-follows the GW-space-time approach detailed in [Rojas1995]_ and  [Rieger1999]_.
+Different flavours of the GW approximation of many-body perturbation theory
+(G0W0, GW, GW0) are available.  The implementation follows the GW-space-time
+approach detailed in [Rojas1995]_ and  [Rieger1999]_.
+
+Besides the ground-state charge density, the code also computes quasiparticle
+energies and, if desired, the Green function of the system.
+
 """
 
 from __future__ import division
@@ -11,6 +15,7 @@ import numpy as np
 import scipy as sp
 import results as rs
 import mklfftwrap
+import continuation
 
 class SpaceTimeGrid:
     """Stores spatial and frequency grids"""
@@ -134,24 +139,11 @@ def main(parameters):
     save(G0,"G0_it")
 
     # prepare variables
-    if pm.mbpt.flavour in ['GW', 'GW0', 'QSGW']:
-        # we need both G and G0 separately
-        G = copy.deepcopy(G0)
-        G0 = fft_t(G0, st, dir='it2if') # needed for dyson equation
-        save(G0,"G0_iw")
-        G_pzero = G0_pzero
-        H = copy.deepcopy(h0)
-    elif pm.mbpt.flavour in ['G0W0']:
-        # we need only G0 but will call it G
-        G = G0
-        G_pzero = G0_pzero
-        H = h0
-
-        del G0, G0_pzero
-    else:
-        raise ValueError("MBPT: flavour {} not implemented".format(pm.mbpt.flavour))
-
-
+    G = copy.deepcopy(G0)
+    G0 = fft_t(G0, st, dir='it2if') # needed for dyson equation
+    save(G0,"G0_iw")
+    G_pzero = G0_pzero
+    H = copy.deepcopy(h0)
 
     ####### GW self-consistency loop #######
     cycle = 0
@@ -213,6 +205,8 @@ def main(parameters):
             S[:,:,i] += delta
         save(S, "S{}_iw".format(cycle))
         H.sigma_iw_dg = bracket_r(S, h0.orbitals, st)
+        if pm.mbpt.flavour == 'QSGW':
+	    H.sigma_iw_full = bracket_r(S, h0.orbitals, st, mode='full')
 
         # Align fermi energy of input and output Green function
         if pm.mbpt.hedin_shift:
@@ -225,8 +219,15 @@ def main(parameters):
             for i in range(st.x_npt):
                 S[i,i,:] -= H.qp_shift / st.x_delta
 
+	# Compute new quasiparticle energies (QSGW: and wave functions)
+	if pm.mbpt.flavour == 'QSGW': 
+	    S_fits = analytic_continuation(H.sigma_iw_full.reshape(st.norb*st.norb,st.tau_npt))
+	    S_fits = np.array(S_fits).reshape((st.norb,st.norb))
+            S_fits_dg = np.diagonal(S_fits)
+	    pm.sprint('MBPT: diagonalising quasiparticle Hamiltonian')
+
         cycle = cycle + 1
-        pm.sprint(''.format(cycle))
+        pm.sprint('')
         pm.sprint('MBPT: Entering self-consistency cycle #{}'.format(cycle))
 
         pm.sprint('MBPT: solving the Dyson equation for new G',0)
@@ -355,7 +356,7 @@ def read_input_quantities(pm, st):
     vhxc = np.zeros((st.x_npt, st.x_npt), dtype=np.float)
     if flavour == 'non':
         # non-interacting: v_Hxc = 0
-        np.fill_diagonal(vhxc, np.zeros(st.x_npt))
+        pass
     elif flavour == 'h':
         # Hartree: v_Hxc = v_H
         np.fill_diagonal(vhxc, vh / st.x_delta)
@@ -519,13 +520,13 @@ def non_interacting_green_function(orbitals, energies, st, zero='0-'):
         return G0
 
 def bracket_r(O, orbitals, st, mode='diagonal'):
-    r"""Calculate expectationvalues of O(r,r';t) for each t wrt orbitals
+    r"""Calculate expectation values of O(r,r';t) for each t wrt orbitals
 
-    .. math:: O_{jj}(t) = \langle \varphi_j | O(r,r';t) | \varphi_j\rangle
-                        = \int \varphi_j^*(r) O(r,r';t)\varphi_j(r')\,dr\,dr'
+    .. math:: O_{ij}(t) = \langle \varphi_i | O(r,r';t) | \varphi_j\rangle
+                        = \int \varphi_i^*(r) O(r,r';t)\varphi_j(r')\,dr\,dr'
 
-    Note: For non-hermitian O, the pairing of r,r' with \varphi_j^*,\varphi_j
-    matters.
+    Note: For non-hermitian O, the pairing of r,r' with
+    :math":`\varphi_i^*,\varphi_j` does matter
 
     parameters
     ----------
@@ -536,19 +537,22 @@ def bracket_r(O, orbitals, st, mode='diagonal'):
     pm: object
         Parameters object
     mode: string
-        - if 'diagonal', evaluates <j|O|j> for all j
-        - if 'matrix', evaluates <i|O|j> for all i,j
+        - if 'diagonal': computes <j|O|j> for all j (default)
+        - if 'full': computes <i|O|j> for all i,j
 
     Returns
     -------
-        bracket_r[i,j]
-            i=orbital index, j=index of temporal grid
+    bracket_r: array_like
+    	- if mode == 'diagonal': bracket_r[i,k]
+    	- if mode == 'full': bracket_r[i,j,k]
+
+        i,j orbital indices, k index of temporal grid
     """
     orbs = copy.copy(orbitals) * st.x_delta  # factor needed for integration
 
     # Performing one matrix-matrix multiplication is substantially faster than
     # performing t matrix-vector multiplications.
-    # Note: If we do not np.reshape, np.dot internally performs matrix-vector
+    # Note: If we do not reshape, np.dot internally performs matrix-vector
     # multiplications here.
 
     # numpy.dot(a,b) sums over last axis of a and 2nd-to-last axis of b
@@ -559,7 +563,7 @@ def bracket_r(O, orbitals, st, mode='diagonal'):
         # Then, we do element-wise multiplication + summation over the grid axis
         # to get the scalar product.
         bracket_r = (orbs.conj()[:,:,None] * tmp.reshape((st.norb,st.x_npt,st.tau_npt))).sum(1)
-    elif mode == 'matrix':
+    elif mode == 'full':
         # bracket_r.shape == (norb,norb,t)
         bracket_r  = np.dot(orbs.conj(), tmp.reshape((st.norb,st.x_npt,st.tau_npt)))
     else:
@@ -903,3 +907,86 @@ def extrapolate_to_zero(F, st, dir='from_below', order=6, points=7):
            out[i,j] = z(0)
 
     return 1J * out
+
+
+def analytic_continuation(S, st, pm, n_poles=3, fit_range=None):
+    r"""Fit poles to self-energy along the imaginary frequency axis
+
+    .. math::
+
+        \langle \varphi_j | \Sigma(z) | \varphi_j\rangle = a_j^0 + \sum_{k=1}^n \frac{a_j^k}{b_j^k-z}
+
+    Since :math:`\Sigma(i\omega)=\Sigma(-i\omega)^*`, it is sufficient to fit
+    half of the imaginary axis. Note that fitting the while imaginary axis won't
+    work because our fitting function do *not* share this property.
+
+    parameters
+    ----------
+    S: array_like
+      Matrix elements <i|sigma(iw)|j> (which basis is irrelevant)
+    n_poles: int
+     Number of poles, i.e. n = n_poles + 1
+    fit_range: float
+      - if > 0: fit is restricted to frequencies [0, 1J*fit_range]
+      - if < 0: fit is restricted to frequencies [1J*fit_range, 0]
+
+    Returns
+    -------
+      Polefit object, which contains the functions fitted to the
+      respective matrix elements of the self-energy
+
+    See equation 5.1 in [Rieger1999]_.
+    """
+
+    if fit_range is None:
+        # by default, we fit the upper imaginary axis
+        fit_range = st.omega_max
+
+    if fit_range > 0:
+        fit_half_plane = 'upper'
+        # need bitwise and here
+        select = (st.omega_grid >= 0) & (st.omega_grid <= fit_range)
+    else:
+        fit_half_plane = 'lower'
+        select = (st.omega_grid <= 0) & (st.omega_grid >= -fit_range)
+
+    # note: np.where(select).shape is (1,len(indices))
+    indices = np.where(select)[0]
+    fit_omega_grid = st.omega_grid[indices]
+    fit_sigma_iw = S[:,indices]
+
+    n_states = len(S)
+    fits = []
+    for i_state in range(n_states):
+        #s = fit_sigma_iw[i_state]
+        #popt, pconv = so.curve_fit(f, st.tau_grid, S)
+
+        x_fit = 1J*fit_omega_grid
+        y_fit = fit_sigma_iw[i_state]
+        fit = continuation.Polefit(n_poles=n_poles, fit_half_plane=fit_half_plane)
+        fit.fit(x=x_fit, y=y_fit)
+
+        bad_poles = fit.check_poles()
+        if bad_poles.size != 0:
+            msg = "Warning: State {}: Poles {} lie in {} half plane.".format(i_state,bad_poles,fit_half_plane)
+            pm.sprint(msg)
+
+        #p0 = cplx2float(np.array([0.1 for _i in range(2*n_poles+1)]))
+        # x = 1J*st.omega_grid # fitting on upper imaginary axis
+        #y = s
+        #p, cov = so.leastsq(residuals,p0,args=(x, y))
+        #p = float2cplx(p)
+
+        diff = y_fit - fit.f(1J * st.omega_grid[indices])
+        err = np.sum(np.abs(diff)**2) * st.omega_delta
+        pm.sprint(err)
+        # Note: here, we would have the option to simply repeat the fit
+        if err > 1e-5:
+            pm.sprint("Warning: {}-pole fit differs by {:.1e} for state {}"
+                  .format(n_poles, err, i_state))
+
+        fits.append(fit)
+
+    return fits
+
+
