@@ -1,0 +1,6 @@
+*outputs/
+*.so
+*.dSYM
+*.swp
+*.pyc
+doc/_build/*
