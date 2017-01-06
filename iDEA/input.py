@@ -411,6 +411,9 @@ class Input(object):
         f.write(pm.log)
         f.close()
 
+        results.log = pm.log
+        pm.log = ''
+
         string = 'all jobs done \n'
         pm.sprint(string,1)
 
