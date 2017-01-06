@@ -65,9 +65,9 @@ ext = InputSection()
 ext.par = 0            #: Use parallelised solver and multiplication (0: serial, 1: parallel) Note: Recommend using parallel for large runs
 ext.ctol = 1e-14       #: Tolerance of complex time evolution (Recommended: 1e-14)
 ext.rtol = 1e-14       #: Tolerance of real time evolution (Recommended: 1e-14)
-ext.ctmax = 1000.0     #: Total complex time
-ext.cimax = 100000     #: Complex iterations
-ext.cdeltat = ext.ctmax/(ext.cimax-1)    #: Complex Time Grid spacing (DERIVED)
+ext.ctmax = 5000.0     #: Total complex time
+ext.cimax = 1e5        #: Complex iterations
+ext.cdeltat = ext.ctmax/ext.cimax    #: Complex Time Grid spacing (DERIVED)
 ext.RE = False         #: Reverse engineer many-body density
 
 

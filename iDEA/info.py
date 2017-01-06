@@ -2,12 +2,21 @@
 # The short X.Y version.
 version = '2.0'
 # The full version, including alpha/beta/rc tags.
-release = '2.0b'
+release = '2.0.0'
 
 
-authors = ['Piers Lillystone', 'James Ramsden', 'Matt Hodgson', 
-    'Jacob Chapman', 'Thomas Durrant', 'Jack Wetherell', 'Mike Entwistle',
-    'Matthew Smith', 'Leopold Talirz']
+authors = [
+    'Piers Lillystone', 
+    'James Ramsden', 
+    'Matt Hodgson', 
+    'Thomas Durrant',
+    'Jacob Chapman', 
+    'Jack Wetherell', 
+    'Matthew Smith', 
+    'Mike Entwistle',
+    'Aaron Long',
+    'Leopold Talirz'
+]
 
 na = len(authors)
 authors_long = ""
