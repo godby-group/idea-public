@@ -211,7 +211,8 @@ def main(parameters):
    n_old = np.zeros(pm.sys.grid,dtype='float')
    n_old[:] = n[:]
    convergence = 1.0
-   while convergence>pm.lda.tol: # Use LDA
+   iteration = 0
+   while convergence > pm.lda.tol and iteration < pm.lda.max_iter: # Use LDA
       v_s_old = copy.copy(v_s)
       if pm.lda.mix == 0:
          v_s[:] = v_ext[:]+hartree(n,U)+XC(n)
@@ -222,6 +223,11 @@ def main(parameters):
       n_old[:] = n[:]
       string = 'LDA: electron density convergence = ' + str(convergence)
       pm.sprint(string,1,newline=False)
+      iteration += 1
+      if(iteration == pm.lda.max_iter):
+         print
+         string = 'LDA: reached maximum number of iterations {}. terminating self-consistency'.format(iteration)
+         pm.sprint(string,1,newline=True)
 
    pm.sprint('',1)
    pm.sprint('LDA: ground-state xc energy: %s' % EXC(n),1)
