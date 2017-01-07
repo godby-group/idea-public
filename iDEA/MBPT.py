@@ -267,7 +267,7 @@ def main(parameters):
         # extrapolate G(it=0) from above
         eps = np.max(np.abs(G.real))
         if eps > pm.mbpt.den_tol:
-            st.sprint("MBPT: Warning: Discarding real part with max. {:.3e} during extrapolation".format(eps))
+            pm.sprint("MBPT: Warning: Discarding real part with max. {:.3e} during extrapolation".format(eps))
         G_pzero = extrapolate_to_zero(G, st, 'from_above')
 
     # normalise and save density
