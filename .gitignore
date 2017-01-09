@@ -4,3 +4,4 @@
 *.swp
 *.pyc
 doc/_build/*
+dev*/ # ignores any copies of iDEA folder
