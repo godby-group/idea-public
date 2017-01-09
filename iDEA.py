@@ -5,7 +5,7 @@ if pm.run.module == 'iDEA':
 else:
     # import iDEA from alternative folder, if specified
     import importlib
-    input = importlib.import_module("{}.input".format(inp.run.module))
+    input = importlib.import_module("{}.input".format(pm.run.module))
     Input = input.Input
 
 # read parameters file into Input object
