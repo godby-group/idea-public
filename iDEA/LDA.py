@@ -207,9 +207,9 @@ def main(parameters):
       v_s[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # External potential
       v_ext[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # External potential
    n,waves,energies = groundstate(v_s) #Inital guess
-   U = coulomb()
+   U = coulomb() # Create Coulomb matrix
    n_old = np.zeros(pm.sys.grid,dtype='float')
-   n_old[:] = n[:]
+   n_old[:] = n[:] 
    convergence = 1.0
    iteration = 0
    while convergence > pm.lda.tol and iteration < pm.lda.max_iter: # Use LDA
