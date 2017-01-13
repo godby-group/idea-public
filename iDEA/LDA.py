@@ -191,7 +191,7 @@ def main(parameters):
    returns object
       Results object
    """
-   global pm, T
+   global pm, T # global variables
    pm = parameters
 
    T = np.zeros((2,pm.sys.grid),dtype='float') # Kinetic Energy operator
