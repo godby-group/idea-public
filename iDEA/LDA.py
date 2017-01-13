@@ -226,7 +226,7 @@ def main(parameters):
       iteration += 1
       if(iteration == pm.lda.max_iter):
          print
-         string = 'LDA: reached maximum number of iterations {}. terminating self-consistency'.format(iteration)
+         string = 'LDA: warning! reached maximum number of iterations {}. terminating self-consistency'.format(iteration)
          pm.sprint(string,1,newline=True)
 
    pm.sprint('',1)
