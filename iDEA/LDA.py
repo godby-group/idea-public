@@ -29,7 +29,7 @@ def groundstate(v):
    returns array_like, array_like, array_like
         density, normalised orbitals indexed as Psi[orbital_number][space_index], energies
    """	
-   H = copy.copy(T)
+   H = copy.copy(T) # kinetic energy
    H[0,:] += v[:]
    e,eig_func = spla.eig_banded(H,True) 
    n = np.zeros(pm.sys.grid,dtype='float')
