@@ -18,7 +18,10 @@ Installing iDEA
 
 .. code-block:: bash
 
+   mkdir iDEAL # base directory to put iDEA
+   cd iDEAL
    git clone user@rwgu1.york.ac.uk:~jw1294/iDEAL .
+
    # add current working directory to PYTHONPATH
    echo "export PYTHONPATH=\$PYTHONPATH:`pwd`" >> ~/.bashrc
    # add scripts directory to your PATH
