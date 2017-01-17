@@ -84,6 +84,14 @@ iDEA.SPiDEA module
     :undoc-members:
     :show-inheritance:
 
+iDEA.continuation module
+------------------------
+
+.. automodule:: iDEA.continuation
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 iDEA.info module
 ----------------
 
