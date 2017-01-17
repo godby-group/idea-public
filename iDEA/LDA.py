@@ -29,7 +29,7 @@ def groundstate(v):
    returns array_like, array_like, array_like
         density, normalised orbitals indexed as Psi[orbital_number][space_index], energies
    """	
-   H = copy.copy(T)
+   H = copy.copy(T) # kinetic energy
    H[0,:] += v[:]
    e,eig_func = spla.eig_banded(H,True) 
    n = np.zeros(pm.sys.grid,dtype='float')
@@ -191,7 +191,7 @@ def main(parameters):
    returns object
       Results object
    """
-   global pm, T
+   global pm, T # global variables
    pm = parameters
 
    T = np.zeros((2,pm.sys.grid),dtype='float') # Kinetic Energy operator
@@ -207,11 +207,12 @@ def main(parameters):
       v_s[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # External potential
       v_ext[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # External potential
    n,waves,energies = groundstate(v_s) #Inital guess
-   U = coulomb()
+   U = coulomb() # Create Coulomb matrix
    n_old = np.zeros(pm.sys.grid,dtype='float')
-   n_old[:] = n[:]
+   n_old[:] = n[:] 
    convergence = 1.0
-   while convergence>pm.lda.tol: # Use LDA
+   iteration = 0
+   while convergence > pm.lda.tol and iteration < pm.lda.max_iter: # Use LDA
       v_s_old = copy.copy(v_s)
       if pm.lda.mix == 0:
          v_s[:] = v_ext[:]+hartree(n,U)+XC(n)
@@ -222,6 +223,11 @@ def main(parameters):
       n_old[:] = n[:]
       string = 'LDA: electron density convergence = ' + str(convergence)
       pm.sprint(string,1,newline=False)
+      iteration += 1
+      if(iteration == pm.lda.max_iter):
+         print
+         string = 'LDA: reached maximum number of iterations {}. terminating self-consistency'.format(iteration)
+         pm.sprint(string,1,newline=True)
 
    pm.sprint('',1)
    pm.sprint('LDA: ground-state xc energy: %s' % EXC(n),1)

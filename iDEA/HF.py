@@ -151,8 +151,6 @@ def main(parameters):
          if i<Nx-1:
             T[i+1,i] = -0.5/dx**2
             T[i,i+1] = -0.5/dx**2
-
-   
    
    # Construct external potential
    for i in range(Nx):
@@ -200,7 +198,7 @@ def main(parameters):
 
    if pm.hf.save_eig:
        # Note: Psi is incorrectly normalised in the code...
-       results.add(Psi*np.sqrt(sqdx), 'gs_hf_eigf')
+       results.add(Psi, 'gs_hf_eigf')
        results.add(K, 'gs_hf_eigv')
 
    if pm.run.save:

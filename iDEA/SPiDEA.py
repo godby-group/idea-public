@@ -236,8 +236,8 @@ def main(parameters):
 
    # Construct matrices
    H = K + V
-   A = constructA(H,'i')
-   C = constructC(H,'i')
+   A = constructA(H,False)
+   C = constructC(H,False)
 
    # Construct initial wavefunction
    wavefunction = initialWavefunction(xgrid)
@@ -291,8 +291,8 @@ def main(parameters):
 
    # Construct matrices
    H = K + V
-   A = constructA(H,'r')
-   C = constructC(H,'r')
+   A = constructA(H,True)
+   C = constructC(H,True)
 
    # Perform real time iterations until completed
    i = 0

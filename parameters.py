@@ -82,6 +82,7 @@ lda = InputSection()
 lda.NE = 2              #: Number of electrons used in construction of the LDA
 lda.mix = 0.0           #: Self consistent mixing parameter (default 0, only use if doesn't converge)
 lda.tol = 1e-12         #: Self-consistent convergence tolerance
+lda.max_iter = 10000    #: Maximum number of iterations in LDA self-consistency
 lda.save_eig = False    #: save eigenfunctions and eigenvalues of Hamiltonian
 
 ### MLP parameters

@@ -225,7 +225,7 @@ def main(parameters):
             H.qp_shift = 0.5 * (S_iw_dg[st.NE-1,0] + S_iw_dg[st.NE,0])
             H.qp_shift = H.qp_shift.real
             #pm.sprint('MBPT: quasi-particle fermi energy: {:.3f} Ha ({:+.3f} Ha).'.format(qp_fermi,qp_shift))
-            pm.sprint('MBPT: quasi-particle shift: {:.3f} Ha.'.format(H.qp_shift))
+            pm.sprint('MBPT: quasi-particle shift: {:.7f} Ha.'.format(H.qp_shift))
             for i in range(st.x_npt):
                 S[i,i,:] -= H.qp_shift / st.x_delta
 
@@ -280,7 +280,7 @@ def main(parameters):
         # extrapolate G(it=0) from above
         eps = np.max(np.abs(G.real))
         if eps > pm.mbpt.den_tol:
-            st.sprint("MBPT: Warning: Discarding real part with max. {:.3e} during extrapolation".format(eps))
+            pm.sprint("MBPT: Warning: Discarding real part with max. {:.3e} during extrapolation".format(eps))
         G_pzero = extrapolate_to_zero(G, st, 'from_above')
 
     # normalise and save density
@@ -366,7 +366,7 @@ def read_input_quantities(pm, st):
     # computing & reading potentials
     vh = hartree_potential(st, den=den)
     vx = exchange_potential(st, orbitals=orbitals)
-    vhxc = np.zeros((st.x_npt, st.x_npt), dtype=np.float)
+    vhxc = np.zeros((st.x_npt, st.x_npt), dtype=np.complex)
     if flavour == 'non':
         # non-interacting: v_Hxc = 0
         pass
@@ -438,7 +438,7 @@ def exchange_potential(st, G=None, orbitals=None):
         # default multiplication is element-wise
         v_x = 1J * G[:,:,0] * st.coulomb_repulsion
     elif orbitals is not None:
-        v_x = np.zeros((st.x_npt,st.x_npt),dtype=complex)
+        v_x = np.zeros((st.x_npt,st.x_npt),dtype=np.complex)
         for i in range(st.NE):
             orb = orbitals[i]
             v_x -= np.tensordot(orb.conj(), orb, axes=0)
