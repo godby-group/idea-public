@@ -265,7 +265,7 @@ def main(parameters):
 
       # Calculate the wavefunction convergence
       convergence = np.linalg.norm(wavefunction-old_wavefunction)
-      string = 'many body complex time: t = ' + str(i*pm.ext.cdeltat) + ', convergence = ' + str(convergence)
+      string = 'EXT: complex time, t = ' + str(i*pm.ext.cdeltat) + ', convergence = ' + str(convergence)
       pm.sprint(string,1,newline=False)
       
       # iterate
@@ -274,7 +274,7 @@ def main(parameters):
    # Calculate the groundstate energy
    energy = calculateEnergy(H,wavefunction)
    print
-   print 'many body complex time: ground state energy =', energy
+   print 'EXT: complex time, ground state energy =', energy
 
    # Save ground state energy
    results = rs.Results()
@@ -321,7 +321,7 @@ def main(parameters):
 
       # Calculate the wavefunction normalisation
       normalisation = (np.linalg.norm(wavefunction)*pm.sys.deltax**0.5)
-      string = 'many body real time: t = ' + str(i*pm.sys.deltat) + ', normalisation = ' + str(normalisation)
+      string = 'EXT: real time, t = ' + str(i*pm.sys.deltat) + ', normalisation = ' + str(normalisation)
       pm.sprint(string,1,newline=False)
       
       # iterate
