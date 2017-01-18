@@ -57,7 +57,7 @@ def XC(Den):
    if(pm.lda.deon2):
       k = pm.lda.dek2
       V_xc[:] = (k[0]+k[1]*Den[:] + k[2]*Den[:]**2)*Den[:]**k[3]
-      V_xc[:] = V_xc[:]/scsp.erf(n_int(K,Den[:]))
+      V_xc[:] = V_xc[:]/scsp.erf(n_int(k,Den[:]))
    if(pm.lda.deon):
       k = pm.lda.dek
       V_xc[:] = (k[0] + k[1]*Den[:] + k[2]*Den[:]**2)*Den[:]**k[3]
