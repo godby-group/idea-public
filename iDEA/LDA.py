@@ -30,7 +30,7 @@ def groundstate(v):
         density, normalised orbitals indexed as Psi[orbital_number][space_index], energies
    """	
    H = copy.copy(T) # kinetic energy
-   H[0,:] += v[:]
+   H[0,:] += v[:] # add potential
    e,eig_func = spla.eig_banded(H,True) 
    n = np.zeros(pm.sys.grid,dtype='float')
    for i in range(pm.sys.NE):
