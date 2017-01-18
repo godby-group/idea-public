@@ -54,7 +54,7 @@ def n_int(K, n):
 # LDA approximation for XC potential
 def XC(Den):
    V_xc = np.zeros(pm.sys.grid,dtype='float')
-   if(pm.lda.deon2)
+   if(pm.lda.deon2):
       k = pm.lda.dek2
       V_xc[:] = (k[0]+k[1]*Den[:] + k[2]*n[:]**2)*n[:]**k[3]
       V_xc[:] = V_xc[:]/scsp.erf(n_int(K,n[:]))
