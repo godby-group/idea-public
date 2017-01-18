@@ -20,6 +20,7 @@ import RE_Utilities
 import scipy.sparse as sps
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
+import scipy.special as scsp
 import results as rs
 
 # Solve ground-state KS equations
@@ -45,9 +46,18 @@ def Coulomb():
          U[i,k] = 1.0/(abs(i*pm.sys.deltax-k*pm.sys.deltax)+pm.sys.acon)
    return U
 
+def n_int(K, n):
+   d=0.0
+   for i in range(pm.sys.grid):
+       d = d + (k[4] + k[5]*n[i] + k[6]*n[i]**2)*n[i]**k[7]
+
 # LDA approximation for XC potential
 def XC(Den):
    V_xc = np.zeros(pm.sys.grid,dtype='float')
+   if(pm.lda.deon2)
+      k = pm.lda.dek2
+      V_xc[:] = (k[0]+k[1]*Den[:] + k[2]*n[:]**2)*n[:]**k[3]
+      V_xc[:] = V_xc[:]/scsp.erf(n_int(K,n[:]))
    if(pm.lda.deon):
       k = pm.lda.dek
       V_xc[:] = (k[0] + k[1]*Den[:] + k[2]*Den[:]**2)*Den[:]**k[3]
