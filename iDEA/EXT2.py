@@ -65,7 +65,7 @@ def Potential(i,j,k):
         return V_ext_array[k] + V_ext_array[j] + inte*V_coulomb_array[abs(j-k)]
         #return pm.sys.v_ext(xk) + pm.sys.v_ext(xj) + inte*(1.0/(abs(xk-xj) + pm.sys.acon))
     else:
-        return V_ext_array[k] + V_ext_array[j] + pm.inte*V_coulomb_array[abs(j-k)] + V_pert_array[k] + V_pert_array[j]
+        return V_ext_array[k] + V_ext_array[j] + inte*V_coulomb_array[abs(j-k)] + V_pert_array[k] + V_pert_array[j]
         #return pm.sys.v_ext(xk) + pm.sys.v_ext(xj) + inte*(1.0/(abs(xk-xj) + pm.sys.acon)) + pm.sys.v_pert(xk) + pm.sys.v_pert(xj)
 
 
