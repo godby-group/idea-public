@@ -46,19 +46,20 @@ def Coulomb():
          U[i,k] = 1.0/(abs(i*pm.sys.deltax-k*pm.sys.deltax)+pm.sys.acon)
    return U
 
-def n_int(K, n):
+def n_int(k, n):
    d=0.0
    for i in range(pm.sys.grid):
        d = d + (k[4] + k[5]*n[i] + k[6]*n[i]**2)*n[i]**k[7]
-
+   d = d*pm.sys.deltax
+   return d
 # LDA approximation for XC potential
 def XC(Den):
    V_xc = np.zeros(pm.sys.grid,dtype='float')
    if(pm.lda.deon2):
       k = pm.lda.dek2
       V_xc[:] = (k[0]+k[1]*Den[:] + k[2]*Den[:]**2)*Den[:]**k[3]
-      V_xc[:] = V_xc[:]/scsp.erf(n_int(k,Den[:]))
-   if(pm.lda.deon):
+      V_xc[:] = V_xc[:]/(scsp.erf(n_int(k,Den[:])*Den[:]))
+   elif(pm.lda.deon):
       k = pm.lda.dek
       V_xc[:] = (k[0] + k[1]*Den[:] + k[2]*Den[:]**2)*Den[:]**k[3]
    else: 
@@ -73,7 +74,8 @@ def XC(Den):
 # LDA approximation for XC energy 
 def EXC(Den): 
    E_xc_LDA = 0.0
-   if (pm.sys.NE == 1):
+   
+   elif (pm.sys.NE == 1):
       for i in xrange(pm.sys.grid):
          e_xc_LDA = ((-0.803+0.82*Den[i]-0.47*(Den[i])**2)*Den[i]**0.638) 
          E_xc_LDA += (Den[i])*(e_xc_LDA)*pm.sys.deltax
