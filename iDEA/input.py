@@ -43,7 +43,7 @@ class SystemSection(InputSection):
     @property
     def deltat(self):
         """Spacing of temporal grid"""
-        return 1.0*self.tmax/(self.imax-1)
+        return 1.0*self.tmax/(self.imax)
 
     @property
     def grid_points(self):
@@ -68,36 +68,38 @@ class Input(object):
         self.filename = ''
         self.log = ''
 
-        ### run parameters
+        ### Run parameters
         self.run = InputSection()
         run = self.run
-        run.name = 'run_name'       #: Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
-        run.time_dependence = False #: whether to run time-dependent calculation
-        run.verbosity = 'default'   #: output verbosity ('low', 'default', 'high')
-        run.save = True             #: whether to save results to disk when they are generated
-        run.module = 'iDEA'         #: specify alternative folder (in this directory) containing modified iDEA module  
-        run.EXT = False             #: Run Exact Many-Body calculation
-        run.NON = False             #: Run Non-Interacting approximation
-        run.LDA = False             #: Run LDA approximation
-        run.MLP = False             #: Run MLP approximation
-        run.HF = False              #: Run Hartree-Fock approximation
-        run.MBPT = False            #: Run Many-body pertubation theory
-        run.LAN = False             #: Run Landauer approximation
+        run.name = 'run_name'                #: Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
+        run.time_dependence = False          #: whether to run time-dependent calculation
+        run.verbosity = 'default'            #: output verbosity ('low', 'default', 'high')
+        run.save = True                      #: whether to save results to disk when they are generated
+        run.module = 'iDEA'                  #: specify alternative folder (in this directory) containing modified iDEA module  
+        run.EXT = False                      #: Run Exact Many-Body calculation
+        run.NON = False                      #: Run Non-Interacting approximation
+        run.LDA = False                      #: Run LDA approximation
+        run.MLP = False                      #: Run MLP approximation
+        run.HF = False                       #: Run Hartree-Fock approximation
+        run.MBPT = False                     #: Run Many-body pertubation theory
+        run.LAN = False                      #: Run Landauer approximation
         
-        ### system parameters
+
+        ### System parameters
         self.sys = SystemSection()
         sys = self.sys
-        sys.NE = 2                  #: Number of electrons
-        sys.grid = 201              #: Number of grid points (must be odd)
-        sys.xmax = 10.0             #: Size of the system
-        sys.tmax = 1.0              #: Total real time
-        sys.imax = 1000             #: Number of real time iterations
-        sys.acon = 1.0              #: Smoothing of the Coloumb interaction
-        sys.interaction_strength = 1#: Scales the strength of the Coulomb interaction
-        sys.im = 0                  #: Use imaginary potentials
+        sys.NE = 2                           #: Number of electrons
+        sys.grid = 201                       #: Number of grid points (must be odd)
+        sys.xmax = 10.0                      #: Size of the system
+        sys.tmax = 1.0                       #: Total real time
+        sys.imax = 1000                      #: Number of real time iterations
+        sys.acon = 1.0                       #: Smoothing of the Coloumb interaction
+        sys.interaction_strength = 1         #: Scales the strength of the Coulomb interaction
+        sys.im = 0                           #: Use imaginary potentials
         
         def v_ext(x):
-            """Initial external potential"""
+            """Initial external potential
+            """
             return 0.5*(0.25**2)*(x**2)
         sys.v_ext = v_ext
         
@@ -129,72 +131,80 @@ class Input(object):
         ### Exact parameters
         self.ext = InputSection()
         ext = self.ext
-        ext.par = 0            #: Use parallelised solver and multiplication (0: serial, 1: parallel) Note: Recommend using parallel for large runs
-        ext.ctol = 1e-14       #: Tolerance of complex time evolution (Recommended: 1e-14)
-        ext.rtol = 1e-14       #: Tolerance of real time evolution (Recommended: 1e-14)
-        ext.ctmax = 10000.0    #: Total complex time
-        ext.cimax = int(0.1*(ext.ctmax/sys.deltat)+1)     #: Complex iterations (DERIVED)
-        ext.cdeltat = ext.ctmax/(ext.cimax-1)             #: Complex Time Grid spacing (DERIVED)
-        ext.RE = False         #: Reverse engineer many-body density
+        ext.par = 0                       #: Use parallelised solver and multiplication (0: serial, 1: parallel) Note: Recommend using parallel for large runs
+        ext.ctol = 1e-14                                  #: Tolerance of complex time evolution (Recommended: 1e-14)
+        ext.rtol = 1e-14                                  #: Tolerance of real time evolution (Recommended: 1e-14)
+        ext.ctmax = 5000.0                                #: Total complex time
+        ext.cimax = 1e5                                   #: Complex iterations
+        ext.cdeltat = ext.ctmax/ext.cimax                 #: Complex time grid spacing (DERIVED)
+        ext.RE = False                                    #: Reverse engineer many-body density
+        ext.ELF_GS = False                                #: Calculate ELF for the ground-state of the system     
+        ext.ELF_TD = False                                #: Calculate ELF for the time-dependent part of the system
         
-        
-        ### Non-Interacting approximation parameters
+
+        ### Non-interacting approximation parameters
         self.non = InputSection()
         non = self.non
-        non.rtol = 1e-14        #: Tolerance of real time evolution (Recommended: 1e-14)
-        non.save_eig = False    #: save eigenfunctions and eigenvalues of Hamiltonian
-        non.RE = False          #: Reverse engineer non-interacting density
+        non.rtol = 1e-14                     #: Tolerance of real time evolution (Recommended: 1e-14)
+        non.save_eig = False                 #: save eigenfunctions and eigenvalues of Hamiltonian
+        non.RE = False                       #: Reverse engineer non-interacting density
         
+
         ### LDA parameters
         self.lda = InputSection()
         lda = self.lda
-        lda.NE = 2              #: Number of electrons used in construction of the LDA
-        lda.mix = 0.0           #: Self consistent mixing parameter (default 0, only use if doesn't converge)
-        lda.tol = 1e-12         #: Self-consistent convergence tolerance
-        lda.save_eig = False    #: save eigenfunctions and eigenvalues of Hamiltonian
+        lda.NE = 2                           #: Number of electrons used in construction of the LDA
+        lda.mix = 0.0                        #: Self consistent mixing parameter (default 0, only use if doesn't converge)
+        lda.tol = 1e-12                      #: Self-consistent convergence tolerance
+        lda.save_eig = False                 #: save eigenfunctions and eigenvalues of Hamiltonian
         
+
         ### MLP parameters
         self.mlp = InputSection()
         mlp = self.mlp
-        mlp.f = 'e'             #: f mixing parameter (if f='e' the weight is optimzed with the elf)
-        mlp.tol = 1e-12         #: Self-consistent convergence tollerance
-        mlp.mix = 0.0           #: Self consistent mixing parameter (default 0, only use if doesn't converge)
-        mlp.reference_potential = 'non'      #: Choice of refernce potential for mixing with the SOA
+        mlp.f = 'e'                          #: f mixing parameter (if f='e' the weight is optimzed with the elf)
+        mlp.tol = 1e-12                      #: Self-consistent convergence tollerance
+        mlp.mix = 0.0                        #: Self-consistent mixing parameter (default 0, only use if doesn't converge)
+        mlp.reference_potential = 'non'      #: Choice of reference potential for mixing with the SOA
+
         
         ### HF parameters
         self.hf = InputSection()
         hf = self.hf
-        hf.fock = 1             #: Include Fock term (0 = Hartree approximation, 1 = Hartree-Fock approximation)
-        hf.con = 1e-12          #: Tolerance
-        hf.nu = 0.9             #: Mixing term
-        hf.save_eig = False     #: save eigenfunctions and eigenvalues of Hamiltonian
-        hf.RE = False           #: Reverse engineer hf density
+        hf.fock = 1                          #: Include Fock term (0 = Hartree approximation, 1 = Hartree-Fock approximation)
+        hf.con = 1e-12                       #: Tolerance
+        hf.nu = 0.9                          #: Mixing term
+        hf.save_eig = False                  #: save eigenfunctions and eigenvalues of Hamiltonian
+        hf.RE = False                        #: Reverse-engineer hf density
+
         
         ### MBPT parameters
         self.mbpt = InputSection()
         mbpt = self.mbpt
-        mbpt.h0 = 'non'                 #: starting hamiltonian: 'non','ha','hf','lda'
-        mbpt.tau_max = 40.0             #: Maximum value of imaginary time
-        mbpt.tau_npt = 800              #: Number of imaginary time points (must be even)
-        mbpt.norb = 25                  #: Number of orbitals to use
-        mbpt.flavour = 'G0W0'           #: 'G0W0', 'GW', 'G0W', 'GW0'
-        mbpt.den_tol = 1e-12            #: density tolerance of self-consistent algorithm
-        mbpt.max_iter = 100             #: Maximum number of self-consistent algorithm
-        mbpt.save_diag = ['sigma0_iw']  #: whether to save diagonal components of all space-time quantities
-        mbpt.save_full = []             #: which space-time quantities to save fully
-        mbpt.w = 'dynamical'            #: whether to compute 'full' or 'dynamical' W
-        mbpt.hedin_shift = True         #: whether to perform Hedin shift
-        mbpt.RE = False                 #: Reverse engineer mbpt density
+        mbpt.h0 = 'non'                      #: starting hamiltonian: 'non','ha','hf','lda'
+        mbpt.tau_max = 40.0                  #: Maximum value of imaginary time
+        mbpt.tau_npt = 800                   #: Number of imaginary time points (must be even)
+        mbpt.norb = 25                       #: Number of orbitals to use
+        mbpt.flavour = 'G0W0'                #: 'G0W0', 'GW', 'G0W', 'GW0'
+        mbpt.den_tol = 1e-12                 #: density tolerance of self-consistent algorithm
+        mbpt.max_iter = 100                  #: Maximum number of self-consistent algorithm
+        mbpt.save_diag = ['sigma0_iw']       #: whether to save diagonal components of all space-time quantities
+        mbpt.save_full = []                  #: which space-time quantities to save fully
+        mbpt.w = 'dynamical'                 #: whether to compute 'full' or 'dynamical' W
+        mbpt.hedin_shift = True              #: whether to perform Hedin shift
+        mbpt.RE = False                      #: Reverse-engineer mbpt density
         
-        # LAN parameters
+
+        ### LAN parameters
         self.lan = InputSection()
         lan = self.lan
-        lan.start = 'non'               #: Ground-state Kohn-Sham potential to be perturbed
+        lan.start = 'non'                    #: Ground-state Kohn-Sham potential to be perturbed
 
-        # RE parameters
+
+        ### RE parameters
         self.re = InputSection()
         re = self.re
-        re.save_eig = True    #: save Kohn-Sham eigenfunctions and eigenvalues of reverse-engineered potential
+        re.save_eig = True                   #: save Kohn-Sham eigenfunctions and eigenvalues of reverse-engineered potential
 
 
     def check(self):
