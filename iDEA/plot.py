@@ -9,10 +9,10 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
-def plot3d(O, name, pm, space='it'):
+def plot3d(O, name, pm, space='it', format='png'):
     """Plot quantity O(r,r';it) or O(r,r';iw)
 
-    Produces mp4 movie
+    Produces pngs or mp4 movie
 
     parameters
     -----------
@@ -25,10 +25,13 @@ def plot3d(O, name, pm, space='it'):
     space: str
         'it': last index is complex time
         'iw': last index is complex frequency
+    format: str
+        Output format
+        'mp4': mpeg 4 movie (requires ffmpeg)
+        'png': collection of portable network graphics
 
     """
     import matplotlib.animation as animation
-    plt.rcParams['animation.ffmpeg_path'] = ffmpeg_path
     import MBPT
 
     st = MBPT.SpaceTimeGrid(pm)
@@ -58,12 +61,28 @@ def plot3d(O, name, pm, space='it'):
     vmax = np.maximum(np.max(np.abs(O.real)),np.max(np.abs(O.imag)))
     vmin = -vmax
 
-    # Set up formatting for the movie files
-    writer = animation.FFMpegWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
     fig, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(11,5))
     plt.subplots_adjust(left=0.10)
 
-    print("Plotting {} frames".format(tau_npt))
+    for ax in [ax1, ax2]:
+        ax.set_xlim([-xmax,xmax])
+        ax.set_ylim([-xmax,xmax])
+        ax.set_xlabel('x [$a_0$]')
+        ax.set_ylabel('y [$a_0$]')
+        divider = make_axes_locatable(ax)
+        if ax == ax1:
+            cax1 = divider.append_axes("right", size="5%", pad=0.05)
+            ax.set_title("{} (real)".format(name))
+        else:
+            cax2 = divider.append_axes("right", size="5%", pad=0.05)
+            ax.set_title("{} (imag)".format(name))
+
+
+    if format == 'png':
+        print("Saving {} frames as pngs to plots/".format(tau_npt))
+    else:
+        print("Plotting {} frames".format(tau_npt))
+
     ims = []
     for it in range(tau_npt):
         im_r = ax1.imshow(O.real[:,:,it],norm=plt.Normalize(vmin,vmax),
@@ -73,30 +92,29 @@ def plot3d(O, name, pm, space='it'):
         label_i = ax2.text(0.8, 0.9,label.format(tau_grid[it]),
                            horizontalalignment='center', verticalalignment='center',
                            transform = ax2.transAxes)
-        ims.append( (im_r, im_i, label_i,) )
 
+        if it == 0:
+            plt.colorbar(im_r, cax=cax1)
+            plt.colorbar(im_i, cax=cax2)
 
-    for ax in [ax1, ax2]:
-        ax.set_xlim([-xmax,xmax])
-        ax.set_ylim([-xmax,xmax])
-        ax.set_xlabel('x [$a_0$]')
-        ax.set_ylabel('y [$a_0$]')
-        # put color bars
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="5%", pad=0.05)
-        if ax == ax1:
-            ax.set_title("{} (real)".format(name))
-            plt.colorbar(im_r, cax=cax)
+        if format=='png':
+            plt.savefig("{}/{}_{:04d}.png".format('plots',name,it), dpi=150)
+            label_i.remove()
+            im_r.remove()
+            im_i.remove()
         else:
-            plt.colorbar(im_i, cax=cax)
-            ax.set_title("{} (imag)".format(name))
+            ims.append( (im_r, im_i, label_i,) )
 
 
-    im_ani = animation.ArtistAnimation(fig, ims, interval=50, repeat_delay=3000,
-                                       blit=True)
-    mfile = "animations/{}.mp4".format(name)
-    print("Making movie {}".format(mfile))
-    print("This may take some time...")
-    im_ani.save(mfile, writer=writer)
 
+    if format =='mp4':
+        im_ani = animation.ArtistAnimation(fig, ims, interval=50, repeat_delay=3000,
+                                           blit=True)
+        mfile = "animations/{}.mp4".format(name)
+        print("Making movie {}".format(mfile))
+        print("This may take some time...")
+        plt.rcParams['animation.ffmpeg_path'] = ffmpeg_path
+        writer = animation.FFMpegWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+        #writer = animation.MencoderWriter(fps=15, bitrate=1800)
+        im_ani.save(mfile, writer=writer)
 

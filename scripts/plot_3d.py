@@ -27,6 +27,11 @@ parser.add_argument(
     metavar='FILENAME',
     default='parameters.py',
     help='Name of the quantity to plot.')
+parser.add_argument(
+    '--format',
+    metavar='STRING',
+    default='png',
+    help='Output format: "png" or "mp4"')
 args = parser.parse_args()
 
 pm = Input.from_python_file(args.parameters)
@@ -44,5 +49,4 @@ for name in args.quantities:
     else:
         space = 'it'
 
-
-    iplt.plot3d(data, name, pm, space)
+    iplt.plot3d(data, name, pm, space, args.format)
