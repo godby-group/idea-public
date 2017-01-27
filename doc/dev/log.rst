@@ -121,7 +121,7 @@ Version history
 
    - Reverse engineering time dependence fixed
    - Bug in Non interacting code fixed (Now converges to required tolerance in real time)
-   * iDEA_MB2 cleaned up
+   - iDEA_MB2 cleaned up
 
  * **v1.2.0** (2016-01-28)
 
