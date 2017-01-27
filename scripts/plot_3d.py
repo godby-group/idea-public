@@ -10,10 +10,8 @@ import os
 import pickle
 import re
 
-# import parameters file from current working directory
-sys.path.insert(0,os.getcwd())
-import parameters as pm
 import iDEA.plot as iplt
+from iDEA.input import Input
 
 parser = argparse.ArgumentParser(
     description="Plots a complex quantity F[r,r',tau] into a movie")
@@ -31,6 +29,7 @@ parser.add_argument(
     help='Name of the quantity to plot.')
 args = parser.parse_args()
 
+pm = Input.from_python_file(args.parameters)
 
 for name in args.quantities:
 
