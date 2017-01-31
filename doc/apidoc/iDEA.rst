@@ -4,6 +4,14 @@ iDEA package
 Submodules
 ----------
 
+iDEA.ELF module
+---------------
+
+.. automodule:: iDEA.ELF
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 iDEA.EXT2 module
 ----------------
 
