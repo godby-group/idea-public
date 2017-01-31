@@ -23,7 +23,7 @@ run.LAN = False                      #: Run Landauer approximation
 sys = SystemSection()
 sys.NE = 2                           #: Number of electrons
 sys.grid = 201                       #: Number of grid points (must be odd)
-sys.xmax = 10.0                      #: Size of the system
+sys.xmax = 10.                       #: Size of the system
 sys.tmax = 1.0                       #: Total real time
 sys.imax = 1000                      #: Number of real time iterations
 sys.acon = 1.0                       #: Smoothing of the Coloumb interaction
@@ -33,7 +33,7 @@ sys.im = 0                           #: Use imaginary potentials
 def v_ext(x):
     """Initial external potential
     """
-    return 0.5*(0.25**2)*(x**2)   
+    return 0.5*(0.4**2)*(x**2)   
 sys.v_ext = v_ext
 
 def v_pert(x): 
@@ -43,7 +43,7 @@ def v_pert(x):
     """
     y = -0.01*x
     if(sys.im == 1):
-        return y + im_petrb(x)
+        return y + v_pert_im(x)
     return y
 sys.v_pert = v_pert
 
