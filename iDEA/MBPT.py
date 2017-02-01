@@ -216,7 +216,7 @@ def main(parameters):
         pm.sprint('MBPT: computing expectation values <i|sigma(w)|j>',0)
         H.sigma_iw_dg = bracket_r(S, h0.orbitals, st)
         if pm.mbpt.flavour == 'QSGW':
-	    H.sigma_iw_full = bracket_r(S, h0.orbitals, st, mode='full')
+            H.sigma_iw_full = bracket_r(S, h0.orbitals, st, mode='full')
 
         # Align fermi energy of input and output Green function
         if pm.mbpt.hedin_shift:
@@ -229,15 +229,15 @@ def main(parameters):
             for i in range(st.x_npt):
                 S[i,i,:] -= H.qp_shift / st.x_delta
 
-	# Compute new quasiparticle energies (QSGW: and wave functions)
-	if pm.mbpt.flavour == 'QSGW': 
-	    pm.sprint('MBPT: analytic continuation of sigma(iw) to obtain sigma(w)',0)
-	    S_w = analytic_continuation(H.sigma_iw_full.reshape(st.norb*st.norb,st.tau_npt), st, pm)
-	    S_w = np.array(S_w).reshape((st.norb,st.norb))
+        # Compute new quasiparticle energies (QSGW: and wave functions)
+        if pm.mbpt.flavour == 'QSGW': 
+            pm.sprint('MBPT: analytic continuation of sigma(iw) to obtain sigma(w)',0)
+            S_w = analytic_continuation(H.sigma_iw_full.reshape(st.norb*st.norb,st.tau_npt), st, pm)
+            S_w = np.array(S_w).reshape((st.norb,st.norb))
             S_w_dg = np.diagonal(S_w)
-	    pm.sprint('MBPT: diagonalising quasiparticle Hamiltonian',0)
+            pm.sprint('MBPT: diagonalising quasiparticle Hamiltonian',0)
             h0_qp = optimise_hamiltonian(h0, S_w, st)
-	    break
+            break
 
         cycle = cycle + 1
         pm.sprint('')
@@ -556,8 +556,8 @@ def bracket_r(O, orbitals, st, mode='diagonal'):
     Returns
     -------
     bracket_r: array_like
-    	- if mode == 'diagonal': bracket_r[i,k]
-    	- if mode == 'full': bracket_r[i,j,k]
+        - if mode == 'diagonal': bracket_r[i,k]
+        - if mode == 'full': bracket_r[i,j,k]
 
         i,j orbital indices, k index of temporal grid
     """
@@ -1015,17 +1015,17 @@ def optimise_hamiltonian(h0, S_w, st):
     #print(sigma_fits.shape)
     #print(qp_energies.shape)
     for i in range(st.norb):
-	for j in range(st.norb):
-	    # mode A
-	    # note: one could also use the *previous* qp_energies here
-	    # in this case, there is no need to solve_for_qp_energies
-	    # TODO: check whether this is more stable
-	    h_opt[i,j] = 0.5*( S_w[i,j].f(qp_energies[i])\
-			   + S_w[i,j].f(qp_energies[j]))
+        for j in range(st.norb):
+            # mode A
+            # note: one could also use the *previous* qp_energies here
+            # in this case, there is no need to solve_for_qp_energies
+            # TODO: check whether this is more stable
+            h_opt[i,j] = 0.5*( S_w[i,j].f(qp_energies[i])\
+                           + S_w[i,j].f(qp_energies[j]))
 
-	#h_opt[i,i] += qp_energies[i].real
-	h_opt[i,i] += h0.sp_energies[i] + hartree_energies
-	h_opt[i,i] -= H.qp_energies[i].real
+        #h_opt[i,i] += qp_energies[i].real
+        h_opt[i,i] += h0.sp_energies[i] + hartree_energies
+        h_opt[i,i] -= H.qp_energies[i].real
 
     # take Hermitian part
     h_opt = 0.5 * (h_opt + h_opt.H)
