@@ -3,5 +3,5 @@ Updating iDEA
 
 .. code-block:: bash
 
-   # Update all branches from git repository
-   git pull origin --all 
+   # Pull all changes from central git repository
+   git pull

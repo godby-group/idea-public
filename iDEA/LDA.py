@@ -25,8 +25,25 @@ import results as rs
 
 # Solve ground-state KS equations
 def groundstate(v):
+<<<<<<< HEAD
    H = copy.copy(T)
    H[0,:] += v[:]
+=======
+   r"""Calculates the oribitals and ground state density for the system for a given potential
+
+    .. math:: H \psi_{i} = E_{i} \psi_{i}
+                       
+   parameters
+   ----------
+   v : array_like
+        potential
+
+   returns array_like, array_like, array_like
+        density, normalised orbitals indexed as Psi[orbital_number][space_index], energies
+   """	
+   H = copy.copy(T) # kinetic energy
+   H[0,:] += v[:] # add potential
+>>>>>>> 6b4b412d8ed3244def53bc865ca1501898682224
    e,eig_func = spla.eig_banded(H,True) 
    n = np.zeros(pm.sys.grid,dtype='float')
    for i in range(pm.sys.NE):
@@ -161,6 +178,14 @@ def main(parameters):
       n_old[:] = n[:]
       string = 'LDA: electron density convergence = ' + str(convergence)
       pm.sprint(string,1,newline=False)
+<<<<<<< HEAD
+=======
+      iteration += 1
+      if(iteration == pm.lda.max_iter):
+         print
+         string = 'LDA: warning! reached maximum number of iterations {}. terminating self-consistency'.format(iteration)
+         pm.sprint(string,1,newline=True)
+>>>>>>> 6b4b412d8ed3244def53bc865ca1501898682224
 
    pm.sprint('',1)
    pm.sprint('LDA: ground-state xc energy: %s' % EXC(XC(n),n),1)

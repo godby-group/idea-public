@@ -4,8 +4,8 @@ iDEA development
 
 .. toctree::
 
+   log
    todo
-   bugs
    add
    related
    edit

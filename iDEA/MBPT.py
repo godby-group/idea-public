@@ -104,12 +104,19 @@ def main(parameters):
       Results object
     """
     pm = parameters
+
+    if pm.mbpt.flavour in ['GW','G0W0','GW0','QSGW']:
+        pm.sprint('MBPT: running {} calculation'.format(pm.mbpt.flavour),1)
+    else:
+        raise ValueError("Unknown MBPT flavour {}".format(pm.mbpt.flavour))
+
     results = rs.Results()
 
     st = SpaceTimeGrid(pm)
     pm.sprint(str(st),0)
 
     # read eigenvalues and eigenfunctions and potentials of starting Hamiltonian
+    pm.sprint('MBPT: starting from {} approximation'.format(pm.mbpt.h0),1)
     h0 = read_input_quantities(pm,st)
     results.add(h0.energies, name="gs_mbpt_eigv0")
     results.add(h0.orbitals, name="gs_mbpt_eigf0")
@@ -134,7 +141,7 @@ def main(parameters):
                 results.save(pm, list=[name])
 
     # compute G0
-    pm.sprint('MBPT: setting up G0(it)',1)
+    pm.sprint('MBPT: setting up G0(it)',0)
     G0, G0_pzero = non_interacting_green_function(h0.orbitals, h0.energies, st, zero='both')
     save(G0,"G0_it")
 
@@ -204,6 +211,9 @@ def main(parameters):
         for i in range(st.tau_npt):
             S[:,:,i] += delta
         save(S, "S{}_iw".format(cycle))
+
+
+        pm.sprint('MBPT: computing expectation values <i|sigma(w)|j>',0)
         H.sigma_iw_dg = bracket_r(S, h0.orbitals, st)
         if pm.mbpt.flavour == 'QSGW':
 	    H.sigma_iw_full = bracket_r(S, h0.orbitals, st, mode='full')
@@ -221,10 +231,13 @@ def main(parameters):
 
 	# Compute new quasiparticle energies (QSGW: and wave functions)
 	if pm.mbpt.flavour == 'QSGW': 
-	    S_fits = analytic_continuation(H.sigma_iw_full.reshape(st.norb*st.norb,st.tau_npt))
-	    S_fits = np.array(S_fits).reshape((st.norb,st.norb))
-            S_fits_dg = np.diagonal(S_fits)
-	    pm.sprint('MBPT: diagonalising quasiparticle Hamiltonian')
+	    pm.sprint('MBPT: analytic continuation of sigma(iw) to obtain sigma(w)',0)
+	    S_w = analytic_continuation(H.sigma_iw_full.reshape(st.norb*st.norb,st.tau_npt), st, pm)
+	    S_w = np.array(S_w).reshape((st.norb,st.norb))
+            S_w_dg = np.diagonal(S_w)
+	    pm.sprint('MBPT: diagonalising quasiparticle Hamiltonian',0)
+            h0_qp = optimise_hamiltonian(h0, S_w, st)
+	    break
 
         cycle = cycle + 1
         pm.sprint('')
@@ -979,7 +992,7 @@ def analytic_continuation(S, st, pm, n_poles=3, fit_range=None):
 
         diff = y_fit - fit.f(1J * st.omega_grid[indices])
         err = np.sum(np.abs(diff)**2) * st.omega_delta
-        pm.sprint(err)
+        #pm.sprint(err)
         # Note: here, we would have the option to simply repeat the fit
         if err > 1e-5:
             pm.sprint("Warning: {}-pole fit differs by {:.1e} for state {}"
@@ -988,5 +1001,40 @@ def analytic_continuation(S, st, pm, n_poles=3, fit_range=None):
         fits.append(fit)
 
     return fits
+
+def optimise_hamiltonian(h0, S_w, st):
+    """Compute optimal non-interacting Hamiltonian for self-energy
+
+    This is quasi-particle self-consistent GW
+    """
+
+    h_opt = np.empty((st.norb,st.norb), dtype=float)
+
+    # need hartree energies of sp_orbitals for new rho
+    h_energies = hartree_energies(pm, orbitals=qp_orbitals, rho=rho)
+    #print(sigma_fits.shape)
+    #print(qp_energies.shape)
+    for i in range(st.norb):
+	for j in range(st.norb):
+	    # mode A
+	    # note: one could also use the *previous* qp_energies here
+	    # in this case, there is no need to solve_for_qp_energies
+	    # TODO: check whether this is more stable
+	    h_opt[i,j] = 0.5*( S_w[i,j].f(qp_energies[i])\
+			   + S_w[i,j].f(qp_energies[j]))
+
+	#h_opt[i,i] += qp_energies[i].real
+	h_opt[i,i] += h0.sp_energies[i] + hartree_energies
+	h_opt[i,i] -= H.qp_energies[i].real
+
+    # take Hermitian part
+    h_opt = 0.5 * (h_opt + h_opt.H)
+
+    eigv, eigvec = la.eigh(h_opt)
+    qp_energies = eigv
+    # normalization in r-space: 1/sqrt(deltax)
+    # np.dot(a,b) sums over last axis of a and 2nd-to-last axis of b
+    eigvec = eigvec.swapaxes(0,1)
+    qp_orbitals = np.dot(eigvec, h0.orbitals)
 
 

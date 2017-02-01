@@ -20,14 +20,15 @@ make sure to choose different run names for different inputs
     :emphasize-lines: 7
 
 
-Letting python know about iDEA
-------------------------------
+Checking python knows about iDEA
+--------------------------------
 Since iDEA is designed as a python package, it can be run from
 everywhere, if you let your python installation know where the package is located.
+During the installation of iDEA the iDEAL directory should have been
+added to PYTHONPATH. To test this has worked simply perform the following
 
 .. code-block:: bash
 
-    export PYTHONPATH=$path_to_iDEA  # add this to your .bashrc
     cd $test_folder                  # some folder you have created
     cp $path_to_iDEA/parameters.py . # where you have downloaded iDEA
     cp $path_to_iDEA/iDEA.py .

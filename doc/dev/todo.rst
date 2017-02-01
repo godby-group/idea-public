@@ -2,20 +2,31 @@
 Development Todo List
 *********************
 
-Open issues
-===========
- #. (lt934)
+Things to fix
+=============
+ #. reported by: lt934, fixed by: N/A
+
     Make mkl (and coo) import dependent on whether user asks for a parallelized calculation
- #. (lt934)
-    remove reliance on global variables in all codes
- #. (lt934)
-    add checks of input parameters in input.py
+
+ #. reported by: lt934, fixed by: N/A
+
+    Remove reliance on global variables in all codes (EXT2,EXT3,HF and RE particularly)
+
+ #. reported by: lt934, fixed by: N/A
+
+    Add checks of input parameters in input.py
+
+ #. reported by: jw1294, fixed by: N/A
+
+    Add unit tests for HF, LDA and EXT codes
 
 Feature requests
 ================
 
- #. (lt934)
+ #. requested by: lt934, added by: N/A
+
     Possibly improve citation handling in documentation by adding bibtex
-    support (check out 
-    `sphinxcontrib-bibtex <http://sphinxcontrib-bibtex.readthedocs.org/en/latest/index.html>`_)
+    support (check out `sphinxcontrib-bibtex <http://sphinxcontrib-bibtex.readthedocs.org/en/latest/index.html>`_)
+
+
 
