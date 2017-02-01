@@ -30,8 +30,13 @@ parser.add_argument(
 parser.add_argument(
     '--format',
     metavar='STRING',
-    default='png',
+    default='mp4',
     help='Output format: "png" or "mp4"')
+parser.add_argument(
+    '--stride',
+    metavar='INT',
+    default=1,
+    help='Plot every STRIDE frames')
 args = parser.parse_args()
 
 pm = Input.from_python_file(args.parameters)
@@ -49,4 +54,4 @@ for name in args.quantities:
     else:
         space = 'it'
 
-    iplt.plot3d(data, name, pm, space, args.format)
+    iplt.plot3d(data, name, pm, space, args.format, step=args.stride)
