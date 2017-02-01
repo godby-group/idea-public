@@ -39,7 +39,7 @@ def plot3d(O, name, pm, space='it', format='png'):
     xmax = st.x_max
     # this is something one always needs to do for imshow
     O = O[::-1]
-    O = O.swapaxes(0,1)
+    #O = O.swapaxes(0,1)   # Why was this here?
     extent = [-xmax, xmax, -xmax, xmax]
 
     tau_npt = st.tau_npt

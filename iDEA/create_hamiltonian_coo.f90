@@ -65,7 +65,7 @@ subroutine create_hamiltonian_coo(coo_j, coo_k, coo_data, h_diagonals,&
   ! F2PY SIGNATURE CREATION                                                     !
   !-----------------------------------------------------------------------------!
   !f2py intent(in) :: r
-  real (kind=dp) :: r
+  complex (kind=dp) :: r
 
   !f2py intent(in) :: jmax, kmax, max_size
   integer :: jmax, kmax, max_size

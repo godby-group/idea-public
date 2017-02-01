@@ -108,9 +108,9 @@ class Input(object):
         
             Switched on at t=0.
             """
-            y = -0.1*x
+            y = -0.01*x
             if(sys.im == 1):
-                return y + im_petrb(x)
+                return y + v_pert_im(x)
             return y
         sys.v_pert = v_pert
         

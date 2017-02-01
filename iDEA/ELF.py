@@ -1,119 +1,120 @@
-"""Calculates the exact (Dobson) electron localisation function (ELF) for a two or three electron system using the many-body wavefunction. 
+"""Calculates the exact (Dobson) electron localisation function (ELF) for a two or three electron 
+system using the many-body wavefunction. 
 """
 
 
 import numpy as np
 
 
-def Den(pm,PsiND):
-    r"""Calculate the electron density from the many-body wavefunction
+def calculate_density(pm,wavefunction_ND):
+    r"""Calculates the electron density from the many-body wavefunction
 
     parameters
     ----------
     pm : object
         Parameters object
-    PsiND : array_like
-        ND array of N-particle wavefunction, indexed as PsiND[{space_index_i}]
+    wavefunction_ND : array_like
+        ND array of the N-particle wavefunction, indexed as wavefunction_ND[{space_index_i}]
 
     returns array_like
-        1D array of electron density, indexed as n[space_index]
+        1D array of the electron density, indexed as density[space_index]
     """
     if(pm.sys.NE == 2):
-        n = 2.0*np.sum(np.abs(PsiND)**2, axis=1, dtype=np.float)*pm.sys.deltax
+        density = 2.0*np.sum(np.abs(wavefunction_ND)**2, axis=1, dtype=np.float)*pm.sys.deltax
     elif(pm.sys.NE == 3):
-        n = 3.0*np.sum(np.sum(np.abs(PsiND)**2, axis=1, dtype=np.float), axis=1)*pm.sys.deltax**2    
+        density = 3.0*np.sum(np.sum(np.abs(wavefunction_ND)**2, axis=1, dtype=np.float), axis=1)*pm.sys.deltax**2    
     else:
         raise ValueError('ELF does not support systems containing {} electrons'.format(pm.sys.NE))
 
-    return n 
+    return density
 
 
-def PairDen(pm,PsiND):
-    r"""Calculate the electron pair density from the many-body wavefunction
+def calculate_pair_density(pm,wavefunction_ND):
+    r"""Calculates the electron pair density from the many-body wavefunction
 
     parameters
     ----------
     pm : object
         Parameters object
-    PsiND : array_like
-        ND array of N-particle wavefunction, indexed as PsiND[{space_index_i}]
+    wavefunction_ND : array_like
+        ND array of the N-particle wavefunction, indexed as wavefunction_ND[{space_index_i}]
  
     returns array_like
-        2D array of electron pair density, indexed as n2[space_index_1, space_index_2]
+        2D array of the electron pair density, indexed as pair_density[space_index_1, space_index_2]
     """
     if(pm.sys.NE == 2):
-        n2 = pm.sys.NE*(pm.sys.NE-1)*(np.abs(PsiND))**2
+        pair_density = pm.sys.NE*(pm.sys.NE-1)*(np.abs(wavefunction_ND))**2
     elif(pm.sys.NE == 3):
-        n2 = pm.sys.NE*(pm.sys.NE-1)*np.sum(np.abs(PsiND)**2, axis=2, dtype=np.float)*pm.sys.deltax
+        pair_density = pm.sys.NE*(pm.sys.NE-1)*np.sum(np.abs(wavefunction_ND)**2, axis=2, dtype=np.float)*pm.sys.deltax
     else:
         raise ValueError('ELF does not support systems containing {} electrons'.format(pm.sys.NE))
         
-    return n2
+    return pair_density
 
 
-def DSigma(pm,n,n2):
-    r"""Calculate DSigma from the electron density and the electron pair density
+def calculate_d_sigma(pm,density,pair_density):
+    r"""Calculates D_sigma from the electron density and the electron pair density
 
     parameters
     ----------
     pm : object
         Parameters object
-    n : array_like
-        1D array of electron density, indexed as n[space_index]
-    n2 : array_like
-        2D array of electron pair density, indexed as n2[space_index_1, space_index_2]
+    density : array_like
+        1D array of the electron density, indexed as density[space_index]
+    pair_density : array_like
+        2D array of the electron pair density, indexed as pair_density[space_index_1, space_index_2]
 
     returns array_like
-        1D array of DSigma, indexed as Ds[space_index]
+        1D array of D_sigma, indexed as d_sigma[space_index]
     """
-    Laplacian = np.gradient(np.array(np.gradient(n2, pm.sys.deltax, axis=1)), pm.sys.deltax, axis=1)
-    Ds = np.zeros(pm.sys.grid, dtype=np.float)
+    laplacian = np.gradient(np.array(np.gradient(pair_density, pm.sys.deltax, axis=1)), pm.sys.deltax, axis=1)
+    d_sigma = np.zeros(pm.sys.grid, dtype=np.float)
     for i in range(pm.sys.grid):
-        Ds[i] = Laplacian[i,i]/(2.0*n[i])
+        d_sigma[i] = laplacian[i,i]/(2.0*density[i])
     
-    return Ds
+    return d_sigma
 
 
-def ElfDobson(pm,n,Ds):
-    r"""Calculate ELF from the electron density and the electron pair density
+def elf_dobson(pm,density,d_sigma):
+    r"""Calculate the ELF from the electron density and the electron pair density
 
     parameters
     ----------
     pm : object
         Parameters object
-    n : array_like
-        1D array of electron density, indexed as n[space_index]
-    Ds : array_like 
-        1D array of DSigma, indexed as Ds[space_index]
+    density : array_like
+        1D array of the electron density, indexed as density[space_index]
+    d_sigma : array_like 
+        1D array of D_sigma, indexed as d_sigma[space_index]
 
     returns array_like
-        1D array of ELF, indexed as ELF[space_index]
+        1D array of the ELF, indexed as elf[space_index]
     """
-    Dsh = (np.pi**2)*(n**3)/6.0
-    ELF = 1.0/(1.0 + (Ds/Dsh)**2)
+    d_sigma_h = (np.pi**2)*(density**3)/6.0
+    elf = 1.0/(1.0 + (d_sigma/d_sigma_h)**2)
 
-    return ELF
+    return elf
 
 
-def main(parameters,PsiND):
-    r"""Calculates ELF from the many-body wavefunction
+def main(parameters,wavefunction_ND):
+    r"""Calculates the ELF from the many-body wavefunction
 
     parameters
     ----------
     parameters : object
         Parameters object
-    PsiND : array_like
-        ND array of N-particle wavefunction, indexed as PsiND[{space_index_i}] 
+    wavefunction_ND : array_like
+        ND array of the N-particle wavefunction, indexed as wavefunction_ND[{space_index_i}] 
 
     returns array_like
-        1D array of exact ELF, indexed as ELF[space_index]
+        1D array of the exact ELF, indexed as elf[space_index]
     """
     pm = parameters
 
-    n = Den(pm,PsiND)
-    n2 = PairDen(pm,PsiND)
-    Ds = DSigma(pm,n,n2)
-    ELF = ElfDobson(pm,n,Ds)
+    density = calculate_density(pm,wavefunction_ND)
+    pair_density = calculate_pair_density(pm,wavefunction_ND)
+    d_sigma = calculate_d_sigma(pm,density,pair_density)
+    elf = elf_dobson(pm,density,d_sigma)
 
-    return ELF
+    return elf
 
