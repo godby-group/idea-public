@@ -25,25 +25,8 @@ import results as rs
 
 # Solve ground-state KS equations
 def groundstate(v):
-<<<<<<< HEAD
    H = copy.copy(T)
    H[0,:] += v[:]
-=======
-   r"""Calculates the oribitals and ground state density for the system for a given potential
-
-    .. math:: H \psi_{i} = E_{i} \psi_{i}
-                       
-   parameters
-   ----------
-   v : array_like
-        potential
-
-   returns array_like, array_like, array_like
-        density, normalised orbitals indexed as Psi[orbital_number][space_index], energies
-   """	
-   H = copy.copy(T) # kinetic energy
-   H[0,:] += v[:] # add potential
->>>>>>> 6b4b412d8ed3244def53bc865ca1501898682224
    e,eig_func = spla.eig_banded(H,True) 
    n = np.zeros(pm.sys.grid,dtype='float')
    for i in range(pm.sys.NE):
@@ -63,22 +46,21 @@ def Coulomb():
          U[i,k] = 1.0/(abs(i*pm.sys.deltax-k*pm.sys.deltax)+pm.sys.acon)
    return U
 
-def n_int(k, n):
+def n_int(K, n):
    d=0.0
    for i in range(pm.sys.grid):
        d = d + (k[4] + k[5]*n[i] + k[6]*n[i]**2)*n[i]**k[7]
-   d = d*pm.sys.deltax
-   return d
+
 # LDA approximation for XC potential
 def XC(Den):
    V_xc = np.zeros(pm.sys.grid,dtype='float')
-   if(pm.lda.deon2):
+   if(pm.lda.deon2)
       k = pm.lda.dek2
-      V_xc[:] = k[0]*Den[:]+(k[1]*Den[:] + k[2]*Den[:]**2)*Den[:]**k[3]
-      V_xc[:] = V_xc[:]/(scsp.erf(n_int(k,Den[:])*Den[:]))
-   elif(pm.lda.deon):
+      V_xc[:] = (k[0]+k[1]*Den[:] + k[2]*n[:]**2)*n[:]**k[3]
+      V_xc[:] = V_xc[:]/scsp.erf(n_int(K,n[:]))
+   if(pm.lda.deon):
       k = pm.lda.dek
-      V_xc[:] = (k[0]*Den[:] + k[1]*Den[:]**2 + k[2]*Den[:]**3)*Den[:]**k[3]
+      V_xc[:] = (k[0] + k[1]*Den[:] + k[2]*Den[:]**2)*Den[:]**k[3]
    else: 
       if (pm.sys.NE == 1):
          V_xc[:] = ((-1.315+2.16*Den[:]-1.71*(Den[:])**2)*Den[:]**0.638) 
@@ -89,15 +71,9 @@ def XC(Den):
    return V_xc
 
 # LDA approximation for XC energy 
-def EXC(V_xc, Den): 
+def EXC(Den): 
    E_xc_LDA = 0.0
-   
-   if(pm.lda.deon or pm.lda.deon2):
-      for i in xrange(pm.sys.grid):
-         E_xc_LDA += V_xc[i]*Den[i]
-      E_xc_LDA = E_xc_LDA*pm.sys.deltax
-
-   elif (pm.sys.NE == 1):
+   if (pm.sys.NE == 1):
       for i in xrange(pm.sys.grid):
          e_xc_LDA = ((-0.803+0.82*Den[i]-0.47*(Den[i])**2)*Den[i]**0.638) 
          E_xc_LDA += (Den[i])*(e_xc_LDA)*pm.sys.deltax
@@ -178,17 +154,9 @@ def main(parameters):
       n_old[:] = n[:]
       string = 'LDA: electron density convergence = ' + str(convergence)
       pm.sprint(string,1,newline=False)
-<<<<<<< HEAD
-=======
-      iteration += 1
-      if(iteration == pm.lda.max_iter):
-         print
-         string = 'LDA: warning! reached maximum number of iterations {}. terminating self-consistency'.format(iteration)
-         pm.sprint(string,1,newline=True)
->>>>>>> 6b4b412d8ed3244def53bc865ca1501898682224
 
    pm.sprint('',1)
-   pm.sprint('LDA: ground-state xc energy: %s' % EXC(XC(n),n),1)
+   pm.sprint('LDA: ground-state xc energy: %s' % EXC(n),1)
    v_h = Hartree(n,U)
    v_xc = XC(n)
 
@@ -197,7 +165,6 @@ def main(parameters):
    results.add(v_h[:], 'gs_lda_vh')
    results.add(v_xc[:], 'gs_lda_vxc')
    results.add(n[:], 'gs_lda_den')
-   results.add(EXC(v_xc,n), 'gs_lda_exc')
 
    if pm.lda.save_eig:
        results.add(waves.T,'gs_lda_eigf')
