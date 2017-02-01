@@ -32,6 +32,7 @@ import RE_Utilities
 import scipy.sparse as sps
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
+from scipy.optimize import curve_fit as spocf
 import results as rs
 
 # Function to read inputs -- needs some work!
@@ -327,6 +328,22 @@ def CalculateKS(V_KS,A_KS,J,Psi,j,upper_bound,frac1,frac2,z,tol,n_T,J_T,cost_n,c
    V_KS[j,:] += V_KS[0,(pm.sys.grid-1)*0.5]-V_KS[j,(pm.sys.grid-1)*0.5]
    return n_KS,V_KS,J,Apot,z
 
+#Function to be fit for asymptotic form of V_xc
+def xcfit(x, a):
+   return 1/x + a
+
+#Function to determine correction to KS potential
+#Start and end is the percentage of the data from the left you want to fit
+def correction(vxc, start, finish):
+    xpoints = np.linspace(-pm.sys.xmax, pm.sys.xmax, pm.sys.grid)
+    s = int(start*pm.sys.grid)
+    f = int(finish*pm.sys.grid)
+    fit = spocf(xcfit, xpoints[s:f])
+    a = fit[0][0]
+    aerr = np.sqrt(np.diag(fit[1]))
+    #a is correction, aerr is error in fit parameter calculated by curve_fit
+    return a, aerr
+
 # Main control function
 def main(parameters,approx):
    global sqdx, upper_bound, imax, T, J_MB, cost_n, cost_J, exp, CNRHS, CNLHS
@@ -375,6 +392,15 @@ def main(parameters,approx):
    V_h[0,:] = Hartree(n_KS,V_coulomb,0) # Calculate the Hartree potential
    V_Hxc[0,:] = V_KS[0,:]-V_ext[:] # Calculate the Hartree exhange-correlation potential
    V_xc[0,:] = V_Hxc[0,:]-V_h[0,:] # Calculate the exchange-correlation potential
+
+   #Correct V_xc and V_ks etc.
+   correct, correct_error = correction(np.real(V_xc[0,:]), 0.05, 0.15)
+   print 'Error in correction parameter = ', correct_error
+
+   V_KS[0,:] - V_KS[0,:] - correct
+   V_Hxc[0,:] = V_KS[0,:]-V_ext[:] # Calculate the Hartree exhange-correlation potential
+   V_xc[0,:] = V_Hxc[0,:]-V_h[0,:] # Calculate the exchange-correlation potential
+   E_KS = E_KS - pm.sys.NE.correct
    E_xc = xcenergy(approx,n_KS,V_h,V_xc,E_KS) # Calculate the exchange-correlation energy
 
    # Store results
@@ -385,7 +411,7 @@ def main(parameters,approx):
    results.add(V_h[0,:], 'gs_{}_vh'.format(approxre))
    results.add(V_xc[0,:].real, 'gs_{}_vxc'.format(approxre))
    results.add(E_xc.real, 'gs_{}_Exc'.format(approxre))
-
+   results.add(E_KS.real, 'gs_{}_Eks'.format(approxre))
    v_hxc = np.zeros(pm.sys.grid,dtype='float')
    v_hxc[:] = (V_xc[0,:]+V_h[0,:]).real
    results.add(v_hxc[:],'gs_{}_hxc'.format(approxre))
