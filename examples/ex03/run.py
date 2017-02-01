@@ -18,6 +18,6 @@ for xmax in [4,6,8,10]:
     # print sys section of input file
     #print(inp.sys)
 
-    inp.execute()
-    E = inp.results.NON.gs_non_E
+    results = inp.execute()
+    E = results.non.gs_non_E
     print(" xmax = {:4.1f}, E = {:6.4f} Ha".format(xmax,E))

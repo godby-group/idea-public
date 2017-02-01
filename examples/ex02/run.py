@@ -12,5 +12,5 @@ for xmax in [4,6,8,10]:
     # perform checks on input parameters
     inp.check()
     inp.execute()
-    E = inp.results.NON.gs_non_E
+    E = inp.results.non.gs_non_E
     print(" xmax = {:4.1f}, E = {:6.4f} Ha".format(xmax,E))
