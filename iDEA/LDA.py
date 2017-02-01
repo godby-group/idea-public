@@ -53,21 +53,13 @@ def n_int(K, n):
 
 # LDA approximation for XC potential
 def XC(Den):
-   V_xc = np.zeros(pm.sys.grid,dtype='float')
-   if(pm.lda.deon2)
-      k = pm.lda.dek2
-      V_xc[:] = (k[0]+k[1]*Den[:] + k[2]*n[:]**2)*n[:]**k[3]
-      V_xc[:] = V_xc[:]/scsp.erf(n_int(K,n[:]))
-   if(pm.lda.deon):
-      k = pm.lda.dek
-      V_xc[:] = (k[0] + k[1]*Den[:] + k[2]*Den[:]**2)*Den[:]**k[3]
-   else: 
-      if (pm.sys.NE == 1):
-         V_xc[:] = ((-1.315+2.16*Den[:]-1.71*(Den[:])**2)*Den[:]**0.638) 
-      elif (pm.sys.NE == 2):
-         V_xc[:] = ((-1.19+1.77*Den[:]-1.37*(Den[:])**2)*Den[:]**0.604) 
-      else:
-         V_xc[:] = ((-1.24+2.1*Den[:]-1.7*(Den[:])**2)*Den[:]**0.61) 
+   V_xc = np.zeros(pm.sys.grid,dtype='float') 
+   if (pm.sys.NE == 1):
+      V_xc[:] = ((-1.315+2.16*Den[:]-1.71*(Den[:])**2)*Den[:]**0.638) 
+   elif (pm.sys.NE == 2):
+      V_xc[:] = ((-1.19+1.77*Den[:]-1.37*(Den[:])**2)*Den[:]**0.604) 
+   else:
+      V_xc[:] = ((-1.24+2.1*Den[:]-1.7*(Den[:])**2)*Den[:]**0.61) 
    return V_xc
 
 # LDA approximation for XC energy 
