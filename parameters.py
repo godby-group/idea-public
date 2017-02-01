@@ -33,7 +33,7 @@ sys.im = 0                           #: Use imaginary potentials
 def v_ext(x):
     """Initial external potential
     """
-    return 0.5*(0.4**2)*(x**2)   
+    return 0.5*(0.25**2)*(x**2)   
 sys.v_ext = v_ext
 
 def v_pert(x): 
