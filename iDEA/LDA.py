@@ -57,11 +57,11 @@ def XC(Den):
    V_xc = np.zeros(pm.sys.grid,dtype='float')
    if(pm.lda.deon2):
       k = pm.lda.dek2
-      V_xc[:] = (k[0]+k[1]*Den[:] + k[2]*Den[:]**2)*Den[:]**k[3]
+      V_xc[:] = k[0]*Den[:]+(k[1]*Den[:] + k[2]*Den[:]**2)*Den[:]**k[3]
       V_xc[:] = V_xc[:]/(scsp.erf(n_int(k,Den[:])*Den[:]))
    elif(pm.lda.deon):
       k = pm.lda.dek
-      V_xc[:] = (k[0] + k[1]*Den[:] + k[2]*Den[:]**2)*Den[:]**k[3]
+      V_xc[:] = (k[0]*Den[:] + k[1]*Den[:]**2 + k[2]*Den[:]**3)*Den[:]**k[3]
    else: 
       if (pm.sys.NE == 1):
          V_xc[:] = ((-1.315+2.16*Den[:]-1.71*(Den[:])**2)*Den[:]**0.638) 
@@ -72,9 +72,14 @@ def XC(Den):
    return V_xc
 
 # LDA approximation for XC energy 
-def EXC(Den): 
+def EXC(V_xc, Den): 
    E_xc_LDA = 0.0
    
+   if(pm.lda.deon or pm.lda.deon2):
+      for i in xrange(pm.sys.grid):
+         E_xc_LDA += V_xc[i]*Den[i]
+      E_xc_LDA = E_xc_LDA*pm.sys.deltax
+
    elif (pm.sys.NE == 1):
       for i in xrange(pm.sys.grid):
          e_xc_LDA = ((-0.803+0.82*Den[i]-0.47*(Den[i])**2)*Den[i]**0.638) 
@@ -158,7 +163,7 @@ def main(parameters):
       pm.sprint(string,1,newline=False)
 
    pm.sprint('',1)
-   pm.sprint('LDA: ground-state xc energy: %s' % EXC(n),1)
+   pm.sprint('LDA: ground-state xc energy: %s' % EXC(XC(n),n),1)
    v_h = Hartree(n,U)
    v_xc = XC(n)
 
@@ -167,6 +172,7 @@ def main(parameters):
    results.add(v_h[:], 'gs_lda_vh')
    results.add(v_xc[:], 'gs_lda_vxc')
    results.add(n[:], 'gs_lda_den')
+   results.add(EXC(v_xc,n), 'gs_lda_exc')
 
    if pm.lda.save_eig:
        results.add(waves.T,'gs_lda_eigf')
