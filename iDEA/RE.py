@@ -338,7 +338,7 @@ def correction(vxc, start, finish):
     xpoints = np.linspace(-pm.sys.xmax, pm.sys.xmax, pm.sys.grid)
     s = int(start*pm.sys.grid)
     f = int(finish*pm.sys.grid)
-    fit = spocf(xcfit, xpoints[s:f])
+    fit = spocf(xcfit, xpoints[s:f], vxc[s:f])
     a = fit[0][0]
     aerr = np.sqrt(np.diag(fit[1]))
     #a is correction, aerr is error in fit parameter calculated by curve_fit
@@ -400,7 +400,7 @@ def main(parameters,approx):
    V_KS[0,:] - V_KS[0,:] - correct
    V_Hxc[0,:] = V_KS[0,:]-V_ext[:] # Calculate the Hartree exhange-correlation potential
    V_xc[0,:] = V_Hxc[0,:]-V_h[0,:] # Calculate the exchange-correlation potential
-   E_KS = E_KS - pm.sys.NE.correct
+   E_KS = E_KS - pm.sys.NE*correct
    E_xc = xcenergy(approx,n_KS,V_h,V_xc,E_KS) # Calculate the exchange-correlation energy
 
    # Store results
