@@ -217,18 +217,33 @@ def main(parameters):
         H.sigma_iw_dg = bracket_r(S, h0.orbitals, st)
         if pm.mbpt.flavour == 'QSGW':
             H.sigma_iw_full = bracket_r(S, h0.orbitals, st, mode='full')
-
+        
         # Align fermi energy of input and output Green function
         if pm.mbpt.hedin_shift:
             pm.sprint('MBPT: performing Hedin shift',0)
-            S_iw_dg = H.sigma_iw_dg
-            H.qp_shift = 0.5 * (S_iw_dg[st.NE-1,0] + S_iw_dg[st.NE,0])
-            H.qp_shift = H.qp_shift.real
+            
+            # Get QP energies
+            qp_energies = H.sigma_iw_dg[:,0].real + h0.energies
+            
+            # Sort orbitals and energies if required
+            if all(qp_energies[i] <= qp_energies[i+1] for i in xrange(len(qp_energies)-1)):
+               pm.sprint("MBPT: Warning: QP energies out of order, reordering...")
+               indices = np.argsort(qp_energies)
+               qp_energies = qp_energies[indices]
+               h0.orbitals = h0.orbitals[indices]
+               h0.energies = h0.energies[indices]
+     
+            # Do Hedin Shift
+            H.qp_shift = 0.5 * (qp_energies[st.NE-1] + qp_energies[st.NE]) # Quasi-particle shift to keep fermi-energy in HOMO-LUMO gap
+            H.qp_shift = H.qp_shift.real # Take just the real part
             #pm.sprint('MBPT: quasi-particle fermi energy: {:.3f} Ha ({:+.3f} Ha).'.format(qp_fermi,qp_shift))
             pm.sprint('MBPT: quasi-particle shift: {:.7f} Ha.'.format(H.qp_shift))
             for i in range(st.x_npt):
-                S[i,i,:] -= H.qp_shift / st.x_delta
-
+                S[i,i,:] -= H.qp_shift / st.x_delta # Perfrom hedin shift
+                
+            # Print new qp_energies
+            pm.sprint('qp_energies after shift: {}'.format(bracket_r(S, h0.orbitals, st)[:,0].real + h0.energies),0)
+            
         # Compute new quasiparticle energies (QSGW: and wave functions)
         if pm.mbpt.flavour == 'QSGW': 
             pm.sprint('MBPT: analytic continuation of sigma(iw) to obtain sigma(w)',0)

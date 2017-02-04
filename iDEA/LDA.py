@@ -135,6 +135,7 @@ def main(parameters):
    n_old = np.zeros(pm.sys.grid,dtype='float')
    n_old[:] = n[:]
    convergence = 1.0
+   iteration = 1
    while convergence>pm.lda.tol: # Use LDA
       v_s_old = copy.copy(v_s)
       if pm.lda.mix == 0:
@@ -146,6 +147,10 @@ def main(parameters):
       n_old[:] = n[:]
       string = 'LDA: electron density convergence = ' + str(convergence)
       pm.sprint(string,1,newline=False)
+      iteration += 1
+      if iteration > pm.lda.max_iter:
+         pm.sprint('LDA: Warning: Reached maximum number of iterations. Terminating',1)
+         convergence = 0.0
 
    pm.sprint('',1)
    pm.sprint('LDA: ground-state xc energy: %s' % EXC(n),1)
