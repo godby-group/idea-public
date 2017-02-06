@@ -147,8 +147,11 @@ class PulayMixer:
         self.alpha_bar = np.zeros(order-1, dtype=dtype)
 
 
-        self.q0 = q0
+        # eqn (82)
         self.A = 1.0
+        self.q0 = q0
+        dq = 2*np.pi / (2 * pm.sys.xmax)
+        q0_scaled = q0 / dq
         #self.G_q = np.zeros((x_npt,x_npt), dtype=np.float)
         #for i in range(x_npt):
         #    q = 2*np.pi * i/np.float(x_npt)
@@ -157,13 +160,8 @@ class PulayMixer:
         #for i in range(x_npt):
         #    q = 2*np.pi * i/np.float(x_npt)
         self.G_q = np.zeros((self.x_npt/2+1), dtype=np.float)
-        dq = 2*np.pi / (2 * pm.sys.xmax)
-        q0_scaled = q0 / dq
-        print("scaled q {}".format(q0_scaled))
-        # eqn (82)
-        for i in range(len(self.G_q)):
-            q = 2*np.pi * i/np.float(self.x_npt)
-            self.G_q[i] = self.A * q**2 / (q**2 + q0_scaled**2)
+        for q in range(len(self.G_q)):
+            self.G_q[q] = self.A * q**2 / (q**2 + q0_scaled**2)
         #self.G_r = np.set_diagonal(diagonal
 
 
@@ -257,15 +255,15 @@ class PulayMixer:
     def precondition(self, f):
         """Return preconditioned f"""
         #TODO: To implement
-        import matplotlib.pyplot as plt
-        x = np.linspace(-10,10,self.x_npt)
-        plt.plot(x,f)
+        #import matplotlib.pyplot as plt
+        #x = np.linspace(-10,10,self.x_npt)
+        #plt.plot(x,f)
 
         f = np.fft.rfft(f, n=self.x_npt)
         f = self.G_q * f
         f = np.fft.irfft(f, n=self.x_npt)
-        plt.plot(x,f)
-        plt.show()
+        #plt.plot(x,f)
+        #plt.show()
         return f
         
 
@@ -295,21 +293,20 @@ def main(parameters):
    #iteration = 1
 
    if pm.lda.mix_type == 'pulay':
-       mixer = PulayMixer(order=5, pm = pm)
+       mixer = PulayMixer(order=3, pm=pm)
 
    while convergence > pm.lda.tol and iteration < pm.lda.max_iter:
-      v_s_old = v_s
-      v_s_new = v_ext[:]+Hartree(n,U)+XC(n)
+      n_old[:] = n[:]
+      v_s = v_ext[:]+Hartree(n,U)+XC(n)
+      n_new,waves,energies = groundstate(v_s) # Calculate LDA density 
 
       if pm.lda.mix_type == 'pulay':
-          v_s = mixer.mix(v_s_old, v_s_new)
+          n = mixer.mix(n_old, n_new)
       elif pm.lda.mix_type == 'linear':
-          v_s[:] = (1-pm.lda.mix)*v_s_old[:]+pm.lda.mix*v_s_new[:]
+          n[:] = (1-pm.lda.mix)*n_old[:]+pm.lda.mix*n_new[:]
       else:
-          v_s = v_s_new
-      n,waves,energies = groundstate(v_s) # Calculate LDA density 
+          n = n_new
       convergence = np.sum(abs(n-n_old))*pm.sys.deltax
-      n_old[:] = n[:]
       string = 'LDA: electron density convergence = {:.4e}'.format(convergence)
       pm.sprint(string,1,newline=False)
       iteration += 1
