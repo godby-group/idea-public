@@ -246,11 +246,12 @@ class PulayMixer:
             m = self.m
             # eqn (92)
             den_in_new = den_in + self.precondition(self.res[m]) \
-                    + np.dot(self.alpha_bar, self.den_delta + self.precondition(self.res_delta))
+                    + np.dot(alpha_bar, self.den_delta + self.precondition(self.res_delta))
 
         self.step = self.step + 1
 
-        return den_in_new
+        #TODO: this is a cheap fix for the fact that you can get negative densities...
+        return np.abs(den_in_new)
 
     def precondition(self, f):
         """Return preconditioned f"""
