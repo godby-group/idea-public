@@ -154,7 +154,9 @@ class Input(object):
         self.lda = InputSection()
         lda = self.lda
         lda.NE = 2                           #: Number of electrons used in construction of the LDA
-        lda.mix = 0.0                        #: Self consistent mixing parameter (default 0, only use if doesn't converge)
+        lda.mix_type = 'linear'           
+        lda.mix = 1.0                        #: linear mixing parameter
+        lda.kerker_length = 2.1              #: Kerker screening length
         lda.tol = 1e-12                      #: Self-consistent convergence tolerance
         lda.save_eig = False                 #: save eigenfunctions and eigenvalues of Hamiltonian
         

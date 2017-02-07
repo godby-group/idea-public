@@ -22,6 +22,7 @@ import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
 import scipy.special as scsp
 import results as rs
+import mix
 
 # Solve ground-state KS equations
 def groundstate(v):
@@ -113,159 +114,6 @@ def LHS(v,j):
          CNLHS[i,i-1] = -0.5j*pm.sys.deltat*(0.5/pm.sys.deltax**2)
    return CNLHS
 
-
-class PulayMixer:
-    """Performs Pulay mixing
-
-    Performs Pulay mixing with Kerker preconditioner,
-    as described on p.34 of [Kresse1996]_
-
-    """
-    def __init__(self, order, pm, q0=0.79):
-        """Initializes variables
-
-        parameters
-        ----------
-        order: int
-          order of Pulay mixing (how many densities to keep in memory)
-        pm: object
-          input parameters
-        q0: float
-          cutoff for Kerker mixing [1/a0]
-          Default corresponds to 1.5/Angstrom
-
-        """
-        self.order = order
-        self.step = 0
-        self.x_npt = pm.sys.grid
-        dtype = np.float
-        self.res = np.zeros((order,self.x_npt), dtype=dtype)
-        self.den_in = np.zeros((order,self.x_npt), dtype=dtype)
-
-        self.den_delta = np.zeros((order-1,self.x_npt), dtype=dtype)
-        self.res_delta = np.zeros((order-1,self.x_npt), dtype=dtype)
-        self.alpha_bar = np.zeros(order-1, dtype=dtype)
-
-
-        # eqn (82)
-        self.A = 1.0
-        self.q0 = q0
-        dq = 2*np.pi / (2 * pm.sys.xmax)
-        q0_scaled = q0 / dq
-        #self.G_q = np.zeros((x_npt,x_npt), dtype=np.float)
-        #for i in range(x_npt):
-        #    q = 2*np.pi * i/np.float(x_npt)
-        #    G[i,i] = A * q**2 / (q**2 + q0**2)
-        #self.G_q = np.zeros((x_npt), dtype=np.float)
-        #for i in range(x_npt):
-        #    q = 2*np.pi * i/np.float(x_npt)
-        self.G_q = np.zeros((self.x_npt/2+1), dtype=np.float)
-        for q in range(len(self.G_q)):
-            self.G_q[q] = self.A * q**2 / (q**2 + q0_scaled**2)
-        #self.G_r = np.set_diagonal(diagonal
-
-
-
-    @property
-    def m(self):
-        r"""returns current array index m
-
-        This corresponds to the index m usedom [Kresse1996]_ on p. 33-34
-        self.mix calculates rho_in^{m+1}.
-        """
-        return self.step % self.order
-
-    def update_arrays(self, den_in, den_out):
-        r"""Updates densities and residuals
-
-        Note: self.step becomes larger than self.order,
-        this simply overwrites data that is no longer needed.
-        """
-        m = self.m
-
-        # eqn (88)
-        self.den_in[m] = den_in
-        if self.step > 0:
-            self.den_delta[m-1] = self.den_in[m] - self.den_in[m-1]
-
-        self.res[m] = den_out - den_in
-        if self.step > 0:
-            self.res_delta[m-1] = self.res[m] - self.res[m-1]
-
-    def compute_coefficients(self):
-        r"""Computes mixing coefficients
-        
-        Computes
-
-        See [Kresse1996]_ equations (87) - (90)
-
-        .. math ::
-
-            A_{ij} = \langle R[\rho^j_{in}] | R[\rho_{in}^i \rangle \\
-            \bar{A}_{ij} = \langle \Delta R^j | \Delta R^i \rangle
-        
-        """
-
-        # we return rhoin_m+1, which needs
-        # * delta_dens up to m-1
-        # * delta_rs up to m-1
-        # * alpha_bars up to m-1
-        # * rs up to m
-
-        # * delta_dens m-1 needs rho_in_m
-        # * delta_r m-1 needs r_m
-
-        # i.e. we need delta-quantities up to m-1
-        # and non-delta quantities up to m
-
-        m = self.m
-
-        # eqns (90,91)
-        overlaps = np.dot(self.res_delta, self.res[m])
-        A_bar = np.dot(self.res_delta, self.res_delta.T)
-        A_bar_inv = np.linalg.inv(A_bar)
-        alpha_bar = -np.dot(A_bar_inv.T,overlaps)
-
-        return alpha_bar
-
-    def mix(self, den_in, den_out):
-        r"""Compute mix of densities
-        
-        See [Kresse1996]_ equation (92)
-        """
-
-        self.update_arrays(den_in, den_out)
-
-        # until we have a sufficient history of densities, we don't mix
-        if self.step < self.order:
-            den_in_new = den_out
-        else:
-            alpha_bar = self.compute_coefficients()
-            print("")
-            print(alpha_bar)
-            m = self.m
-            # eqn (92)
-            den_in_new = den_in + self.precondition(self.res[m]) \
-                    + np.dot(alpha_bar, self.den_delta + self.precondition(self.res_delta))
-
-        self.step = self.step + 1
-
-        #TODO: this is a cheap fix for the fact that you can get negative densities...
-        return np.abs(den_in_new)
-
-    def precondition(self, f):
-        """Return preconditioned f"""
-        #TODO: To implement
-        #import matplotlib.pyplot as plt
-        #x = np.linspace(-10,10,self.x_npt)
-        #plt.plot(x,f)
-
-        f = np.fft.rfft(f, n=self.x_npt)
-        f = self.G_q * f
-        f = np.fft.irfft(f, n=self.x_npt)
-        #plt.plot(x,f)
-        #plt.show()
-        return f
         
 
 # Main function
@@ -294,7 +142,7 @@ def main(parameters):
    #iteration = 1
 
    if pm.lda.mix_type == 'pulay':
-       mixer = PulayMixer(order=3, pm=pm)
+       mixer = mix.PulayMixer(pm, order=pm.lda.pulay_order, kerker_length=pm.lda.kerker_length)
 
    while convergence > pm.lda.tol and iteration < pm.lda.max_iter:
       n_old[:] = n[:]
@@ -311,13 +159,13 @@ def main(parameters):
       string = 'LDA: electron density convergence = {:.4e}'.format(convergence)
       pm.sprint(string,1,newline=False)
       iteration += 1
-      if iteration == pm.lda.max_iter:
-         string = '\nLDA: reached maximum number of iterations {}. terminating self-consistency'.format(iteration)
-         pm.sprint(string,1)
-         convergence = 0.0
 
    pm.sprint('',1)
-   pm.sprint('LDA: reached convergence in {} iterations.'.format(iteration),0)
+   if iteration == pm.lda.max_iter:
+     string = 'LDA: reached maximum number of iterations {}. terminating self-consistency'.format(iteration)
+     pm.sprint(string,1)
+   else:
+       pm.sprint('LDA: reached convergence in {} iterations.'.format(iteration),0)
    pm.sprint('LDA: ground-state xc energy: %s' % EXC(n),1)
    v_h = Hartree(n,U)
    v_xc = XC(n)
