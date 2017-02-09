@@ -5,5 +5,5 @@
 *.pyc
 *.save
 doc/_build/*
-dev/ 
-dev*/ # ignores any copies of iDEA folder
+*dev/ 
+*dev*/ # ignores any copies of iDEA folder
