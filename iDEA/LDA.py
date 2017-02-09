@@ -164,7 +164,7 @@ def main(parameters):
    results.add(n[:], 'gs_lda_den')
 
    if pm.lda.save_eig:
-       results.add(waves.T,'gs_lda_eigf')
+       results.add(waves.T / np.sqrt(pm.sys.deltax),'gs_lda_eigf')
        results.add(energies,'gs_lda_eigv')
 
    if pm.run.save:
