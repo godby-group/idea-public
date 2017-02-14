@@ -1,617 +1,765 @@
-######################################################################################
-# Name: 3 electron Exact Many Body                                                   #
-######################################################################################
-# Author(s): James Ramsden, Jacob Chapman, Thomas Durrant, Jack Wetherell            #
-######################################################################################
-# Description:                                                                       #
-# Computes exact many body wavefunction and density                                  #
-#                                                                                    #
-#                                                                                    #
-######################################################################################
-# Notes:                                                                             #
-#                                                                                    #
-#                                                                                    #
-#                                                                                    #
-######################################################################################
+"""Calculates the exact ground-state electron density and energy for a system
+of three interacting electrons through solving the many-body Schrodinger 
+equation. If the system is perturbed,the time-dependent electron density and 
+current density are calculated. The (time-dependent) ELF can also be 
+calculated.
+"""
 
-# Do not run stand-alone
-if(__name__ == '__main__'):
-    print('do not run stand-alone')
-    quit()
 
-# Library Imports
 import mkl
 import time
-import math
 import copy
 import pickle
 import numpy as np
 import scipy as sp
-import os
 import RE_Utilities
-import results as rs
-
+import scipy.sparse as sps
 import scipy.misc as spmisc
 import scipy.special as spec
-import scipy.sparse as sps
-import scipy.sparse.linalg as spsla
+import scipy.sparse.linalg as spla
+import construct_hamiltonian_coo3 as hamiltonian_coo
+import construct_antisymmetry_coo3 as antisymmetry_coo
+import construct_wavefunction3 as wavefunction3
+import ELF 
+import results as rs
 
-# Takes every combination of the two electron indicies and creates a single unique index 
-def Gind(k,j,l):
-    return (k + j*jmax + l*(jmax**2))
+
+def single_index(pm,j,k,l):
+    r"""Takes every permutation of the three electron indices and creates a
+    single unique index.
     
-# Inverses the Gind operation. Takes the single index and returns the corresponding indices used to create it.
-def InvGind(jkl):
-    k = jkl % jmax
-    j = ((jkl - k)%(jmax**2))/jmax
-    l = (jkl - k - j*jmax)/(jmax**2)
-    return k, j, l
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    j : integer
+        1st electron index
+    k : integer
+        2nd electron index
+    l : integer
+        3rd electron index
 
-# Calculates the nth Energy Eigenfunction of the Harmonic Oscillator (~H(n)(x)exp(x^2/2))
-def EnergyEigenfunction(n):
-    j = 0
-    x = -xmax
-    Psi = np.zeros(jmax, dtype = np.cfloat)
-    while (x < xmax):
-        factorial = np.arange(0, n+1, 1)
-        fact = np.product(factorial[1:])
-        norm = (np.sqrt(1.0/((2.0**n)*fact)))*((1.0/math.pi)**0.25)
-        Psi[j] = complex(norm*(spec.hermite(n)(x))*(1**2)*np.exp(-0.5*(x**2)*(1**2)), 0.0)
-        j = j + 1
-        x = x + deltax
-    return Psi
+    returns integer 
+        Single unique index, jkl
+    """
+    jkl = l + k*pm.sys.grid + j*pm.sys.grid**2
 
-# Define potential array for all spacial points (3 electron)
-def Potential3(i,k,j,l):
-    xk = -pm.sys.xmax + (k*pm.sys.deltax)
-    xj = -pm.sys.xmax + (j*pm.sys.deltax)
-    xl = -pm.sys.xmax + (l*pm.sys.deltax)
-    inte = pm.sys.interaction_strength
-    if (i == 0): 	
-        return  pm.sys.v_ext(xk) + pm.sys.v_ext(xj) + pm.sys.v_ext(xl) + inte*(1.0/(np.abs(xk-xj) + pm.sys.acon)) + inte*(1.0/(np.abs(xl-xj) + pm.sys.acon)) + inte*(1.0/(np.abs(xk-xl) + pm.sys.acon))
-    else:
-	return  pm.sys.v_ext(xk) + pm.sys.v_ext(xj) + pm.sys.v_ext(xl) + inte*(1.0/(np.abs(xk-xj) + pm.sys.acon)) + inte*(1.0/(np.abs(xl-xj) + pm.sys.acon)) + inte*(1.0/(np.abs(xk-xl) + pm.sys.acon)) + pm.sys.v_pert(xk) + pm.sys.v_pert(xj) + pm.sys.v_pert(xl)
+    return jkl
 
-# Builds the Cayley Matrix on the LHS (C1) of the matrix eigenproblem in Complex Time (t*=-it): C1=(I+H.dt/2)
-def Matrixdef(i,r):
-    j = 0
-    k = 0
-    l = 0
-    while (l < lmax):
-        j = 0
-        while (j < jmax):
-            k=0
-            while (k < kmax):
-                jkl = Gind(k,j,l)
-                Mat[jkl,jkl] = 1.0 + (6.0*r) + (2.0*r*(deltax**2)*(Potential3(i,k,j,l)))
-                if (k<kmax-1):
-                    if ((Gind(k+1,j,l) >= 0) and (Gind(k+1,j,l) < jmax**3)):
-                        Mat[jkl,Gind(k+1,j,l)] = -r 
-                if (k>0):
-                    if (Gind(k-1,j,l) >= 0 and Gind(k-1,j,l) < jmax**3):
-                        Mat[jkl,Gind(k-1,j,l)] = -r
-                if (j <= jmax - 1):
-                    if (Gind(k,j+1,l) >= 0 and Gind(k,j+1,l) < jmax**3):
-                        Mat[jkl,Gind(k,j+1,l)] = -r
-                if (j>=0):
-                    if (Gind(k,j-1,l) >= 0 and Gind(k,j-1,l) < jmax**3):
-                        Mat[jkl,Gind(k,j-1,l)] = -r
-                if (l < lmax - 1):
-                    if (Gind(k,j,l+1) >= 0 and Gind(k,j,l+1) < jmax**3):
-                        Mat[jkl,Gind(k,j,l+1)] = -r
-                if (l > 0):
-                    if (Gind(k,j,l-1) >= 0 and Gind(k,j,l-1) < jmax**3):
-                        Mat[jkl,Gind(k,j,l-1)] = -r
-                k = k + 1
-            j = j + 1
-        l = l + 1
-    return Mat
 
-# Imaginary Time Crank Nicholson initial condition
-def InitialconI():
-    Psi1 = np.zeros(jmax,dtype = np.cfloat)
-    Psi2 = np.zeros(kmax,dtype = np.cfloat)
-    Psi3 = np.zeros(lmax,dtype = np.cfloat)
-    Psi1 = EnergyEigenfunction(0)
-    Psi2 = EnergyEigenfunction(1)
-    Psi3 = EnergyEigenfunction(2)
-    l = 0
-    while (l < lmax):
-        j = 0
-        while (j < jmax):
-            k = 0
-            while (k < kmax):
-                Paulix = Psi1[k]*(Psi2[j]*Psi3[l]-Psi2[l]*Psi3[j])
-                Pauliy = Psi2[k]*(Psi1[j]*Psi3[l]-Psi1[l]*Psi3[j])
-                Pauliz = Psi3[k]*(Psi1[j]*Psi2[l]-Psi1[l]*Psi2[j])
-                Pauli = Paulix - Pauliy + Pauliz 
-                Psiarr[0,Gind(k,j,l)] = Pauli
-                k = k + 1
-            j = j + 1
-        l = l + 1
-    return Psiarr[0,:]
+def inverse_single_index(pm,jkl):
+    r"""Inverses the single_index operation. Takes the single index and returns
+    the three separate electron indices.
 
-# Takes the ground state solution and uses it as the initial eigenfunction in the real propagation
-def InitialconR():
-    Psi3D = np.zeros((lmax,jmax,kmax), dtype = np.cfloat)
-    Psi3D=np.load('Psi_IC_Real3D.npy')
-    Psiarr[0,:] = PsiInverter(Psi3D[:,:,:],0)
-    return Psiarr[0,:]
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    jkl : integer
+        Single unique index
 
-# Define function to turn array of compressed indexes into seperated indexes
-def PsiConverterI(Psiarr,i):
-    Psi3D = np.zeros((jmax,kmax,lmax), dtype = np.cfloat)
-    #origdir = os.getcwd()
-    #newdir = os.path.join('MPsiReal_binaries_3D')
-    #if not os.path.isdir(newdir):
-    #    os.mkdir(newdir)
-    jkl = 0
-    while (jkl < jmax**3):
-        k, j, l = InvGind(jkl)
-        Psi3D[k,j,l] = Psiarr[jkl]
-        jkl = jkl + 1
-    # Save the wavefunction for the ith time step:
-    #        Psi3D = three electron density array
-    #        mPsi3D = modulus of above (Psi*.Psi)
-    # Saved into the directory MPsiReal_binaries_3D
-    # Save at every timestep
-    #if (i > 0):  
-    #    #mPsi3D[k,j,l] = (np.absolute(Psi3D[k,j,l]**2)) 
-    #    os.chdir(newdir)
-    #    np.save('Psi2DComplex_%i' %(i),Psi3D)
-    #    os.chdir(origdir)
-    if (i!=0):
-        np.save('Psi_IC_Real', Psiarr[:])
-        np.save('Psi_IC_Real3D', Psi3D)
-        np.save('Psi2DComplex_%i' %(i),Psi3D)
-    if (i==0):
-        np.save('Psi_IC_Inital', Psiarr[:])
-        np.save('Psi_IC_Inital3D', Psi3D)
-        np.save('Psi2DComplex_%i' %(i),Psi3D)  
-    return Psi3D
+    returns integers
+        1st electron index, j. 2nd electron index, k. 3rd electron index, l.
+    """
+    l = jkl % pm.sys.grid
+    k = ((jkl - l)%(pm.sys.grid**2))/pm.sys.grid
+    j = (jkl - l - k*pm.sys.grid)/pm.sys.grid**2
 
-# Construct grid for antisym matrices
-def gridz(N_x):# Construct the H matrix given the potential
-    N_e = 3
-    Nxl = N_x**N_e
-    Nxs = np.prod(range(N_x,N_x+N_e))/int(spmisc.factorial(N_e))
-    sgrid = np.zeros((N_x,N_x,N_x), dtype='int')
-    count = 0
-    for ix in range(N_x):
-        for jx in range(ix+1):
-            for kx in range(jx+1):
-                sgrid[ix,jx,kx] = count
-                count += 1
-    lgrid = np.zeros((N_x,N_x,N_x), dtype='int')
-    count = 0
-    for ix in range(N_x):
-        for jx in range(N_x):
-            for kx in range(N_x):
-                lgrid[ix,jx,kx] = count
-                count += 1
-    return sgrid, lgrid
+    return j, k, l
 
-# Construct antisym matrices
-def antisym(N_x):
-    N_e = 3
-    Nxl = N_x**N_e
-    Nxs = np.prod(range(N_x,N_x+N_e))/int(spmisc.factorial(N_e))
-    sgrid, lgrid = gridz(N_x)
-    C_down = sps.lil_matrix((Nxs,Nxl))
-    for ix in range(N_x):
-        for jx in range(ix+1):
-            for kx in range(jx+1):
-                C_down[sgrid[ix,jx,kx],lgrid[ix,jx,kx]] = 1.
-    C_up = sps.lil_matrix((Nxl,Nxs))
-    for ix in range(N_x):
-        for jx in range(ix+1):
-            for kx in range(jx+1):
-                C_up[lgrid[ix,jx,kx],sgrid[ix,jx,kx]] = 1.
-                C_up[lgrid[ix,kx,jx],sgrid[ix,jx,kx]] = -1.
-                C_up[lgrid[jx,ix,kx],sgrid[ix,jx,kx]] = -1.
-                C_up[lgrid[kx,jx,ix],sgrid[ix,jx,kx]] = -1.
-                C_up[lgrid[kx,ix,jx],sgrid[ix,jx,kx]] = 1.
-                C_up[lgrid[jx,kx,ix],sgrid[ix,jx,kx]] = 1.
-                C_up[lgrid[jx,kx,ix],sgrid[ix,jx,kx]] = 1.
-                C_up[lgrid[kx,ix,jx],sgrid[ix,jx,kx]] = 1.
-                C_up[lgrid[jx,kx,ix],sgrid[ix,jx,kx]] = 1.
-                C_up[lgrid[kx,ix,jx],sgrid[ix,jx,kx]] = 1.
-    C_down = C_down.tocsr()
-    C_up = C_up.tocsr()
-    return C_down, C_up
+
+def construct_antisymmetry_matrices(pm):
+    r"""Constructs the reduction and expansion matrices that are used to
+    exploit the exchange antisymmetry of the wavefunction.
+
+    parameters
+    ----------
+    pm : object
+        Parameters object
+
+    returns sparse matrix and sparse matrix
+        Reduction matrix used to reduce the wavefuction (remove indistinct
+        elements). Expansion matrix used to expand the reduced wavefunction
+        (insert indistinct elements) to get back the full wavefunction.
+    """
+    # Number of elements in the reduced wavefunction
+    coo_size = (int(np.prod(range(pm.sys.grid,pm.sys.grid+3))/spmisc.factorial(
+               3)))
+
+    # COOrdinate holding arrays for the reduction matrix
+    coo_1 = np.zeros((coo_size), dtype=int)
+    coo_2 = np.copy(coo_1)
+    coo_data_1 = np.zeros((coo_size), dtype=np.float)
+
+    # COOrdinate holding arrays for the expansion matrix
+    coo_3 = np.zeros((pm.sys.grid**3), dtype=int)
+    coo_4 = np.copy(coo_3)
+    coo_data_2 = np.zeros((pm.sys.grid**3), dtype=np.float)
+
+    # Populate the COOrdinate holding arrays with the coordinates and data
+    coo_1, coo_2, coo_3, coo_4, coo_data_1, coo_data_2 = (antisymmetry_coo.
+                       construct_antisymmetry_coo(coo_1,coo_2,coo_3,coo_4,
+                       coo_data_1,coo_data_2,pm.sys.grid,coo_size))
+
+    # Convert the holding arrays into COOrdinate sparse matrices. Finally, 
+    # convert these into compressed sparse column form for efficient 
+    # arithmetic. 
+    reduction_matrix = sps.coo_matrix((coo_data_1,(coo_1,coo_2)), shape=(
+                       coo_size,pm.sys.grid**3), dtype=np.float)
+    reduction_matrix = sps.csr_matrix(reduction_matrix)
+    expansion_matrix = sps.coo_matrix((coo_data_2,(coo_3,coo_4)), shape=(
+                       pm.sys.grid**3,coo_size), dtype=np.float)
+    expansion_matrix = sps.csr_matrix(expansion_matrix)
+
+    return reduction_matrix, expansion_matrix
+
+
+def construct_A_reduced(pm,reduction_matrix,expansion_matrix,v_ext,v_coulomb,
+                        TD):
+    r"""Constructs the reduced form of the sparse matrix A.
+
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    reduction_matrix : sparse matrix
+        Sparse matrix used to reduce the wavefunction (remove indistinct 
+        elements) by exploiting the exchange antisymmetry
+    expansion_matrix : sparse matrix
+        Sparse matrix used to expand the reduced wavefunction (insert 
+        indistinct elements) to get back the full wavefunction
+    v_ext : array_like
+        1D array of the external potential, indexed as 
+        v_ext[space_index] 
+    v_coulomb : array_like
+        1D array of the Coulomb potential, indexed as v_coulomb[space_index]
+    TD : integer
+        0 for the ground-state system, 1 for the time-dependent system
+    returns sparse matrix
+        Reduced form of the sparse matrix A, used when solving the equation Ax=b.
+    """
+    # Construct array of the diagonal elements of the Hamiltonian that will be
+    # passed to construct_hamiltonian_coo()
+    if(TD == 0):
+        r = pm.ext.cdeltat/(4.0*pm.sys.deltax**2) + 0.0j
+    elif(TD == 1):
+        r = 0.0 + 1.0j*pm.sys.deltat/(4.0*pm.sys.deltax**2)
+    hamiltonian_diagonals = construct_hamiltonian_diagonals(pm,r,v_ext,
+                            v_coulomb)
  
-# Output the 3D wavefunction to file during the real time evolution
-def PsiConverterR(Psiarr,i):
-    Psi3D = np.zeros((jmax,kmax,lmax), dtype = np.cfloat)
-    mPsi3D = np.zeros((jmax,kmax,lmax))
-    jkl = 0
-    while (jkl < jmax**3):
-        k, j, l = InvGind(jkl)
-        Psi3D[k,j,l] = Psiarr[jkl]
-        mPsi3D[k,j,l] = (np.absolute(Psi3D[k,j,l])**2)
-        jkl = jkl + 1                                         
-    den = np.zeros(jmax, dtype=np.float)
-    for element in range(0, jmax):
-        den[element] = 3*np.sum(mPsi3D[element,:,:])*deltax**2
-    np.save('chargeDensity_%i' %(i),den)
-    return
+    # Estimate the number of non-zero elements that will be in the matrix form
+    # of the system's Hamiltonian, then initialize the COOrdinate sparse matrix
+    # holding arrays with this shape
+    coo_size = hamiltonian_coo_max_size(pm)
+    coo_1 = np.zeros((coo_size), dtype=int)
+    coo_2 = np.zeros((coo_size), dtype=int)
+    coo_data = np.zeros((coo_size), dtype=np.cfloat)
 
-# Psi inverter
-def PsiInverter(Psi3D,i):
-    Psiarr = np.zeros((jmax**3), dtype = np.cfloat)
-    j = 0
-    k = 0
-    l = 0    
-    while (l < lmax):
-        j = 0
-        while (j < jmax):
-            k = 0
-            while (k < kmax):            
-                jkl = Gind(k,j,l)
-                Psiarr[jkl] = Psi3D[k,j,l]
-                k = k + 1
-            j = j + 1
-        l = l + 1
-    return Psiarr[:]
-	
-# Calculate the energy from present and previous psi during complex time
-def Energy(Psi):
-    a = np.linalg.norm(Psi[0,:])
-    b = np.linalg.norm(Psi[1,:])
-    return -(np.log(b/a))/cdeltat
+    # Pass the holding arrays and diagonals to the Hamiltonian constructor, and
+    # populate the holding arrays with the coordinates and data. Convert these
+    # into a COOrdinate sparse  matrix, and finally convert this into compressed
+    # sparse column form for efficient arithmetic.
+    coo_1, coo_2, coo_data = hamiltonian_coo.construct_hamiltonian_coo(coo_1,
+                             coo_2,coo_data,hamiltonian_diagonals,r,
+                             pm.sys.grid)
+    A = sps.coo_matrix((coo_data,(coo_1,coo_2)), shape=(pm.sys.grid**3,
+        pm.sys.grid**3), dtype=np.cfloat)
+    A = sps.csc_matrix(A)
 
-# Function to output the system's external potential
-def OutputPotential():
-    output_file1 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_3gs_ext_vxt.db','w')
-    potential = []
+    # Construct the reduced form of A
+    A_reduced = reduction_matrix*A*expansion_matrix
+
+    return A_reduced
+
+
+def construct_hamiltonian_diagonals(pm,r,v_ext,v_coulomb):
+    """Calculates the main diagonal of the Hamiltonian matrix, then stores this
+    in a Fortran contiguous array. This array is then passed to the Hamiltonian 
+    constructor construct_hamiltonian_coo().
+
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    r : complex float
+        Parameter in the equation Ax=b
+    v_ext : array_like
+        1D array of the external potential, indexed as v_ext[space_index] 
+    v_coulomb : array_like
+        1D array of the Coulomb potential, indexed as v_coulomb[space_index]
+
+    returns array_like
+        1D array of the Hamiltonian's main diagonal elements, indexed as 
+        hamiltonian_diagonals[space_index_1_2_3] 
+    """
+    hamiltonian_diagonals = np.zeros((pm.sys.grid**3), dtype=np.cfloat, 
+                            order='F')
+    const = 2.0*pm.sys.deltax**2
+   
+    # Store the main diagonal elements of the Hamiltonian matrix in the optimal
+    # order (i.e. the same order in which they are accessed from memory in 
+    # construct_hamiltonian_coo()) to minimise the time needed to construct 
+    # the full Hamiltonian matrix 
     i = 0
-    while(i < pm.sys.grid):
-        potential.append(pm.sys.v_ext(float((i*deltax)-pm.sys.xmax)))
-        i = i + 1
-    pickle.dump(potential,output_file1)
-    output_file1.close()
-    if(pm.run.time_dependence == True):
-        potential2 = []
-        i = 0
-        while(i < pm.sys.grid):
-        	potential2.append(pm.sys.v_ext(float((i*deltax)-pm.sys.xmax)) + pm.sys.v_pert(float((i*deltax)-pm.sys.xmax)))
-        	i = i + 1
-        output_file2 = open('outputs/' + str(pm.run.name) + '/raw/' + str(pm.run.name) + '_3td_ext_vxt.db','w')
-        TDP = []
-        i = 0
-        while(i < pm.sys.imax):
-            TDP.append(potential2)
-            i = i + 1
-        pickle.dump(TDP,output_file2)
-        output_file2.close()
-    return
+    for j in range(1,pm.sys.grid-1):
+        for k in range(1,pm.sys.grid-1):
+            for l in range(1,pm.sys.grid-1):
+                hamiltonian_diagonals[i] = 1.0 + 6.0*r + const*r*potential(pm,
+                                           j,k,l,v_ext,v_coulomb)
+                i+=1
 
-# Function to calculate the current density
-def CalculateCurrentDensity(n,i):	
-    J=np.zeros(pm.sys.grid)
-    RE_Utilities.continuity_eqn(i+1,pm.sys.grid,pm.sys.deltax,pm.sys.deltat,n,J)
-    return J
+    for j in range(0,pm.sys.grid,pm.sys.grid-1):
+        for k in range(pm.sys.grid):
+            for l in range(pm.sys.grid):
+                hamiltonian_diagonals[i] = 1.0 + 6.0*r + const*r*potential(pm,
+                                           j,k,l,v_ext,v_coulomb)
+                i+=1
 
-# Function to construct the real matrix Af 
-def ConstructAf(A):
+    for k in range(0,pm.sys.grid,pm.sys.grid-1):
+        for j in range(1,pm.sys.grid-1):
+            for l in range(pm.sys.grid):
+                hamiltonian_diagonals[i] = 1.0 + 6.0*r + const*r*potential(pm,
+                                           j,k,l,v_ext,v_coulomb)
+                i+=1
+
+    for l in range(0,pm.sys.grid,pm.sys.grid-1):
+        for j in range(1,pm.sys.grid-1):
+            for k in range(1,pm.sys.grid-1):
+                hamiltonian_diagonals[i] = 1.0 + 6.0*r + const*r*potential(pm,
+                                           j,k,l,v_ext,v_coulomb)
+                i+=1
+
+    return hamiltonian_diagonals
+
+
+def potential(pm,j,k,l,v_ext,v_coulomb):
+    r"""Calculates the [j,k,l] element of the potential matrix.
+
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    j : integer
+        1st electron index
+    k : integer
+        2nd electron index
+    l : integer
+        3rd electron index
+    v_ext : array_like
+        1D array of the external potential, indexed as v_ext[space_index] 
+    v_coulomb : array_like
+        1D array of the Coulomb potential, indexed as v_coulomb[space_index]
+
+    returns float
+        j, k, l element of potential matrix
+    """
+    interaction_strength = pm.sys.interaction_strength
+    element = v_ext[j] + v_ext[k] + v_ext[l] + interaction_strength*(
+              v_coulomb[abs(j-k)] + v_coulomb[abs(j-l)] + v_coulomb[abs(k-l)])
+
+    return element
+
+
+def hamiltonian_coo_max_size(pm):
+    """Estimates the number of non-zero elements in the Hamiltonian matrix 
+    (band matrix) created by construct_hamiltonian_coo(). This accounts for
+    the main diagonal (x**3) and the first off-diagonals for all three 
+    electrons (6x**3). This will overestimate the number of elements, 
+    resulting in an array size larger than the total number of elements. These
+    are truncated at the point of creation in the scipy.sparse.coo_matrix() 
+    constructor.
+
+    parameters
+    ----------
+    pm : object
+        Parameters object 
+
+    returns integer
+        Estimate of the number of non-zero elements in the Hamiltonian matrix
+    """
+    if(pm.sys.grid<3):
+        print 'Warning: insufficient spatial grid points (Grid=>3).'
+        return 0
+
+    max_size = 7*pm.sys.grid**3
+
+    return max_size
+
+
+def initial_wavefunction(pm,wavefunction):
+    r"""Generates the initial wavefunction for the Crank-Nicholson imaginary 
+    time propagation.
+
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    wavefunction : array_like
+        1D array of the wavefunction, indexed as 
+        wavefunction[space_index_1_2_3]
+
+    returns array_like
+        1D array of the wavefunction, indexed as 
+        wavefunction[space_index_1_2_3]
+    """
+    eigenstate_1 = energy_eigenstate(pm,0)
+    eigenstate_2 = energy_eigenstate(pm,1)
+    eigenstate_3 = energy_eigenstate(pm,2)
+    wavefunction = wavefunction3.construct_wavefunction(eigenstate_1,
+                   eigenstate_2,eigenstate_3,wavefunction,pm.sys.grid)
+
+    return wavefunction
+
+
+def energy_eigenstate(pm,n):
+    r"""Calculates the nth energy eigenstate of the quantum harmonic 
+    oscillator.
+
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    n : integer
+        Principle quantum number
+
+    returns array_like
+        1D array of the nth eigenstate, indexed as eigenstate[space_index]
+    """
+    eigenstate = np.zeros(pm.sys.grid, dtype=np.cfloat, order='F')
+    factorial = np.arange(0, n+1, 1)
+    fact = np.product(factorial[1:])
+    norm = (np.sqrt(1.0/((2.0**n)*fact)))*((1.0/np.pi)**0.25)
+    for j in range(pm.sys.grid):
+        x = -pm.sys.xmax + j*pm.sys.deltax
+        eigenstate[j] = complex(norm*(spec.hermite(n)(x))*(0.25)*np.exp(-0.5*
+                        (0.25)*(x**2)), 0.0)  
+
+    return eigenstate
+
+
+def wavefunction_converter(pm,wavefunction):
+    r"""Turns the array of compressed indices into separated indices.
+
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    wavefunction : array_like
+        1D array of the wavefunction, indexed as 
+        wavefunction[space_index_1_2_3]
+
+    returns array_like
+        3D array of the wavefunction, indexed as 
+        wavefunction_3D[space_index_1,space_index_2_space_index_3]
+    """
+    wavefunction_3D = np.zeros((pm.sys.grid,pm.sys.grid,pm.sys.grid), 
+                      dtype=np.cfloat)
+    for jkl in range(pm.sys.grid**3):
+        j, k, l = inverse_single_index(pm,jkl)
+        wavefunction_3D[j,k,l] = wavefunction[jkl]
+
+    return wavefunction_3D
+
+
+def calculate_energy(pm,wavefunction_reduced,wavefunction_reduced_old):
+    r"""Calculates the energy of the system.
+
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    wavefunction_reduced : array_like
+        1D array of the reduced wavefunction at t, indexed as 
+        wavefunction_reduced[space_index_1_2_3]
+    wavefunction_reduced_old : array_like
+        1D array of the reduced wavefunction at t-dt, indexed as 
+        wavefunction_reduced_old[space_index_1_2_3]
+    returns float
+        Energy of the system
+    """
+    a = np.linalg.norm(wavefunction_reduced_old)
+    b = np.linalg.norm(wavefunction_reduced)
+    energy = -(np.log(b/a))/pm.ext.cdeltat
+
+    return energy
+
+
+def calculate_density(pm,wavefunction_3D):
+    r"""Calculates the electron density from the three-electron wavefunction.
+
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    wavefunction : array_like
+        3D array of the wavefunction, indexed as 
+        wavefunction_3D[space_index_1,space_index_2,space_index_3]
+
+    returns array_like
+        1D array of the density, indexed as density[space_index]
+    """
+    mod_wavefunction_3D = np.absolute(wavefunction_3D)**2
+    density = 3.0*np.sum(np.sum(mod_wavefunction_3D, axis=1, dtype=np.float), 
+              axis=1)*pm.sys.deltax**2
+
+    return density 
+
+
+def calculate_current_density(pm,density):
+    r"""Calculates the current density from the time-dependent 
+    (and ground-state) electron density.
+
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    density : array_like
+        2D array of the time-dependent density, indexed as 
+        density[time_index,space_index]
+
+    returns array_like
+        2D array of the current density, indexed as 
+        current_density[time_index,space_index]
+    """
+    pm.sprint('',1,newline=True)
+    current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
+    string = 'EXT: calculating current density'
+    pm.sprint(string,1,newline=True)
+    for i in range(pm.sys.imax):
+         string = 'EXT: t = {:.5f}'.format((i+1)*pm.sys.deltat)
+         pm.sprint(string,1,newline=False)
+         J = np.zeros(pm.sys.grid)
+         J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,
+             pm.sys.deltat,density[i+1,:],density[i,:])
+         if(pm.sys.im == 1):
+             for j in range(pm.sys.grid):
+                 for k in range(j+1):
+                     x = k*pm.sys.deltax-pm.sys.xmax
+                     J[j] -= abs(pm.sys.im_petrb(x))*density[i,k]*(
+                             pm.sys.deltax)
+         current_density[i,:] = J[:]
+    pm.sprint('',1,newline=True)
+
+    return current_density
+
+
+def construct_Af(A):
+    r"""Constructs the real matrix Af for parallel runs.
+
+    parameters
+    ----------
+    A : sparse matrix
+        Sparse matrix in the equation Ax=b
+    returns sparse matrix
+        Sparse matrix in the equation Ax=b for parallel runs
+    """
     A1_dat, A2_dat = mkl.mkl_split(A.data,len(A.data))
     A.data = A1_dat
     A1 = copy.copy(A)
     A.data = A2_dat
     A2 = copy.copy(A)
     Af = sps.bmat([[A1,-A2],[A2,A1]]).tocsr()
+ 
     return Af
 
-# Function to calculate the current density
-def calculateCurrentDensity(total_td_density):
-    current_density = []
-    for i in range(0,len(total_td_density)-1):
-         string = 'MB: computing time dependent current density t = ' + str(i*pm.sys.deltat)
-         pm.sprint(string,1,newline=False)
-         J = np.zeros(pm.sys.grid)
-         J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,total_td_density[i+1],total_td_density[i])
-         if pm.sys.im==1:
-             for j in range(pm.sys.grid):
-                 for k in range(j+1):
-                     x = k*pm.sys.deltax-pm.sys.xmax
-                     J[j] -= abs(pm.sys.im_petrb(x))*total_td_density[i][k]*pm.sys.deltax
-         current_density.append(J)
-    return current_density
 
-# Apply the Crank-Nickolson method using complex time to find the ground state of the system
-def CNsolveComplexTime():
+def solve_imaginary_time(pm,A_reduced,wavefunction,reduction_matrix,
+                         expansion_matrix):
+    r"""Propagates the initial wavefunction through imaginary time using the 
+    Crank-Nicholson method to find the ground-state of the system. 
+
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    A_reduced : sparse matrix
+        Reduced form of the sparse matrix A, used when solving the equation Ax=b.
+    wavefunction : array_like
+        1D array of the wavefunction, indexed as 
+        wavefunction[space_index_1_2_3]
+    reduction_matrix : sparse matrix
+        Sparse matrix used to reduce the wavefunction (remove indistinct 
+        elements) by exploiting the exchange antisymmetry
+    expansion_matrix : sparse matrix
+        Sparse matrix used to expand the reduced wavefunction (insert 
+        indistinct elements) to get back the full wavefunction
+
+    returns float and array_like
+        Energy of the ground-state system. 1D array of the ground-state 
+        wavefunction, indexed as wavefunction[space_index_1_2_3].
+    """
+    # Construct the reduction matrix of C
+    C_reduced = -A_reduced + 2.0*reduction_matrix*sps.identity(pm.sys.grid**3, 
+                dtype=np.cfloat)*expansion_matrix
+
+    # Reduce the initial wavefunction and copy
+    wavefunction_reduced = reduction_matrix*wavefunction
+    wavefunction_reduced_old = np.copy(wavefunction_reduced)
+
+    # Print to screen
+    string = 'EXT: imaginary time propagation'
+    pm.sprint(string,1,newline=True)
+  
+    # Perform iterations
     i = 1
+    while (i < pm.ext.cimax):
 
-    # Set the initial condition of the wavefunction
-    Psiarr[0,:] = InitialconI()
-    Psiarr_RM = c_m*Psiarr[0,:]
+        # Begin timing the iteration
+        start = time.time()
+        string = 'complex time = {:.5f}'.format(i*pm.ext.cdeltat) 
+        pm.sprint(string,0,newline=True)
 
-    # Construct the matrix A
-    A = Matrixdef(0,r)
-    A = A.tocsc()
-    A_RM = c_m*A*c_p
+        # Construct the reduction vector of b
+        if(pm.ext.par == 0):
+            b_reduced = C_reduced*wavefunction_reduced
+        else:
+            b_reduced = mkl.mkl_mvmultiply_c(C_reduced.data,C_reduced.indptr+1,
+                        C_reduced.indices+1,1,wavefunction_reduced,
+                        C_reduced.shape[0],C_reduced.indices.size)
 
-    # Construct the matrix C
-    C = -(A-sps.identity(jmax**3, dtype=np.cfloat))+sps.identity(jmax**3, dtype=np.cfloat)
-    C_RM = c_m*C*c_p
+        # Solve Ax=b
+        wavefunction_reduced,info = spla.cg(A_reduced,b_reduced,
+                                    x0=wavefunction_reduced,tol=pm.ext.ctol)
+ 
+        # Normalise the reduced wavefunction
+        norm = np.linalg.norm(wavefunction_reduced)*pm.sys.deltax**(3.0/2.0)
+        wavefunction_reduced[:] = wavefunction_reduced[:]/norm
+        
+        # Stop timing the iteration
+        finish = time.time()
+        string = 'time to complete step: {:.5f}'.format(finish - start)
+        pm.sprint(string,0,newline=True)
+
+        # Test for convergence
+        wavefunction_convergence = np.linalg.norm(wavefunction_reduced_old - 
+                                   wavefunction_reduced)
+        string = 'wavefunction convergence: ' + str(wavefunction_convergence)
+        pm.sprint(string,0,newline=True) 
+        if(pm.run.verbosity=='default'):
+            string = 'EXT: ' + 't = {:.5f}'.format(i*pm.ext.cdeltat) + \
+                     ', convergence = ' + str(wavefunction_convergence)
+            pm.sprint(string,1,newline=False)
+        if(wavefunction_convergence < pm.ext.ctol*10.0):
+            i = pm.ext.cimax
+            pm.sprint('',1,newline=True)
+            string = 'EXT: ground-state converged' 
+            pm.sprint(string,1,newline=True)
+            wavefunction_reduced[:] = norm*wavefunction_reduced[:]
+            energy = calculate_energy(pm,wavefunction_reduced,
+                     wavefunction_reduced_old)
+            string = 'EXT: ground-state energy = {:.5f}'.format(energy)
+            pm.sprint(string,1,newline=True)
+        string = '-------------------------------------------------------------------------------------'
+        pm.sprint(string,0,newline=True)
+        
+        # Iterate
+        wavefunction_reduced_old[:] = wavefunction_reduced[:]
+        i += 1
+ 
+    # Expand the ground-state wavefunction and normalise
+    wavefunction = expansion_matrix*wavefunction_reduced
+    norm = np.linalg.norm(wavefunction)*pm.sys.deltax**(3.0/2.0)
+    wavefunction[:] = wavefunction[:]/norm
+
+    return energy, wavefunction
+
+
+def solve_real_time(pm,A_reduced,wavefunction,reduction_matrix,
+                    expansion_matrix):
+    r"""Propagates the ground-state wavefunction through real time using the
+    Crank-Nicholson method to find the time-evolution of the perturbed system.
+
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    wavefunction : array_like
+        1D array of the ground-state wavefunction, indexed as 
+        wavefunction[space_index_1_2_3]
+    reduction_matrix : sparse matrix
+        Sparse matrix used to reduce the wavefunction (remove indistinct
+        elements) by exploiting the exchange antisymmetry
+    expansion_matrix : sparse matrix
+        Sparse matrix used to expand the reduced wavefunction (insert
+        indistinct elements) to get back the full wavefunction 
+
+    returns array_like and array_like
+        2D array of the time-dependent density, indexed as 
+        density[time_index,space_index]. 2D array of the current density, 
+        indexed as current_density[time_index,space_index]
+    """
+    # Construct the matrix Af for a parallel run
+    if(pm.ext.par == 1):
+        Af = ConstructAf(A_reduced)
+
+    # Construct the reduction matrix of C
+    C_reduced = -A_reduced + 2.0*reduction_matrix*sps.identity(pm.sys.grid**3, 
+                dtype=np.cfloat)*expansion_matrix
+
+    # Array initialisations
+    density = np.zeros((pm.sys.imax+1,pm.sys.grid), dtype=np.float)
+    if(pm.ext.ELF_TD == 1):
+        elf = np.copy(density)
+    else:
+        elf = 0 
+
+    # Save ground-state
+    wavefunction_3D = wavefunction_converter(pm,wavefunction)
+    density[0,:] = calculate_density(pm,wavefunction_3D)
+ 
+    # Print to screen
+    string = 'EXT: real time propagation'
+    pm.sprint(string,1,newline=True)
 
     # Perform iterations
-    while (i < cimax):
-
-	# Begin timing the iteration
+    for i in range(pm.sys.imax):
+     
+        # Begin timing the iteration
         start = time.time()
-        string = 'Complex Time = ' + str(i*deltat)
-	pm.sprint(string,0)
-
-        # Initialising
-        if (i==1):
-            PsiConverterI(Psiarr[0,:],0)
-        elif (i>=2):
-            Psiarr[0,:]=Psiarr[1,:]
-   
-	# Construct vector b
-	if(par == 0):
-	    b_RM = C_RM*Psiarr_RM
-	else:
-	    b_RM = mkl.mkl_mvmultiply_c(C_RM.data,C_RM.indptr+1,C_RM.indices+1,1,Psiarr_RM,C_RM.shape[0],C_RM.indices.size)
-
-	# Solve Ax=b
-	Psiarr_RM,info = spsla.minres(A_RM,b_RM,x0=Psiarr_RM,tol=ctol)
-        
-	# Expand the wavefunction
-        Psiarr[1,:] = c_p*Psiarr_RM
-        
-	# Calculate the energy
-        Ev = Energy(Psiarr)
-	string = 'Energy = ' + str(Ev)
-	pm.sprint(string,0)
-        
-	# Normalise new wavefunction
-        mag = np.sqrt((np.sum(Psiarr[1,:]*np.conjugate(Psiarr[1,:]))*(deltax**3)))
-        Psiarr[1,:] = Psiarr[1,:] / mag
-
- 	# Reduce the wavefunction
-        Psiarr_RM = c_m*Psiarr[1,:]
-        
-	# Stop timing the iteration
-	finish = time.time()
-        string = 'Time to Complete Step: ' + str(finish-start)
-	pm.sprint(string,0)
-
-	# Test for convergance
-	wf_con = np.linalg.norm(Psiarr[0,:]-Psiarr[1,:])
-	string = 'wave function convergence: ' + str(wf_con)
-	pm.sprint(string,0)
-	string = 'EXT: ' + 't = ' + str(i*deltat) + ', convergence = ' + str(wf_con)
-        pm.sprint(string,1,newline=False)
-	if(i>1):
-	    e_con = old_energy - Ev
-	    string = 'energy convergence: ' + str(e_con)
-	    pm.sprint(string,0)
-	    normal = np.sum(np.absolute(Psiarr[1,:])**2)*(deltax**3)          
-            string = 'normalisation: ' + str(normal)                          
-            pm.sprint(string,0)                                  
-            string = 'residual: ' + str(np.linalg.norm(A_RM*Psiarr_RM-b_RM))  
-	    pm.sprint(string,0)                                  
-	    if(wf_con < ctol*10.0):
-		print
-	        string = 'EXT: ground state converged' 
-		pm.sprint(string,1)
-                string = 'ground state converged' 
-		pm.sprint(string,0)
-	        i = cimax
-	old_energy = copy.copy(Ev)
-        string = '---------------------------------------------------'
-	pm.sprint(string,0)
-
-        # Iterate
-        i += 1
-
-    # Total Energy
-    f = open('outputs/' + str(pm.run.name) + '/data/' + str(pm.run.name) + '_3gs_ext_E.db','w')
-    E_MB = str(Ev)
-    f.write(E_MB)
-    f.close()
-
-    # Convert Psi
-    Psi3Dcon = PsiConverterI(Psiarr[1,:],i)
- 
-    # Calculate denstiy
-    density = 3.0*np.sum(np.sum(abs(Psi3Dcon[:,:,:])**2, axis=0), axis=0)*deltax**2
-
-    # Dispose of matrices and terminate
-    A = 0
-    C = 0
-    return density.real
-
-# Function to iterate over real time
-def CNsolveRealTime():
-    i = 1
-    
-    # Set the initial condition of the wavefunction
-    Psiarr[0,:] = InitialconR()
-    PsiConverterR(Psiarr[0,:],0)
-    Psiarr_RM = c_m*Psiarr[0,:] 
-    Particle = open('Particle.txt', 'w')
-
-    # Construct the matrix A
-    A = Matrixdef(i,r)
-    A = A.tocsc()
-    A_RM = c_m*A*c_p
-
-    # Construct the matrix Af if neccessary
-    if(par == 1):
-        Af = ConstructAf(A_RM)
-
-    # Construct the matrix C
-    C = -(A-sps.identity(jmax**3, dtype=np.cfloat))+sps.identity(jmax**3, dtype=np.cfloat)
-    C_RM = c_m*C*c_p
-    while (i < imax):
-	# Begin timing the iteration
-        start = time.time()
-	string = 'Real Time = ' + str(i*deltat) + '/' + str((imax-1)*deltat)
-	pm.sprint(string,0)
-
-        if (i>=2):
-            Psiarr_RM = c_m*Psiarr[1,:]    
-        
-        # Construct the vector b
-	b = C*Psiarr[0,:]
-        if(par == 0):
-	    b_RM = C_RM*Psiarr_RM
-	else:
-	    b_RM = mkl.mkl_mvmultiply_c(C_RM.data,C_RM.indptr+1,C_RM.indices+1,1,Psiarr_RM,C_RM.shape[0],C_RM.indices.size)
-        
-	# Solve Ax=b
-	if(par == 0):
-	    Psiarr_RM,info = spsla.lgmres(A_RM,b_RM,x0=Psiarr_RM,tol=rtol)
-	else:
-	    b1, b2 = mkl.mkl_split(b_RM,len(b_RM))
-	    bf = np.append(b1,b2)
-	    if(i == 1):
-		xf = bf
-	    xf = mkl.mkl_isolve(Af.data,Af.indptr+1,Af.indices+1,1,bf,xf,Af.shape[0],Af.indices.size)
-	    x1, x2 = np.split(xf,2)
-	    Psiarr_RM = mkl.mkl_comb(x1,x2,len(x1))
-        
+        string = 'real time = {:.5f}'.format((i+1)*pm.sys.deltat) + '/' + \
+                 '{:.5f}'.format((pm.sys.imax)*pm.sys.deltat)
+        pm.sprint(string,0,newline=True)
+      
+        # Reduce the wavefunction
+        wavefunction_reduced = reduction_matrix*wavefunction[:]
+     
+        # Construct the vector b and its reduction vector
+        if(pm.run.verbosity == 'high'): 
+            b = C*wavefunction[:]
+        if(pm.ext.par == 0):
+            b_reduced = C_reduced*wavefunction_reduced
+        else:
+            b_reduced = mkl.mkl_mvmultiply_c(C_reduced.data,C_reduced.indptr+1,
+                        C_reduced.indices+1,1,wavefunction_reduced,
+                        C_reduced.shape[0],C_reduced.indices.size)
+     
+        # Solve Ax=b
+        if(pm.ext.par == 0):
+            wavefunction_reduced,info = spla.cg(A_reduced,b_reduced,
+                                        x0=wavefunction_reduced,tol=pm.ext.rtol)
+        else:
+            b1, b2 = mkl.mkl_split(b_reduced,len(b_reduced))
+            bf = np.append(b1,b2)
+            if(i == 0):
+                xf = bf
+            xf = mkl.mkl_isolve(Af.data,Af.indptr+1,Af.indices+1,1,bf,xf,
+                 Af.shape[0],Af.indices.size)
+            x1, x2 = np.split(xf,2)
+            wavefunction_reduced = mkl.mkl_comb(x1,x2,len(x1))
+      
         # Expand the wavefunction
-	Psiarr[1,:] = c_p*Psiarr_RM
-
-	# Convert the wavefunction
-        PsiConverterR(Psiarr[1,:],i)
-        
-	# Write to file
-        text = '\n time Step =' + str(i) + ', integral of modulus over all space, ie. P(particle1 and particle2)='
-	text = text + str(np.sum(np.absolute(Psiarr[1,:])**2)*(deltax**2))
-        Particle.write(text)
-
+        wavefunction = expansion_matrix*wavefunction_reduced
+       
+        # Calculate the density (and ELF)
+        wavefunction_3D = wavefunction_converter(pm,wavefunction)
+        density[i+1,:] = calculate_density(pm,wavefunction_3D)
+        if(pm.ext.ELF_TD == 1):
+            elf[i+1,:] = ELF.main(pm,wavefunction_3D)
+    
         # Stop timing the iteration
-	finish = time.time()
-        string = 'time to complete step: ' + str(finish-start)
-	pm.sprint(string,0)
-
+        finish = time.time()
+        string = 'time to complete step: {:.5f}'.format(finish - start)
+        pm.sprint(string,0,newline=True)
+      
         # Print to screen
-        string = 'residual: ' + str(np.linalg.norm(A_RM*Psiarr_RM-b_RM))
-	pm.sprint(string,0)
-	normal = np.sum(np.absolute(Psiarr[1,:])**2)*(deltax**3)
-        string = 'normalisation: ' + str(normal)
-        pm.sprint(string,0)
-	string = 'EXT: ' + 't = ' + str(i*deltat) + ', normalisation = ' + str(normal)
-        pm.sprint(string,1,newline=False)
-        string = '---------------------------------------------------'
-	pm.sprint(string,0)
+        if(pm.run.verbosity == 'default'):
+            string = 'EXT: ' + 't = {:.5f}'.format((i+1)*pm.sys.deltat)
+            pm.sprint(string,1,newline=False)
+        else:
+            string = 'residual: {:.5f}'.format(np.linalg.norm(A*wavefunction
+                     - b))
+            pm.sprint(string,0,newline=True)
+            norm = np.linalg.norm(wavefunction)*pm.sys.deltax**(3.0/2.0)
+            string = 'normalisation: {:.5f}'.format(norm**2)
+            pm.sprint(string,0,newline=True)
+            string = '-------------------------------------------------------------------------------------'
+            pm.sprint(string,0,newline=True)
+  
+    # Calculate the current density
+    current_density = calculate_current_density(pm,density)
 
-	# Iterate
-        i += 1
+    if(pm.ext.ELF_TD == 1):
+        return density[1:], current_density, elf[1:]
+    else:
+        return density[1:], current_density, elf
 
-    # Dispose of matrices and terminate
-    A = 0
-    C = 0
-    Particle.close()
-    return
 
-# Call this function to run iDEA-MB for 3 electrons
 def main(parameters):
-    global jmax,kmax,lmax,imax, cimax,xmax,tmax,ctmax,deltax,deltat
-    global cdeltat, ctol, rtol, TD, par, verbosity,gdstD,c_m, c_p, Nx_RM
-    global Psiarr,Mat,Rhv2,Psi3D,r,Mat3
-    global pm
+    r"""Calculates the ground-state of the system. If the system is perturbed, 
+    the time evolution of the perturbed system is then calculated.
 
+    parameters
+    ----------
+    parameters : object
+        Parameters object
+
+    returns object
+        Results object
+    """       
     pm = parameters
-
-    # Variable initialisation
-    jmax = pm.sys.grid
-    kmax = pm.sys.grid
-    lmax = pm.sys.grid
-    imax = pm.sys.imax
-    cimax = pm.ext.cimax
-    xmax = pm.sys.xmax
-    tmax = pm.sys.tmax
-    ctmax = pm.ext.ctmax
-    deltax = pm.sys.deltax
-    deltat = tmax/(imax-1)
-    cdeltat = ctmax/(cimax-1)
-    ctol = pm.ext.ctol
-    rtol = pm.ext.rtol
-    TD = pm.run.time_dependence
-    par = pm.ext.par
-    verbosity = pm.run.verbosity
-    gdstD = 0
-    c_m = 0
-    c_p = 0 
-    Nx_RM = 0
-
-
-
-    # Use global variables
+    
+    # Array initialisations 
     string = 'EXT: constructing arrays'
-    pm.sprint(string,0)
-    pm.sprint(string,1)
+    pm.sprint(string,1,newline=True)
+    wavefunction = np.zeros(pm.sys.grid**3, dtype=np.cfloat)
+    x_points = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
+    v_ext = pm.sys.v_ext(x_points)
+    v_pert = pm.sys.v_pert(x_points)
+    x_points_tmp = np.linspace(0.0,2.0*pm.sys.xmax,pm.sys.grid)
+    v_coulomb = 1.0/(pm.sys.acon + x_points_tmp)
 
-    # Construct reduction and expansion matrices
-    c_m, c_p = antisym(jmax)
+    # Construct the reduction and expansion matrices
+    reduction_matrix, expansion_matrix = construct_antisymmetry_matrices(pm)
 
-    # Complex Crank Nicholoson Array Initialisations
-    Psiarr = np.zeros((2,jmax**3), dtype = np.cfloat)   
-    Mat = sps.lil_matrix((jmax**3,jmax**3),dtype = np.cfloat)	
-    Mat3 = sps.lil_matrix((jmax**3,jmax**3),dtype = np.cfloat)  
-    Rhv2 = np.zeros((jmax**3), dtype = np.cfloat)      
-    Psi3D = np.zeros((kmax,jmax,lmax), dtype = np.cfloat)  
-    r = 0.0 + (1.0)*(deltat/(4.0*(deltax**2))) 
+    # Construct the reduced form of the sparse matrix A 
+    A_reduced = construct_A_reduced(pm,reduction_matrix,expansion_matrix,
+                v_ext,v_coulomb,0)
 
-    # Complex time evolution
-    ground = CNsolveComplexTime()
-    potential = pm.sys.v_ext(np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid))
+    # Generate the initial wavefunction
+    wavefunction = initial_wavefunction(pm,wavefunction)
 
-    # Output ground state density
+    # Propagate throught imaginary time
+    energy, wavefunction = solve_imaginary_time(pm,A_reduced,wavefunction,
+                           reduction_matrix,expansion_matrix) 
+
+    # Dispose of reduced matrix
+    del A_reduced
+
+    # Calculate ground-state density (and ELF)
+    wavefunction_3D = wavefunction_converter(pm,wavefunction)
+    density = calculate_density(pm,wavefunction_3D)
+    if(pm.ext.ELF_GS == 1):
+        elf = ELF.main(pm,wavefunction_3D)
+   
+    # Save ground-state density, energy and external potential (and ELF)
     results = rs.Results()
-    results.add(ground,'gs_ext_den')
-    results.add(potential,'gs_ext_vxt')
-
-    if pm.run.save:
-       results.save(pm)
-
-
-    # Real Time CN array initialisations
-    if TD == True:
+    results.add(density,'gs_ext_den')
+    results.add(energy,'gs_ext_E')
+    results.add(v_ext,'gs_ext_vxt')
+    if(pm.ext.ELF_GS == 1):
+        results.add(elf,'gs_ext_elf')
+    if(pm.run.save):
+        results.save(pm)
+        
+    # Propagate through real time
+    if(pm.run.time_dependence == True):
         string = 'EXT: constructing arrays'
-        pm.sprint(string,1)
-        #pm.sprint(string,0)
-        Psiarr = np.zeros((2,jmax**3), dtype = np.cfloat)	     
-        Rhv2 = np.zeros((jmax**3), dtype = np.cfloat)     
-        Mat2 = sps.lil_matrix((jmax**3,jmax**3),dtype = np.cfloat)
-        r = 0.0 + (1.0j)*(deltat/(4.0*(deltax**2)))
+        pm.sprint(string,1,newline=True)
+        v_ext += v_pert
+        A_reduced = construct_A_reduced(pm,reduction_matrix,expansion_matrix,
+                    v_ext,v_coulomb,1)
+        density, current_density, elf = solve_real_time(pm,A_reduced,
+                                        wavefunction,reduction_matrix,
+                                        expansion_matrix)
 
-        current_density = []
-
-        # Evolve throught real time
-    	CNsolveRealTime()
-        Den = np.zeros((imax,jmax))
-        for i in range(imax):     
-            Den[i,:] = np.load('chargeDensity_%i.npy' %(i))
-
-        # Calculate current density
-        current_density = calculateCurrentDensity(Den)
-        print   
-
-        ground = Den.tolist().pop(0)
-
-        results.add(Den,'td_ext_den')
-        results.add(current_density, 'td_ext_cur')
-
-        if pm.run.save:
-           l = ['td_ext_den','td_ext_cur']
-           results.save(pm, list=l)
-
-    imax = 1
-    CNsolveRealTime()
-    os.system('rm *.npy')
-    os.system('rm Particle.txt') 
-
-    #ProbPsiFile = open('outputs/' + str(pm.run.name) + '/' + 'raw/' + str(pm.run.name) + '_3gs_ext_den.db','w')
-    #pickle.dump(ground, ProbPsiFile)
-    #ProbPsiFile.close()
-    #OutputPotential()
+        # Save time-dependent density, current density and external potential
+        # (and ELF)
+        results.add(density,'td_ext_den')
+        results.add(current_density,'td_ext_cur')
+        results.add(v_ext,'td_ext_vxt')
+        if(pm.ext.ELF_TD == 1):
+            results.add(elf,'td_ext_elf')
+        if(pm.run.save):
+            results.save(pm)
 
     return results
-

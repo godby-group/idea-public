@@ -5,7 +5,7 @@ include make_rwgu.sys
 ###### Targets
 default: parallel
 
-parallel: mkl.so RE_Utilities.so create_hamiltonian_coo.so
+parallel: mkl.so RE_Utilities.so construct_hamiltonian_coo2.so construct_hamiltonian_coo3.so construct_antisymmetry_coo2.so construct_antisymmetry_coo3.so construct_wavefunction2.so construct_wavefunction3.so
 serial: RE_Utilities
 
 %.so::  %.f90
