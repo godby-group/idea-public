@@ -226,7 +226,7 @@ def main(parameters):
    pm = parameters
 
    # Create the grid
-   xgrid = np.linspace(-0.5*pm.sys.xmax,0.5*pm.sys.xmax,pm.sys.grid)
+   xgrid = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
 
    # Construct the kinetic energy
    K = constructK()
