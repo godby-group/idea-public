@@ -2,6 +2,7 @@ Version history
 ===============
 
  * **v2.1.0** (2017-02-15)
+
    * specify maximum number of iterations for LDA
      (Warning issued, if self-consistency is not achieved)
    * MBPT: now properly handles complex starting orbitals
