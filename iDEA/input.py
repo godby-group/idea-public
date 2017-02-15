@@ -6,6 +6,8 @@ import importlib
 import os
 import pprint
 import sys
+import collections
+
 import results as rs
 
 def input_string(key,value):
@@ -266,7 +268,7 @@ class Input(object):
 
 
     @classmethod
-    def from_python_file(self,filename):
+    def from_python_file(cls,filename):
         """Create Input from Python script."""
         tmp = Input()
         tmp.read_from_python_file(filename)
@@ -284,8 +286,22 @@ class Input(object):
         # import module into object
         pm = importlib.import_module(module)
 
-        # overvwrite member variables with those from object
-        self.__dict__.update(pm.__dict__)
+        # Replace default member variables with those from parameters file.
+        # We need to step into InputSection objects, as those may have varying
+        # numbers of parameters defined.
+        # The following recursive approach is adapted from 
+	# See http://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
+	def update(d, u):
+	    for k, v in u.iteritems():
+		if isinstance(v, InputSection):
+		    r = update(d.get(k, {}).__dict__, v.__dict__)
+		    d[k].__dict__ = r
+		    #d[k] = r
+		else:
+		    d[k] = u[k]
+	    return d 
+	self.__dict__ = update(self.__dict__, pm.__dict__)
+
         self.filename = filename
 
     ##########################################
