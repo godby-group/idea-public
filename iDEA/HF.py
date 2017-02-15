@@ -151,7 +151,6 @@ def energy(pm, density, eigf, eigv, V_H, F):
       for i in range(pm.sys.grid):
          for j in range(pm.sys.grid):
             E_HF += -0.5*(np.conjugate(eigf[k,i])*F[i,j]*eigf[k,j])*pm.sys.deltax*pm.sys.deltax
-   pm.sprint('HF: hartree-fock energy = {}'.format(E_HF.real), 1, newline=True)
    return E_HF.real
    
    
@@ -203,6 +202,7 @@ def main(parameters):
    
    # Calculate ground state energy
    E_HF = energy(pm, density, eigf, eigv, V_H, F)
+   pm.sprint('HF: hartree-fock energy = {}'.format(E_HF.real), 1, newline=True)
    
    results = rs.Results()
    results.add(E_HF,'gs_hf_E')
