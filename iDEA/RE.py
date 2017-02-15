@@ -325,7 +325,7 @@ def CalculateKS(V_KS,A_KS,J,Psi,j,upper_bound,frac1,frac2,z,tol,n_T,J_T,cost_n,c
       for k in range(i+1):
          Apot[i] += ((A_KS[j,k]-A_KS[j-1,k])/pm.sys.deltat)*pm.sys.deltax
    V_KS[j,:] += Apot[:]
-   V_KS[j,:] += V_KS[0,(pm.sys.grid-1)*0.5]-V_KS[j,(pm.sys.grid-1)*0.5]
+   V_KS[j,:] += V_KS[0,int((pm.sys.grid-1)*0.5)]-V_KS[j,int((pm.sys.grid-1)*0.5)]
    return n_KS,V_KS,J,Apot,z
 
 #Function to be fit for asymptotic form of V_xc
@@ -438,7 +438,7 @@ def main(parameters,approx):
          counter = 0
          for j in range(1,imax): # Propagate from the ground-state
             n_KS,V_KS,J_KS,Apot,z = CalculateKS(V_KS,A_KS,J_KS,Psi,j,upper_bound,frac1,frac2,z,tol,n_MB,J_MB,cost_n,cost_J,A_min,n_KS,exp) # Calculate KS potential
-            V_h[j,:] = Hartree(n_KS,j)
+            V_h[j,:] = Hartree(n_KS,V_coulomb,j)
             V_Hxc[j,:] = V_KS[j,:]-(V_ext[:]+petrb[:])
             V_xc[j,:] = V_KS[j,:]-(V_ext[:]+petrb[:]+V_h[j,:])
             counter += 1
