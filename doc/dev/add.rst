@@ -29,11 +29,21 @@ Once you have finished adding files you can commit your changes locally using
 You will be prompted to enter a commit message to describe your changes and save the file. Your changes are now committed!
 
 
-Pulling your changes into the central repository
+Pushing your changes into the central repository
 ------------------------------------------------
 
+When adding new features to iDEA, make sure to create a unit test
+that checks you feature is working as intended.
+
+At the very minimum, check that the existing unit tests aren't broken:
+
+.. code-block:: bash
+
+   # run this in the base directory
+   python -m unittest discover
+
+
 To have the changes you have commited pulled into the central repository for everyone to access, email jw1294@york.ac.uk with a pull request.
-It is a good idea to run the unit tests before makeing a pull request to make sure nothing had broken.
 
 
 Pulling changes from the central repository

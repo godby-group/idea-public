@@ -8,9 +8,10 @@ Things to fix
 
     Make mkl (and coo) import dependent on whether user asks for a parallelized calculation
 
- #. reported by: lt934, fixed by: N/A
+ #. reported by: lt934, fixed by: Jack, Mike
 
-    Remove reliance on global variables in all codes (EXT2,EXT3,HF and RE particularly)
+    Remove reliance on global variables in all codes: EXT3, RE
+    (EXT2, NON, LDA, HF are done)
 
  #. reported by: lt934, fixed by: N/A
 
