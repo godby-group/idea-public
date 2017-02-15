@@ -8,10 +8,11 @@ import pickle
 import numpy as np
 import scipy as sp
 import scipy.linalg as spla
+import scipy.sparse as sps
 import results as rs
 
 
-def hartree(U,density):
+def hartree(pm, U, density):
    r"""Constructs the hartree potential for a given density
 
    .. math::
@@ -28,10 +29,10 @@ def hartree(U,density):
 
    returns array_like
    """
-   return np.dot(U,density)*dx
+   return np.dot(U,density)*pm.sys.deltax
 
 
-def coulomb():
+def coulomb(pm):
    r"""Constructs the coulomb matrix
 
    .. math::
@@ -43,15 +44,16 @@ def coulomb():
 
    returns array_like
    """
-   for i in range(Nx):
-      xi = i*dx-0.5*L
-      for j in range(Nx):
-         xj = j*dx-0.5*L
+   U = np.zeros((pm.sys.grid,pm.sys.grid))
+   for i in range(pm.sys.grid):
+      xi = i*pm.sys.deltax-pm.sys.xmax
+      for j in range(pm.sys.grid):
+         xj = j*pm.sys.deltax-pm.sys.xmax
          U[i,j] = 1.0/(abs(xi-xj) + pm.sys.acon)
    return U
 
 
-def fock(Psi, U):
+def fock(pm, eigf, U):
    r"""Constructs the fock operator from a set of orbitals
 
     .. math:: F(x,x') = \sum_{k} \psi_{k}(x) U(x,x') \psi_{k}(x')
@@ -59,23 +61,23 @@ def fock(Psi, U):
 
    parameters
    ----------
-   Psi : array_like
-        orbitals indexed as Psi[orbital_number][space_index]
+   eigf : array_like
+        Eigenfunction orbitals indexed as eigf[orbital_number][space_index]
    
    U : array_like
         Coulomb matrix
 
    returns array_like
    """
-   F[:,:] = 0
+   F = np.zeros((pm.sys.grid,pm.sys.grid), dtype='complex')
    for k in range(pm.sys.NE):
-      for j in range(Nx):
-         for i in range(Nx):
-            F[i,j] += -(np.conjugate(Psi[k,i])*U[i,j]*Psi[k,j])*dx
+      for j in range(pm.sys.grid):
+         for i in range(pm.sys.grid):
+            F[i,j] += -(np.conjugate(eigf[k,i])*U[i,j]*eigf[k,j])*pm.sys.deltax
    return F
 
 
-def groundstate(V, F):	 	
+def groundstate(pm, v_ext, v_H, F):	 	
    r"""Calculates the oribitals and ground state density for the system for a given Fock operator
 
     .. math:: H = K + V + F \\
@@ -84,26 +86,39 @@ def groundstate(V, F):
 
    parameters
    ----------
-   V : array_like
-        potential
-   
+   v_ext : array_like
+        external potential
+   v_H : array_like
+        hartree potential
    F : array_like
-        Coulomb matrix
+        Fock potential
 
    returns array_like, array_like, array_like, array_like
-        density, normalised orbitals indexed as Psi[orbital_number][space_index], potential, energies
-   """					
-   HGS = copy.copy(T)	
-   for i in range(Nx):
-      HGS[i,i] += V[i]
+        density, normalised orbitals indexed as Psi[orbital_number][space_index], energies
+   """		
+   
+   # construct K and V
+   K = -0.5*sps.diags([1, -2, 1],[-1, 0, 1], shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).todense()/(pm.sys.deltax**2)     			
+   V_ext = sps.diags(v_ext, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).todense()
+   V_H = sps.diags(v_H, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).todense()
+   
+   # construct H
+   H = np.zeros(shape=K.shape)
+   H = K + V_ext + V_H
+   
+   # add fock matrix
    if pm.hf.fock == 1:
-      HGS[:,:] += F[:,:]
-   K, U = spla.eigh(HGS)
-   Psi = U.T / sqdx
-   n_x[:] = 0
+      H = H + F
+      
+   # solve eigen equation
+   eigv, eigf = spla.eigh(H)
+   eigf = eigf.T / np.sqrt(pm.sys.deltax)
+   
+   # calculate density
+   density = np.zeros(pm.sys.grid)
    for i in range(pm.sys.NE):
-      n_x[:]+=abs(Psi[i,:])**2 
-   return n_x, Psi, V, K
+      density[:] += abs(eigf[i,:])**2 
+   return density, eigf, eigv
 
 
 def main(parameters):
@@ -117,89 +132,60 @@ def main(parameters):
    returns object
       Results object
    """
-   global verbosity, Nx, Nt, L, dx, sqdx, c, nu
-   global T, n_x, n_old, n_MB, V, F, V_H, V_ext, V_add, U
-   global pm
    pm = parameters
-
-   # Import parameters
-   verbosity = pm.run.verbosity
-   Nx = pm.sys.grid
-   Nt = pm.sys.imax
-   L = 2*pm.sys.xmax
-   dx = L/(Nx-1)
-   sqdx = np.sqrt(dx)
-   c = pm.sys.acon
-   nu = pm.hf.nu
    
-   # Initialise matrices
-   T = np.zeros((Nx,Nx), dtype='complex')	# Kinetic energy matrix
-   n_x = np.zeros(Nx)			# Charge density
-   n_old = np.zeros(Nx)			# Charge density
-   n_MB = np.zeros(Nx)			# Many-body charge density
-   V = np.zeros(Nx)			# Matrix for the Kohn-Sham potential
-   F = np.zeros((Nx,Nx),dtype='complex')   # Fock operator
-   V_H = np.zeros(Nx)
-   V_ext = np.zeros(Nx)
-   V_add = np.zeros(Nx)
-   U = np.zeros((Nx,Nx))
-
-   # Costruct the kinetic energy matrix
-   for i in range(Nx):
-      for j in range(Nx):
-         T[i,i] = 1.0/dx**2
-         if i<Nx-1:
-            T[i+1,i] = -0.5/dx**2
-            T[i,i+1] = -0.5/dx**2
-   
-   # Construct external potential
-   for i in range(Nx):
-      x = i*dx-0.5*L
-      V[i] = pm.sys.v_ext(x)
-   V_ext[:] = V[:] 
-   n_x, Psi, V, K = groundstate(V, F)
-   con = 1
+   # Construct external potential and initial orbitals
+   V_H = np.zeros(pm.sys.grid)
+   F = np.zeros((pm.sys.grid,pm.sys.grid), dtype='complex')
+   V_ext = np.zeros(pm.sys.grid)
+   for i in range(pm.sys.grid):
+      x = i * pm.sys.deltax - pm.sys.xmax
+      V_ext[i] = pm.sys.v_ext(x)
+   density, eigf, eigv = groundstate(pm, V_ext, V_H, F)
    
    # Construct coulomb matrix
-   U = coulomb()
+   U = coulomb(pm)
    
    # Calculate ground state density
+   con = 1.0
    while con > pm.hf.con:
-      n_old[:] = n_x[:]
-      V_H = hartree(U,n_x)
-      F = fock(Psi, U)
-      V_add[:] = V_ext[:] + V_H[:]
-      V[:] = (1-nu)*V[:] + nu*V_add[:]
-      for i in range(2):		 # Smooth the edges of the system
-         V[i] = V[2]
-      for i in range(Nx-2,Nx):
-         V[i] = V[Nx-2]
-      n_x, Psi, V, K = groundstate(V, F)
-      con = sum(abs(n_x[:]-n_old[:]))
+      density_old = copy.deepcopy(density)
+      
+      # Calculate new potentials form new orbitals
+      V_H_new = hartree(pm, U, density)
+      F_new = fock(pm, eigf, U)
+    
+      # Stability mixing
+      V_H = (1-pm.hf.nu)*V_H + pm.hf.nu*V_H_new
+      F = (1-pm.hf.nu)*F + pm.hf.nu*F_new
+      
+      # Solve KS equations
+      density, eigf, eigv = groundstate(pm, V_ext, V_H, F)
+      
+      con = sum(abs(density-density_old))
       string = 'HF: computing ground-state density, convergence = ' + str(con)
-      pm.sprint(string,1,newline=False)
+      pm.sprint(string, 1, newline=False)
    print
    
    # Calculate ground state energy
    E_HF = 0
    for i in range(pm.sys.NE):
-      E_HF += K[i]
-   for i in range(Nx):
-      E_HF += -0.5*(n_x[i]*V_H[i])*dx
+      E_HF += eigv[i]
+   for i in range(pm.sys.grid):
+      E_HF += -0.5*(density[i]*V_H[i])*pm.sys.deltax
    for k in range(pm.sys.NE):
-      for i in range(Nx):
-         for j in range(Nx):
-            E_HF += -0.5*(np.conjugate(Psi[k,i])*F[i,j]*Psi[k,j])*dx
-   print 'HF: hartree-fock energy = %s' % E_HF.real
+      for i in range(pm.sys.grid):
+         for j in range(pm.sys.grid):
+            E_HF += -0.5*(np.conjugate(eigf[k,i])*F[i,j]*eigf[k,j])*pm.sys.deltax
+   pm.sprint('HF: hartree-fock energy = {}'.format(E_HF.real), 1, newline=True)
    
    results = rs.Results()
    results.add(E_HF.real,'gs_hf_E')
-   results.add(n_x,'gs_hf_den')
+   results.add(density,'gs_hf_den')
 
    if pm.hf.save_eig:
-       # Note: Psi is incorrectly normalised in the code...
-       results.add(Psi, 'gs_hf_eigf')
-       results.add(K, 'gs_hf_eigv')
+       results.add(eigf, 'gs_hf_eigf')
+       results.add(eigv, 'gs_hf_eigv')
 
    if pm.run.save:
       results.save(pm)
