@@ -17,8 +17,18 @@ if make_fortran:
     # note: this could be made more clever to
     #   automatically detect different environments
     #msg = subprocess.check_output(["make"], cwd=dir_path)
-    p = subprocess.Popen(["make"], cwd=dir_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    
+    # First check whether anything needs to be made (needed to print a message
+    # *only* if we are actually making something)
+    p = subprocess.Popen(["make","--just-print"], cwd=dir_path, 
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
-    if err:
-        print(err)
-        raise ImportError("Error while compiling Fortran libraries. Try typing 'make' in iDEA subdirectory.".format(err))
+    if out.find("Nothing to be done") != -1:
+        pass
+    else:
+        print("Compiling Fortran libraries...")
+        p = subprocess.Popen(["make"], cwd=dir_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = p.communicate()
+        if err:
+            print(err)
+            raise ImportError("Error while compiling Fortran libraries. Try typing 'make' in iDEA subdirectory.".format(err))
