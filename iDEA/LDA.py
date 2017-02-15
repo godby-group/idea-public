@@ -16,21 +16,25 @@ import scipy.sparse.linalg as spsla
 import results as rs
 
 
-def groundstate(v):
+def groundstate(pm, v_KS):
    r"""Calculates the oribitals and ground state density for the system for a given potential
 
     .. math:: H \psi_{i} = E_{i} \psi_{i}
                        
    parameters
    ----------
-   v : array_like
-        potential
+   v_KS : array_like
+        KS potential
 
    returns array_like, array_like, array_like
         density, normalised orbitals indexed as Psi[orbital_number][space_index], energies
    """	
+   
+   T = np.zeros((2,pm.sys.grid),dtype='float') # Kinetic Energy operator
+   T[0,:] = np.ones(pm.sys.grid)/pm.sys.deltax**2 # Define kinetic energy operator							
+   T[1,:] = -0.5*np.ones(pm.sys.grid)/pm.sys.deltax**2 
    H = copy.copy(T) # kinetic energy
-   H[0,:] += v[:]
+   H[0,:] += v_KS[:]
    e,eig_func = spla.eig_banded(H,True) 
    n = np.zeros(pm.sys.grid,dtype='float')
    for i in range(pm.sys.NE):
@@ -41,7 +45,7 @@ def groundstate(v):
 
 
 
-def hartree(U,density):
+def hartree(pm, U, density):
    r"""Constructs the hartree potential for a given density
 
    .. math::
@@ -61,7 +65,7 @@ def hartree(U,density):
    return np.dot(U,density)*pm.sys.deltax
 
 
-def coulomb():
+def coulomb(pm):
    r"""Constructs the coulomb matrix
 
    .. math::
@@ -80,7 +84,7 @@ def coulomb():
    return U
 
 
-def XC(Den): 
+def XC(pm , Den): 
    r"""Finite LDA approximation for the Exchange-Correlation potential
 
    parameters
@@ -101,7 +105,7 @@ def XC(Den):
    return V_xc
 
 
-def EXC(Den): 
+def EXC(pm, Den): 
    r"""Finite LDA approximation for the Exchange-Correlation energy
 
    parameters
@@ -128,7 +132,7 @@ def EXC(Den):
    return E_xc_LDA
 
 
-def CalculateCurrentDensity(n,j):
+def CalculateCurrentDensity(pm, n, j):
    r"""Calculates the current density of a time evolving wavefunction by solving the continuity equation.
 
    .. math::
@@ -154,10 +158,10 @@ def CalculateCurrentDensity(n,j):
    return J
 
 
-def CrankNicolson(v,Psi,n,j): 
+def CrankNicolson(pm, v, Psi, n, j): 
    r"""Solves Crank Nicolson Equation
    """
-   Mat = LHS(v,j)
+   Mat = LHS(pm, v,j)
    Mat = Mat.tocsr()
    Matin =- (Mat-sps.identity(pm.sys.grid,dtype='complex'))+sps.identity(pm.sys.grid,dtype='complex')
    for i in range(pm.sys.NE):
@@ -169,7 +173,7 @@ def CrankNicolson(v,Psi,n,j):
    return n,Psi
 
 
-def LHS(v,j):	
+def LHS(pm, v, j):	
    r"""Constructs the matrix A to be used in the crank-nicholson solution of Ax=b when evolving the wavefunction in time (Ax=b)
    """
    CNLHS = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex') # Matrix for the left hand side of the Crank Nicholson method										
@@ -193,23 +197,16 @@ def main(parameters):
    returns object
       Results object
    """
-   global pm, T # global variables
    pm = parameters
-
-   T = np.zeros((2,pm.sys.grid),dtype='float') # Kinetic Energy operator
-   T[0,:] = np.ones(pm.sys.grid)/pm.sys.deltax**2 # Define kinetic energy operator							
-   T[1,:] = -0.5*np.ones(pm.sys.grid)/pm.sys.deltax**2 
-
-
-
+   
    v_s = np.zeros(pm.sys.grid,dtype='float')
    v_ext = np.zeros(pm.sys.grid,dtype='float')
    Psi = np.zeros((pm.sys.NE,pm.sys.imax,pm.sys.grid), dtype='complex')
    for i in xrange(pm.sys.grid):
       v_s[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # External potential
       v_ext[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # External potential
-   n,waves,energies = groundstate(v_s) #Inital guess
-   U = coulomb() # Create Coulomb matrix
+   n,waves,energies = groundstate(pm, v_s) #Inital guess
+   U = coulomb(pm) # Create Coulomb matrix
    n_old = np.zeros(pm.sys.grid,dtype='float')
    n_old[:] = n[:] 
    convergence = 1.0
@@ -217,10 +214,10 @@ def main(parameters):
    while convergence > pm.lda.tol and iteration < pm.lda.max_iter: # Use LDA
       v_s_old = copy.copy(v_s)
       if pm.lda.mix == 0:
-         v_s[:] = v_ext[:]+hartree(n,U)+XC(n)
+         v_s[:] = v_ext[:]+hartree(pm, n, U)+XC(pm, n)
       else:
-         v_s[:] = (1-pm.lda.mix)*v_s_old[:]+pm.lda.mix*(v_ext[:]+hartree(n,U)+XC(n))
-      n,waves,energies = groundstate(v_s) # Calculate LDA density 
+         v_s[:] = (1-pm.lda.mix)*v_s_old[:]+pm.lda.mix*(v_ext[:]+hartree(pm, n, U)+XC(pm, n))
+      n,waves,energies = groundstate(pm, v_s) # Calculate LDA density 
       convergence = np.sum(abs(n-n_old))*pm.sys.deltax
       n_old[:] = n[:]
       string = 'LDA: electron density convergence = ' + str(convergence)
@@ -230,9 +227,9 @@ def main(parameters):
       pm.sprint('LDA: Warning: Reached maximum number of iterations. Terminating',1)
 
    pm.sprint('',1)
-   pm.sprint('LDA: ground-state xc energy: %s' % EXC(n),1)
-   v_h = hartree(n,U)
-   v_xc = XC(n)
+   pm.sprint('LDA: ground-state xc energy: %s' % EXC(pm, n),1)
+   v_h = hartree(pm, n,U)
+   v_xc = XC(pm, n)
 
    results = rs.Results()
    results.add(v_s[:], 'gs_lda_vks')
@@ -262,11 +259,11 @@ def main(parameters):
       for j in range(1,pm.sys.imax): 
          string = 'LDA: evolving through real time: t = ' + str(j*pm.sys.deltat) 
          pm.sprint(string,1,newline=False)
-         n_t,Psi = CrankNicolson(v_s_t,Psi,n_t,j)
+         n_t,Psi = CrankNicolson(pm, v_s_t,Psi,n_t,j)
          if j != pm.sys.imax-1:
-            v_s_t[j+1,:] = v_ext[:]+hartree(n_t[j,:],U)+XC(n_t[j,:])
-         current[j,:] = CalculateCurrentDensity(n_t,j)
-         v_xc_t[j,:] = XC(n_t[j,:])
+            v_s_t[j+1,:] = v_ext[:]+hartree(pm, n_t[j,:],U)+XC(pm, n_t[j,:])
+         current[j,:] = CalculateCurrentDensity(pm, n_t,j)
+         v_xc_t[j,:] = XC(pm, n_t[j,:])
 
       # Output results
       results.add(v_s_t, 'td_lda_vks')
