@@ -29,10 +29,11 @@ def groundstate(v):
    H = copy.copy(T)
    H[0,:] += v[:]
    e,eig_func = spla.eig_banded(H,True) 
+   eig_func /= np.sqrt(pm.sys.deltax)
    n = np.zeros(pm.sys.grid,dtype='float')
    for i in range(pm.sys.NE):
       n[:] += abs(eig_func[:,i])**2 # Calculate density
-   n[:] /= pm.sys.deltax # Normalise
+   #n[:] /= pm.sys.deltax # Normalise
    return n,eig_func,e
 
 # Define function for generating the Hartree potential for a given charge density
@@ -142,7 +143,7 @@ def main(parameters):
    #iteration = 1
 
    if pm.lda.mix_type == 'pulay':
-       mixer = mix.PulayMixer(pm, order=pm.lda.pulay_order, kerker_length=pm.lda.kerker_length)
+       mixer = mix.PulayMixer(pm, order=pm.lda.pulay_order)
 
    while convergence > pm.lda.tol and iteration < pm.lda.max_iter:
       n_old[:] = n[:]
@@ -150,15 +151,17 @@ def main(parameters):
       n_new,waves,energies = groundstate(v_s) # Calculate LDA density 
 
       if pm.lda.mix_type == 'pulay':
-          n = mixer.mix(n_old, n_new)
+          n = mixer.mix(n_old, n_new, energies, waves)
       elif pm.lda.mix_type == 'linear':
           n[:] = (1-pm.lda.mix)*n_old[:]+pm.lda.mix*n_new[:]
       else:
           n = n_new
       convergence = np.sum(abs(n-n_old))*pm.sys.deltax
       string = 'LDA: electron density convergence = {:.4e}'.format(convergence)
-      pm.sprint(string,1,newline=False)
+      #pm.sprint(string,1,newline=False)
+      pm.sprint(string,1,newline=True)
       iteration += 1
+
 
    pm.sprint('',1)
    if iteration == pm.lda.max_iter:
