@@ -24,7 +24,7 @@ import ELF
 import results as rs
 
 
-def single_index(pm,j,k):
+def single_index(pm, j, k):
     r"""Takes every permutation of the two electron indices and creates a 
     single unique index.
     
@@ -45,7 +45,7 @@ def single_index(pm,j,k):
     return jk
 
 
-def inverse_single_index(pm,jk):
+def inverse_single_index(pm, jk):
     r"""Inverses the single_index operation. Takes the single index and returns
     the two separate electron indices.
 
@@ -62,7 +62,7 @@ def inverse_single_index(pm,jk):
     k = jk % pm.sys.grid
     j = (jk - k)/pm.sys.grid
 
-    return j,k
+    return j, k
 
 
 def construct_antisymmetry_matrices(pm):
@@ -80,8 +80,8 @@ def construct_antisymmetry_matrices(pm):
         (insert indistinct elements) to get back the full wavefunction.
     """
     # Number of elements in the reduced wavefunction
-    coo_size = (int(np.prod(range(pm.sys.grid,pm.sys.grid+2))/spmisc.factorial(
-               2)))
+    coo_size = int(np.prod(range(pm.sys.grid,pm.sys.grid+2))/spmisc.factorial(
+               2))
 
     # COOrdinate holding arrays for the reduction matrix
     coo_1 = np.zeros((coo_size), dtype=int)
@@ -95,8 +95,8 @@ def construct_antisymmetry_matrices(pm):
 
     # Populate the COOrdinate holding arrays with the coordinates and data
     coo_1, coo_2, coo_3, coo_4, coo_data_1, coo_data_2 = (antisymmetry_coo.
-                       construct_antisymmetry_coo(coo_1,coo_2,coo_3,coo_4,
-                       coo_data_1,coo_data_2,pm.sys.grid,coo_size))
+                       construct_antisymmetry_coo(coo_1, coo_2, coo_3, coo_4,
+                       coo_data_1, coo_data_2, pm.sys.grid, coo_size))
 
     # Convert the holding arrays into COOrdinate sparse  matrices. Finally,
     # convert these into compressed sparse column form for efficient 
@@ -111,8 +111,8 @@ def construct_antisymmetry_matrices(pm):
     return reduction_matrix, expansion_matrix
 
 
-def construct_A_reduced(pm,reduction_matrix,expansion_matrix,v_ext,v_coulomb,
-                        TD):
+def construct_A_reduced(pm, reduction_matrix, expansion_matrix, v_ext, 
+                        v_coulomb, TD):
     r"""Constructs the reduced form of the sparse matrix A.
 
     parameters
@@ -132,16 +132,19 @@ def construct_A_reduced(pm,reduction_matrix,expansion_matrix,v_ext,v_coulomb,
         1D array of the Coulomb potential, indexed as v_coulomb[space_index]
     TD : integer
         0 for the ground-state system, 1 for the time-dependent system
+
     returns sparse matrix
         Reduced form of the sparse matrix A, used when solving the equation Ax=b.
     """
-    # Construct array of the diagonal elements of the Hamiltonian that will be
-    # passed to construct_hamiltonian_coo()
+    # Define parameter r 
     if(TD == 0):
         r = pm.ext.cdeltat/(4.0*pm.sys.deltax**2) + 0.0j
     elif(TD == 1):
         r = 0.0 + 1.0j*pm.sys.deltat/(4.0*pm.sys.deltax**2)
-    hamiltonian_diagonals = construct_hamiltonian_diagonals(pm,r,v_ext,
+    
+    # Construct array of the diagonal elements of the Hamiltonian that will be
+    # passed to construct_hamiltonian_coo()
+    hamiltonian_diagonals = construct_hamiltonian_diagonals(pm, r, v_ext,
                             v_coulomb)
  
     # Estimate the number of non-zero elements that will be in the matrix form
@@ -157,7 +160,7 @@ def construct_A_reduced(pm,reduction_matrix,expansion_matrix,v_ext,v_coulomb,
     # into a COOrdinate sparse  matrix, and finally convert this into compressed
     # sparse column form for efficient arithmetic.
     coo_1, coo_2, coo_data = hamiltonian_coo.construct_hamiltonian_coo(coo_1,
-                             coo_2,coo_data,hamiltonian_diagonals,r,
+                             coo_2, coo_data, hamiltonian_diagonals, r,
                              pm.sys.grid)
     A = sps.coo_matrix((coo_data,(coo_1,coo_2)), shape=(pm.sys.grid**2,
         pm.sys.grid**2), dtype=np.cfloat)
@@ -169,7 +172,7 @@ def construct_A_reduced(pm,reduction_matrix,expansion_matrix,v_ext,v_coulomb,
     return A_reduced
 
 
-def construct_hamiltonian_diagonals(pm,r,v_ext,v_coulomb):
+def construct_hamiltonian_diagonals(pm, r, v_ext, v_coulomb):
     """Calculates the main diagonal of the Hamiltonian matrix, then stores this 
     in a Fortran contiguous array. This array is then passed to the Hamiltonian        
     constructor construct_hamiltonian_coo().
@@ -200,26 +203,26 @@ def construct_hamiltonian_diagonals(pm,r,v_ext,v_coulomb):
     i = 0
     for j in range(1,pm.sys.grid-1):
         for k in range(1,pm.sys.grid-1):
-            hamiltonian_diagonals[i] = 1.0 + 4.0*r + const*r*potential(pm,j,k,
-                                       v_ext,v_coulomb)
+            hamiltonian_diagonals[i] = 1.0 + 4.0*r + const*r*potential(pm, j, 
+                                       k, v_ext, v_coulomb)
             i+=1
 
     for j in range(0,pm.sys.grid,pm.sys.grid-1):
         for k in range(pm.sys.grid):
-            hamiltonian_diagonals[i] = 1.0 + 4.0*r + const*r*potential(pm,j,k,
-                                       v_ext,v_coulomb)
+            hamiltonian_diagonals[i] = 1.0 + 4.0*r + const*r*potential(pm, j,
+                                       k, v_ext, v_coulomb)
             i+=1
 
     for k in range(0,pm.sys.grid,pm.sys.grid-1):
         for j in range(1,pm.sys.grid-1):
-            hamiltonian_diagonals[i] = 1.0 + 4.0*r + const*r*potential(pm,j,k,
-                                       v_ext,v_coulomb)
+            hamiltonian_diagonals[i] = 1.0 + 4.0*r + const*r*potential(pm, j,
+                                       k, v_ext, v_coulomb)
             i+=1
 
     return hamiltonian_diagonals
 
 
-def potential(pm,j,k,v_ext,v_coulomb):
+def potential(pm, j, k, v_ext, v_coulomb):
     r"""Calculates the [j,k] element of the potential matrix.
 
     parameters
@@ -269,7 +272,7 @@ def hamiltonian_coo_max_size(pm):
     return max_size
 
 
-def initial_wavefunction(pm,wavefunction):
+def initial_wavefunction(pm, wavefunction_reduced):
     r"""Generates the initial condition for the Crank-Nicholson imaginary 
     time propagation.
 
@@ -277,21 +280,23 @@ def initial_wavefunction(pm,wavefunction):
     ----------
     pm : object
         Parameters object
-    wavefunction : array_like
-        1D array of the wavefunction, indexed as wavefunction[space_index_1_2]
+    wavefunction_reduced : array_like
+        1D array of the reduced wavefunction, indexed as 
+        wavefunction_reduced[space_index_1_2]
 
     returns array_like
-        1D array of the wavefunction, indexed as wavefunction[space_index_1_2]
+        1D array of the reduced wavefunction, indexed as 
+        wavefunction_reduced[space_index_1_2]
     """
     eigenstate_1 = energy_eigenstate(pm,0)
     eigenstate_2 = energy_eigenstate(pm,1)
-    wavefunction = wavefunction2.construct_wavefunction(eigenstate_1,
-                   eigenstate_2,wavefunction,pm.sys.grid)
+    wavefunction_reduced = wavefunction2.construct_wavefunction(eigenstate_1,
+                           eigenstate_2, wavefunction_reduced, pm.sys.grid)
 
-    return wavefunction
+    return wavefunction_reduced
 
 
-def energy_eigenstate(pm,n):
+def energy_eigenstate(pm, n):
     r"""Calculates the nth energy eigenstate of the quantum harmonic 
     oscillator.
 
@@ -306,7 +311,7 @@ def energy_eigenstate(pm,n):
         1D array of the nth eigenstate, indexed as eigenstate[space_index]
     """
     eigenstate = np.zeros(pm.sys.grid, dtype=np.cfloat, order='F')
-    factorial = np.arange(0, n+1, 1)
+    factorial = np.arange(0,n+1,1)
     fact = np.product(factorial[1:])
     norm = (np.sqrt(1.0/((2.0**n)*fact)))*((1.0/np.pi)**0.25)
     for j in range(pm.sys.grid):
@@ -317,7 +322,7 @@ def energy_eigenstate(pm,n):
     return eigenstate
 
 
-def wavefunction_converter(pm,wavefunction):
+def wavefunction_converter(pm, wavefunction):
     r"""Turns the array of compressed indices into separated indices. 
 
     parameters
@@ -333,13 +338,13 @@ def wavefunction_converter(pm,wavefunction):
     """
     wavefunction_2D = np.zeros((pm.sys.grid,pm.sys.grid), dtype=np.cfloat)
     for jk in range(pm.sys.grid**2):
-        j, k = inverse_single_index(pm,jk)
+        j, k = inverse_single_index(pm, jk)
         wavefunction_2D[j,k] = wavefunction[jk]
 
     return wavefunction_2D
 
 
-def calculate_energy(pm,wavefunction_reduced,wavefunction_reduced_old):
+def calculate_energy(pm, wavefunction_reduced, wavefunction_reduced_old):
     r"""Calculates the energy of the system.
 
     parameters
@@ -352,6 +357,7 @@ def calculate_energy(pm,wavefunction_reduced,wavefunction_reduced_old):
     wavefunction_reduced_old : array_like
         1D array of the reduced wavefunction at t-dt, indexed as 
         wavefunction_reduced_old[space_index_1_2]
+
     returns float
         Energy of the system
     """
@@ -362,7 +368,7 @@ def calculate_energy(pm,wavefunction_reduced,wavefunction_reduced_old):
     return energy
 
 
-def calculate_density(pm,wavefunction_2D):
+def calculate_density(pm, wavefunction_2D):
     r"""Calculates the electron density from the two-electron wavefunction.
 
     parameters
@@ -383,7 +389,7 @@ def calculate_density(pm,wavefunction_2D):
     return density 
 
 
-def calculate_current_density(pm,density):
+def calculate_current_density(pm, density):
     r"""Calculates the current density from the time-dependent 
     (and ground-state) electron density.
 
@@ -407,8 +413,8 @@ def calculate_current_density(pm,density):
          string = 'EXT: t = {:.5f}'.format((i+1)*pm.sys.deltat)
          pm.sprint(string,1,newline=False)
          J = np.zeros(pm.sys.grid)
-         J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,
-             pm.sys.deltat,density[i+1,:],density[i,:])
+         J = RE_Utilities.continuity_eqn(pm.sys.grid, pm.sys.deltax,
+             pm.sys.deltat, density[i+1,:], density[i,:])
          if(pm.sys.im == 1):
              for j in range(pm.sys.grid):
                  for k in range(j+1):
@@ -428,6 +434,7 @@ def construct_Af(A):
     ----------
     A : sparse matrix
         Sparse matrix in the equation Ax=b
+
     returns sparse matrix
         Sparse matrix in the equation Ax=b for parallel runs
     """
@@ -441,8 +448,8 @@ def construct_Af(A):
     return Af
 
 
-def solve_imaginary_time(pm,A_reduced,wavefunction,reduction_matrix,
-                         expansion_matrix):
+def solve_imaginary_time(pm, A_reduced, wavefunction_reduced, 
+                         reduction_matrix, expansion_matrix):
     r"""Propagates the initial wavefunction through imaginary time using the 
     Crank-Nicholson method to find the ground-state of the system.
 
@@ -452,8 +459,9 @@ def solve_imaginary_time(pm,A_reduced,wavefunction,reduction_matrix,
         Parameters object
     A_reduced : sparse matrix
         Reduced form of the sparse matrix A, used when solving the equation Ax=b.
-    wavefunction : array_like
-        1D array of the wavefunction, indexed as wavefunction[space_index_1_2]
+    wavefunction_reduced : array_like
+        1D array of the reduced wavefunction, indexed as
+         wavefunction_reduced[space_index_1_2]
     reduction_matrix : sparse matrix
         Sparse matrix used to reduce the wavefunction (remove indistinct 
         elements) by exploiting the exchange antisymmetry
@@ -469,13 +477,12 @@ def solve_imaginary_time(pm,A_reduced,wavefunction,reduction_matrix,
     C_reduced = -A_reduced + 2.0*reduction_matrix*sps.identity(pm.sys.grid**2, 
                 dtype=np.cfloat)*expansion_matrix
 
-    # Reduce the initial wavefunction and copy
-    wavefunction_reduced = reduction_matrix*wavefunction
+    # Copy the initial wavefunction
     wavefunction_reduced_old = np.copy(wavefunction_reduced)
  
     # Print to screen
     string = 'EXT: imaginary time propagation'
-    pm.sprint(string,1,newline=True)
+    pm.sprint(string, 1, newline=True)
  
     # Perform iterations
     i = 1
@@ -484,7 +491,7 @@ def solve_imaginary_time(pm,A_reduced,wavefunction,reduction_matrix,
         # Begin timing the iteration
         start = time.time()
         string = 'complex time = {:.5f}'.format(i*pm.ext.cdeltat) 
-        pm.sprint(string,0,newline=True)
+        pm.sprint(string, 0, newline=True)
 
         # Construct the reduction vector of b
         if(pm.ext.par == 0):
@@ -495,8 +502,8 @@ def solve_imaginary_time(pm,A_reduced,wavefunction,reduction_matrix,
                         C_reduced.shape[0],C_reduced.indices.size)
 
         # Solve Ax=b
-        wavefunction_reduced,info = spla.cg(A_reduced,b_reduced,
-                                    x0=wavefunction_reduced,tol=pm.ext.ctol)
+        wavefunction_reduced, info = spla.cg(A_reduced,b_reduced,
+                                     x0=wavefunction_reduced,tol=pm.ext.ctol)
 
         # Normalise the reduced wavefunction
         norm = np.linalg.norm(wavefunction_reduced)*pm.sys.deltax
@@ -505,29 +512,30 @@ def solve_imaginary_time(pm,A_reduced,wavefunction,reduction_matrix,
         # Stop timing the iteration
         finish = time.time()
         string = 'time to complete step: {:.5f}'.format(finish - start)
-        pm.sprint(string,0,newline=True)
+        pm.sprint(string, 0, newline=True)
 
         # Test for convergence
         wavefunction_convergence = np.linalg.norm(wavefunction_reduced_old -
                                    wavefunction_reduced)
         string = 'wavefunction convergence: ' + str(wavefunction_convergence)
-        pm.sprint(string,0,newline=True) 
+        pm.sprint(string, 0, newline=True) 
         if(pm.run.verbosity=='default'):
             string = 'EXT: ' + 't = {:.5f}'.format(i*pm.ext.cdeltat) + \
                      ', convergence = ' + str(wavefunction_convergence)
-            pm.sprint(string,1,newline=False)
+            pm.sprint(string, 1, newline=False)
         if(wavefunction_convergence < pm.ext.ctol*10.0):
             i = pm.ext.cimax
-            pm.sprint('',1,newline=True)
+            pm.sprint('', 1, newline=True)
             string = 'EXT: ground-state converged' 
-            pm.sprint(string,1,newline=True)
+            pm.sprint(string, 1, newline=True)
             wavefunction_reduced[:] = norm*wavefunction_reduced[:]
-            energy = calculate_energy(pm,wavefunction_reduced,
+            energy = calculate_energy(pm, wavefunction_reduced,
                      wavefunction_reduced_old)
             string = 'EXT: ground-state energy = {:.5f}'.format(energy)
-            pm.sprint(string,1,newline=True)
-        string = '-------------------------------------------------------------------------------------'
-        pm.sprint(string,0,newline=True)
+            pm.sprint(string, 1, newline=True)
+        string = '--------------------------------------------------------' + \
+                 '----------'
+        pm.sprint(string, 0, newline=True)
 
         # Iterate
         wavefunction_reduced_old[:] = wavefunction_reduced[:]
@@ -541,7 +549,7 @@ def solve_imaginary_time(pm,A_reduced,wavefunction,reduction_matrix,
     return energy, wavefunction
 
 
-def solve_real_time(pm,A_reduced,wavefunction,reduction_matrix,
+def solve_real_time(pm, A_reduced, wavefunction, reduction_matrix,
                     expansion_matrix):
     r"""Propagates the ground-state wavefunction through real time using the 
     Crank-Nicholson method to find the time-evolution of the perturbed system.
@@ -583,12 +591,15 @@ def solve_real_time(pm,A_reduced,wavefunction,reduction_matrix,
         elf = 0 
 
     # Save ground state
-    wavefunction_2D = wavefunction_converter(pm,wavefunction)
-    density[0,:] = calculate_density(pm,wavefunction_2D)
+    wavefunction_2D = wavefunction_converter(pm, wavefunction)
+    density[0,:] = calculate_density(pm, wavefunction_2D)
    
+    # Reduce the wavefunction
+    wavefunction_reduced = reduction_matrix*wavefunction
+
     # Print to screen
     string = 'EXT: real time propagation'
-    pm.sprint(string,1,newline=True)
+    pm.sprint(string, 1, newline=True)
 
     # Perform iterations
     for i in range(pm.sys.imax):
@@ -597,10 +608,7 @@ def solve_real_time(pm,A_reduced,wavefunction,reduction_matrix,
         start = time.time()
         string = 'real time = {:.5f}'.format((i+1)*pm.sys.deltat) + '/' + \
                  '{:.5f}'.format((pm.sys.imax)*pm.sys.deltat)
-        pm.sprint(string,0,newline=True)
-
-        # Reduce the wavefunction
-        wavefunction_reduced = reduction_matrix*wavefunction[:]
+        pm.sprint(string, 0, newline=True)
 
         # Construct the vector b and its reduction vector
         if(pm.run.verbosity == 'high'):
@@ -614,8 +622,8 @@ def solve_real_time(pm,A_reduced,wavefunction,reduction_matrix,
 
         # Solve Ax=b
         if(pm.ext.par == 0):
-            wavefunction_reduced,info = spla.cg(A_reduced,b_reduced,
-                                        x0=wavefunction_reduced,tol=pm.ext.rtol)
+            wavefunction_reduced, info = spla.cg(A_reduced,b_reduced,
+                                         x0=wavefunction_reduced,tol=pm.ext.rtol)
         else:
             b1, b2 = mkl.mkl_split(b_reduced,len(b_reduced))
             bf = np.append(b1,b2)
@@ -630,32 +638,33 @@ def solve_real_time(pm,A_reduced,wavefunction,reduction_matrix,
         wavefunction = expansion_matrix*wavefunction_reduced
 
         # Calculate the density (and ELF)
-        wavefunction_2D = wavefunction_converter(pm,wavefunction)
-        density[i+1,:] = calculate_density(pm,wavefunction_2D)
+        wavefunction_2D = wavefunction_converter(pm, wavefunction)
+        density[i+1,:] = calculate_density(pm, wavefunction_2D)
         if(pm.ext.ELF_TD == 1):
-            elf[i+1,:] = ELF.main(pm,wavefunction_2D)
+            elf[i+1,:] = ELF.main(pm, wavefunction_2D)
   
         # Stop timing the iteration
         finish = time.time()
         string = 'time to complete step: {:.5f}'.format(finish - start)
-        pm.sprint(string,0,newline=True)
+        pm.sprint(string, 0, newline=True)
 
         # Print to screen
         if(pm.run.verbosity == 'default'):
             string = 'EXT: ' + 't = {:.5f}'.format((i+1)*pm.sys.deltat)
-            pm.sprint(string,1,newline=False)
+            pm.sprint(string, 1, newline=False)
         else:
             string = 'residual: {:.5f}'.format(np.linalg.norm(A*wavefunction
                      - b))
-            pm.sprint(string,0,newline=True)
+            pm.sprint(string, 0, newline=True)
             norm = np.linalg.norm(wavefunction)*pm.sys.deltax
             string = 'normalisation: {:.5f}'.format(norm**2)
-            pm.sprint(string,0,newline=True)
-            string = '-------------------------------------------------------------------------------------'
-            pm.sprint(string,0,newline=True)
+            pm.sprint(string, 0, newline=True)
+            string = '----------------------------------------------------' + \
+                     '----------'
+            pm.sprint(string, 0, newline=True)
   
     # Calculate the current density
-    current_density = calculate_current_density(pm,density)
+    current_density = calculate_current_density(pm, density)
 
     if(pm.ext.ELF_TD == 1):
         return density[1:], current_density, elf[1:]
@@ -679,7 +688,7 @@ def main(parameters):
 
     # Array initialisations 
     string = 'EXT: constructing arrays'
-    pm.sprint(string,1,newline=True)
+    pm.sprint(string, 1, newline=True)
     wavefunction = np.zeros(pm.sys.grid**2, dtype=np.cfloat)
     x_points = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
     v_ext = pm.sys.v_ext(x_points)
@@ -691,24 +700,26 @@ def main(parameters):
     reduction_matrix, expansion_matrix = construct_antisymmetry_matrices(pm)
 
     # Construct the reduced form of the sparse matrix A 
-    A_reduced = construct_A_reduced(pm,reduction_matrix,expansion_matrix,
-                v_ext,v_coulomb,0)
+    A_reduced = construct_A_reduced(pm, reduction_matrix, expansion_matrix,
+                v_ext, v_coulomb, 0)
 
     # Generate the initial wavefunction
-    wavefunction = initial_wavefunction(pm,wavefunction)
+    wavefunction_reduced = np.zeros(reduction_matrix.shape[0], dtype=np.cfloat)
+    wavefunction_reduced = initial_wavefunction(pm, wavefunction_reduced)
     
-    # Propagate throught imaginary time
-    energy, wavefunction = solve_imaginary_time(pm,A_reduced,wavefunction,
-                           reduction_matrix,expansion_matrix) 
+    # Propagate through imaginary time
+    energy, wavefunction = solve_imaginary_time(pm, A_reduced,
+                           wavefunction_reduced, reduction_matrix,
+                           expansion_matrix) 
   
-    # Dispose of reduced matrix
+    # Dispose of the reduced matrix
     del A_reduced
 
     # Calculate ground-state density (and ELF)
-    wavefunction_2D = wavefunction_converter(pm,wavefunction)
-    density = calculate_density(pm,wavefunction_2D)
+    wavefunction_2D = wavefunction_converter(pm, wavefunction)
+    density = calculate_density(pm, wavefunction_2D)
     if(pm.ext.ELF_GS == 1):
-        elf = ELF.main(pm,wavefunction_2D)
+        elf = ELF.main(pm, wavefunction_2D)
    
     # Save ground-state density, energy and external potential (and ELF)
     results = rs.Results()
@@ -725,10 +736,10 @@ def main(parameters):
         string = 'EXT: constructing arrays'
         pm.sprint(string,1,newline=True)
         v_ext += v_pert
-        A_reduced = construct_A_reduced(pm,reduction_matrix,expansion_matrix,
-                    v_ext,v_coulomb,1)
-        density, current_density, elf = solve_real_time(pm,A_reduced,
-                                        wavefunction,reduction_matrix,
+        A_reduced = construct_A_reduced(pm, reduction_matrix, expansion_matrix,
+                    v_ext, v_coulomb, 1)
+        density, current_density, elf = solve_real_time(pm, A_reduced,
+                                        wavefunction, reduction_matrix,
                                         expansion_matrix)
         del A_reduced
 
