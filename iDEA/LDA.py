@@ -132,6 +132,38 @@ def EXC(pm, Den):
    return E_xc_LDA
 
 
+def energy(pm, density, eigf, eigv, V_H, V_xc):	 	
+   r"""Calculates the total energy of the self-consistent LDA density                 
+
+   parameters
+   ----------
+   pm : array_like
+        external potential
+   density : array_like
+		  density
+   eigf : array_like
+        eigenfunctions
+   eigv : array_like
+        eigenvalues
+   V_H : array_like
+        Hartree potential
+   F : array_like
+        Fock potential
+
+   returns float
+   """		
+   
+   E_LDA = 0.0
+   for i in range(pm.sys.NE):
+      E_LDA += eigv[i]
+   for i in range(pm.sys.grid):
+      E_LDA += -0.5*(density[i]*V_H[i])*pm.sys.deltax
+   for i in range(pm.sys.grid):
+      E_LDA += -1.0*(density[i]*V_xc[i])*pm.sys.deltax
+   E_LDA += EXC(pm, density)
+   return E_LDA.real
+   
+   
 def CalculateCurrentDensity(pm, n, j):
    r"""Calculates the current density of a time evolving wavefunction by solving the continuity equation.
 
@@ -227,15 +259,19 @@ def main(parameters):
       pm.sprint('LDA: Warning: Reached maximum number of iterations. Terminating',1)
 
    pm.sprint('',1)
-   pm.sprint('LDA: ground-state xc energy: %s' % EXC(pm, n),1)
+   
+
    v_h = hartree(pm, n,U)
    v_xc = XC(pm, n)
-
+   LDA_E = energy(pm, n, waves, energies, v_h, v_xc)
+   pm.sprint('LDA: ground-state energy: {}'.format(LDA_E),1)
+   
    results = rs.Results()
    results.add(v_s[:], 'gs_lda_vks')
    results.add(v_h[:], 'gs_lda_vh')
    results.add(v_xc[:], 'gs_lda_vxc')
    results.add(n[:], 'gs_lda_den')
+   results.add(LDA_E, 'gs_lda_E')
 
    if pm.lda.save_eig:
        results.add(waves.T,'gs_lda_eigf')

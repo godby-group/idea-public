@@ -73,7 +73,7 @@ def fock(pm, eigf, U):
    for k in range(pm.sys.NE):
       for j in range(pm.sys.grid):
          for i in range(pm.sys.grid):
-            F[i,j] += -(np.conjugate(eigf[k,i])*U[i,j]*eigf[k,j])*pm.sys.deltax
+            F[i,j] += -(np.conjugate(eigf[k,i])*U[i,j]*eigf[k,j])
    return F
 
 
@@ -108,7 +108,7 @@ def groundstate(pm, v_ext, v_H, F):
    
    # add fock matrix
    if pm.hf.fock == 1:
-      H = H + F
+      H = H + F*pm.sys.deltax
       
    # solve eigen equation
    eigv, eigf = spla.eigh(H)
@@ -121,6 +121,39 @@ def groundstate(pm, v_ext, v_H, F):
    return density, eigf, eigv
 
 
+def energy(pm, density, eigf, eigv, V_H, F):	 	
+   r"""Calculates the total energy of the self-consistent Hartree-Fock density                 
+
+   parameters
+   ----------
+   pm : array_like
+        external potential
+   density : array_like
+		  density
+   eigf : array_like
+        eigenfunctions
+   eigv : array_like
+        eigenvalues
+   V_H : array_like
+        Hartree potential
+   F : array_like
+        Fock potential
+
+   returns float
+   """		
+   
+   E_HF = 0
+   for i in range(pm.sys.NE):
+      E_HF += eigv[i]
+   for i in range(pm.sys.grid):
+      E_HF += -0.5*(density[i]*V_H[i])*pm.sys.deltax
+   for k in range(pm.sys.NE):
+      for i in range(pm.sys.grid):
+         for j in range(pm.sys.grid):
+            E_HF += -0.5*(np.conjugate(eigf[k,i])*F[i,j]*eigf[k,j])*pm.sys.deltax*pm.sys.deltax
+   return E_HF.real
+   
+   
 def main(parameters):
    r"""Performs Hartree-fock calculation
 
@@ -168,19 +201,11 @@ def main(parameters):
    print
    
    # Calculate ground state energy
-   E_HF = 0
-   for i in range(pm.sys.NE):
-      E_HF += eigv[i]
-   for i in range(pm.sys.grid):
-      E_HF += -0.5*(density[i]*V_H[i])*pm.sys.deltax
-   for k in range(pm.sys.NE):
-      for i in range(pm.sys.grid):
-         for j in range(pm.sys.grid):
-            E_HF += -0.5*(np.conjugate(eigf[k,i])*F[i,j]*eigf[k,j])*pm.sys.deltax
+   E_HF = energy(pm, density, eigf, eigv, V_H, F)
    pm.sprint('HF: hartree-fock energy = {}'.format(E_HF.real), 1, newline=True)
    
    results = rs.Results()
-   results.add(E_HF.real,'gs_hf_E')
+   results.add(E_HF,'gs_hf_E')
    results.add(density,'gs_hf_den')
 
    if pm.hf.save_eig:
