@@ -2,14 +2,11 @@
 ! CONSTRUCT THE INITIAL WAVEFUNCTION FOR IMAGINARY TIME PROPAGATION (2 electrons).       !
 !========================================================================================!
 !
-!This module contains one subroutine and one function:
+!This module contains one subroutine:
 !
 !    construct_hamiltonian_coo (int,complex): Takes in two input arrays containing the  
 !        two lowest eigenstates of a harmonic oscillator and populates one input array 
 !        with the elements of the initial wavefunction.
-!
-!    single_index (int): Creates a single unique index for all permutations of
-!        the two electron indices.
 !
 !----------------------------------------------------------------------------------------!
 !Created by Mike Entwistle (me624@york.ac.uk)                                            !
@@ -30,10 +27,10 @@
 !        grid (int): Spatial grid points for the system.
 !        eigenstate_1,eigenstate_2 (complex, shape=grid): Three lowest eigenstates of a
 !            harmonic oscillator.
-!        wavefunction (complex, shape=grid**2): Wavefunction holding array.
+!        wavefunction (complex, shape=~(grid**2)/2): Wavefunction holding array.
 !
 !    Returns:
-!        wavefunction (complex, shape=grid**2): Populated wavefunction array.
+!        wavefunction (complex, shape=~(grid**2)/2): Populated wavefunction array.
 !
 !========================================================================================!
 subroutine construct_wavefunction(eigenstate_1, eigenstate_2, wavefunction, grid)
@@ -41,7 +38,7 @@ subroutine construct_wavefunction(eigenstate_1, eigenstate_2, wavefunction, grid
   implicit none
 
   integer, parameter :: dp = selected_real_kind(15, 300)
-  integer            :: j, k, jk
+  integer            :: i, j, k, jk
   complex (kind=dp)  :: pair
 
   !======================================================================================!
@@ -57,7 +54,7 @@ subroutine construct_wavefunction(eigenstate_1, eigenstate_2, wavefunction, grid
   complex (kind=dp) :: eigenstate_2(0:grid-1)
 
   !f2py intent(in,out) :: wavefunction
-  complex (kind=dp) :: wavefunction(0:grid*grid-1)
+  complex (kind=dp) :: wavefunction(0:((grid*(grid+1))/2)-1)
   !______________________________________________________________________________________!
 
 
@@ -70,9 +67,9 @@ subroutine construct_wavefunction(eigenstate_1, eigenstate_2, wavefunction, grid
   !=======================================================!
   ! MAIN PROGRAM LOOP                                     !
   !=======================================================!
-
+  i = 0
   do j = 0, grid-1
-     do k = 0, grid-1
+     do k = 0, j
 
            !=======================================================!
            ! CALCULATE PERMUTATIONS                                !
@@ -83,8 +80,8 @@ subroutine construct_wavefunction(eigenstate_1, eigenstate_2, wavefunction, grid
            !=======================================================!
            ! WAVEFUNCTION ELEMENT                                  !
            !=======================================================!
-           jk = single_index(j, k, grid)
-           wavefunction(jk) = pair
+           wavefunction(i) = pair
+           i = i+1
            !_______________________________________________________!
 
      end do
@@ -93,23 +90,3 @@ subroutine construct_wavefunction(eigenstate_1, eigenstate_2, wavefunction, grid
 
 end subroutine construct_wavefunction
 !_______________________________________________________!
-
-
-!========================================================================================!
-! SINGLE UNIQUE INDEX RETURN (RETURN: INT)                                               !
-!----------------------------------------------------------------------------------------!
-! Takes every permutation of the two electron indices and creates a single unique index. !                                                                                ! 
-!========================================================================================!
-function single_index(j, k, grid) result(z)
-
-  implicit none
-
-  integer,intent(in)  :: j, k, grid
-  integer :: z
-
-  z = k + j*grid 
-
-  return
-
-end function single_index
-!________________________________________________________________________________________!
