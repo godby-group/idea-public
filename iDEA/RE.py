@@ -78,25 +78,31 @@ def CalculateGroundState(V,n_T,mu,sqdx,T_s,n):
 
 # Function to load or force calculation of the ground-state potential
 def GroundState(n_T,mu,sqdx,T_s,n,approx):
-   V_KS = np.zeros((imax,pm.sys.grid),dtype='complex')
-   V_ext = np.zeros(pm.sys.grid,dtype='complex')
-   pm.sprint('REV: calculating ground-state Kohn-Sham potential for the ' + str(approx) + ' density',1)
-   for i in range(pm.sys.grid):
-      V_KS[0,i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # Initial guess for KS potential
-      V_ext[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax))
-   V_KS,n,cost_n_GS,Psi,E_KS,K,U = CalculateGroundState(V_KS,n_T,0,sqdx,T_s,n)
-   pm.sprint('REV: initial guess electron density error = %s' % cost_n_GS,1)
-   while cost_n_GS>1e-13:
-      cost_old = cost_n_GS
-      string = 'REV: electron density error = ' + str(cost_old)
-      pm.sprint(string,1,newline=False)
-      V_KS,n,cost_n_GS,Psi,E_KS,K,U = CalculateGroundState(V_KS,n_T,mu,sqdx,T_s,n)
-      if abs(cost_n_GS-cost_old)<1e-15 or cost_n_GS>cost_old:
-         mu *= 0.5
-      if mu < 1e-15:
-         break
-   pm.sprint('',1)
-   return V_KS,n,Psi,V_ext,E_KS,K,U
+	V_KS = np.zeros((imax,pm.sys.grid),dtype='complex')
+	V_ext = np.zeros(pm.sys.grid,dtype='complex')
+	pm.sprint('REV: calculating ground-state Kohn-Sham potential for the ' + str(approx) + ' density',1)
+	try:
+		pm.sprint('REV: trying to find the exact kohn-sham potential to start from...',1)
+		V_KS[0,:] = rs.Results.read('gs_extre_vks', pm)
+	except:
+		pm.sprint('REV: failed, starting from external potential...',1)
+		for i in range(pm.sys.grid):
+			V_KS[0,i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # Initial guess for KS potential
+	for i in range(pm.sys.grid):
+		V_ext[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax))
+	V_KS,n,cost_n_GS,Psi,E_KS,K,U = CalculateGroundState(V_KS,n_T,0,sqdx,T_s,n)
+	pm.sprint('REV: initial guess electron density error = %s' % cost_n_GS,1)
+	while cost_n_GS>1e-13:
+		cost_old = cost_n_GS
+		string = 'REV: electron density error = ' + str(cost_old)
+		pm.sprint(string,1,newline=False)
+		V_KS,n,cost_n_GS,Psi,E_KS,K,U = CalculateGroundState(V_KS,n_T,mu,sqdx,T_s,n)
+		if abs(cost_n_GS-cost_old)<1e-15 or cost_n_GS>cost_old:
+			mu *= 0.5
+		if mu < 1e-15:
+			break
+	pm.sprint('',1)
+	return V_KS,n,Psi,V_ext,E_KS,K,U
 
 # Function used in calculation of the Hatree potential
 def realspace(vector):
