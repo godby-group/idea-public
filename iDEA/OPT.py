@@ -116,7 +116,7 @@ def main(parameters, approx, target_density_array=None,
         import EXT3 as EXT
     else: 
         raise IOError("Must be either 2 or 3 electrons in the system.")
-
+ 
     # Array initialisations 
     wavefunction = np.zeros(pm.sys.grid**pm.sys.NE, dtype=np.cfloat)
     x_points = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
@@ -134,8 +134,8 @@ def main(parameters, approx, target_density_array=None,
     wavefunction_reduced = EXT.initial_wavefunction(pm, wavefunction_reduced)
 
     # Initial value of parameters 
-    density_error = pm.opt.tol + 10.0
-    density_error_old = np.copy(density_error) + 10.0
+    density_error = pm.opt.tol + 10000.0
+    density_error_old = np.copy(density_error) + 10000.0
     run = 1
 
     # Calculate the external potential
@@ -189,11 +189,14 @@ def main(parameters, approx, target_density_array=None,
 
     v_ext -= deltav_ext
 
-    # Save external potential, density and energy 
+    # Save external potential, density, target density and energy 
     approxopt = approx + 'opt'
     results = rs.Results()
     results.add(v_ext,'gs_{}_vxt'.format(approxopt))
     results.add(density,'gs_{}_den'.format(approxopt))
+    results.add(target_density,'gs_{}_tden'.format(approxopt))
     results.add(energy,'gs_{}_E'.format(approxopt))
     if(pm.run.save):
         results.save(pm)
+
+    return results
