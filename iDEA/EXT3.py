@@ -514,6 +514,9 @@ def solve_imaginary_time(pm, A_reduced, wavefunction_reduced,
         string = 'complex time = {:.5f}'.format(i*pm.ext.cdeltat) 
         pm.sprint(string, 0, newline=True)
 
+        # Save the previous time step 
+        wavefunction_reduced_old[:] = wavefunction_reduced[:]
+
         # Construct the reduction vector of b
         if(pm.ext.par == 0):
             b_reduced = C_reduced*wavefunction_reduced
@@ -549,18 +552,19 @@ def solve_imaginary_time(pm, A_reduced, wavefunction_reduced,
             pm.sprint('', 1, newline=True)
             string = 'EXT: ground-state converged' 
             pm.sprint(string, 1, newline=True)
-            wavefunction_reduced[:] = norm*wavefunction_reduced[:]
-            energy = calculate_energy(pm, wavefunction_reduced,
-                     wavefunction_reduced_old)
-            string = 'EXT: ground-state energy = {:.5f}'.format(energy)
-            pm.sprint(string, 1, newline=True)
         string = '--------------------------------------------------------' + \
                  '----------'
         pm.sprint(string, 0, newline=True)
         
         # Iterate
-        wavefunction_reduced_old[:] = wavefunction_reduced[:]
         i += 1
+
+    # Calculate the ground-state energy
+    wavefunction_reduced[:] = norm*wavefunction_reduced[:]
+    energy = calculate_energy(pm, wavefunction_reduced, 
+             wavefunction_reduced_old)
+    string = 'EXT: ground-state energy = {:.5f}'.format(energy)
+    pm.sprint(string, 1, newline=True)
  
     # Expand the ground-state wavefunction and normalise
     wavefunction = expansion_matrix*wavefunction_reduced
