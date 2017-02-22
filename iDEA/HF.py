@@ -189,8 +189,8 @@ def main(parameters):
       F_new = fock(pm, eigf, U)
     
       # Stability mixing
-      V_H = (1-pm.hf.nu)*V_H + pm.hf.nu*V_H_new
-      F = (1-pm.hf.nu)*F + pm.hf.nu*F_new
+      V_H = (1-pm.hf.nu)*V_H + pm.hf.nu*V_H_new 
+      F = (1-pm.hf.nu)*F + pm.hf.nu*F_new # Note: this is required!
       
       # Solve KS equations
       density, eigf, eigv = groundstate(pm, V_ext, V_H, F)
