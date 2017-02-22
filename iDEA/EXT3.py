@@ -333,10 +333,11 @@ def energy_eigenstate(pm, n):
     factorial = np.arange(0,n+1,1)
     fact = np.product(factorial[1:])
     norm = (np.sqrt(1.0/((2.0**n)*fact)))*((1.0/np.pi)**0.25)
+    scale_factor = 6.0/pm.sys.xmax
     for j in range(pm.sys.grid):
         x = -pm.sys.xmax + j*pm.sys.deltax
-        eigenstate[j] = complex(norm*(spec.hermite(n)(x))*(0.25)*np.exp(-0.5*
-                        (0.25)*(x**2)), 0.0)  
+        eigenstate[j] = complex(norm*(spec.hermite(n)(scale_factor*x))*(0.25)*np.exp(-0.5*
+                        (0.25)*((scale_factor*x)**2)), 0.0)
 
     return eigenstate
 
