@@ -41,6 +41,8 @@ class PulayMixer:
 
         if preconditioner == 'Kerker':
             self.preconditioner = KerkerPreconditioner(pm)
+        elif preconditioner == None:
+            self.preconditioner = StubPreconditioner(pm)
         else:
             raise ValueError("Unknown preconditioner {}".format(preconditioner))
 
@@ -152,11 +154,6 @@ class PulayMixer:
 
         self.step = self.step + 1
 
-        #import matplotlib.pyplot as plt
-        #x = np.linspace(-10,10,self.x_npt)
-        #plt.plot(x,den_in_new)
-        #plt.show()
-
         # this is a cheap fix for negative density values
         # but apparently that's what they do in CASTEP as well...
         return den_in_new.clip(min=0)
@@ -164,6 +161,26 @@ class PulayMixer:
     def precondition(self, f, eigv, eigf):
         """Return preconditioned f"""
         return self.mixp * self.preconditioner.precondition(f, eigv, eigf)
+
+
+class StubPreconditioner:
+    """Performs no preconditioning
+
+    """
+
+    def __init__(self, pm):
+        """Initializes variables
+
+        parameters
+        ----------
+        pm: object
+          input parameters
+        """
+
+    def precondition(self, f, eigv, eigf):
+        """Return preconditioned f"""
+        return f
+
 
 
 class KerkerPreconditioner:
@@ -179,8 +196,6 @@ class KerkerPreconditioner:
 
         parameters
         ----------
-        order: int
-          order of Pulay mixing (how many densities to keep in memory)
         pm: object
           input parameters
         """
