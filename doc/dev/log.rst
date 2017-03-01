@@ -1,6 +1,34 @@
 Version history
 ===============
 
+ * **v2.1.0** (2017-02-15)
+
+   * specify maximum number of iterations for LDA
+     (Warning issued, if self-consistency is not achieved)
+   * MBPT: now properly handles complex starting orbitals
+   * HF: output orbitals correctly normalized
+   * LDA: added "direct energy method"
+   * SPiDEA: fixed deltat not being computed correctly,
+     xgrid was not properly defined for starting orbitals
+   * Added ELF code (ground state + time dependence)
+     for exact calculations
+   * EXT2: tidied up, removed global variables
+   * added scripts/plot_3d.py to plot space-time quantities (MBPT)
+   * EXT2: fixed bug in time-dependence, now uses arrays instead of
+     lists
+   * When importing iDEA, Fortran libraries are recompiled automatically, 
+     if out of date
+   * MBPT: Hedin shift now aware of orbital (re-)ordering
+   * EXT2 & EXT3: Reduction and expansion matrices now constructed in Fortran
+     (~150x speedup). Initial wave function for imaginary time propagation
+     now constructed in Fortran (~100x speedup). Python functions rewritten
+     (~5x speedup for imaginary time propagation).
+     Some speedup in real time, but still main bottleneck of the code
+   * For input section parameters that are not specified in the parameters file,
+     iDEA will now take the default values, as specified in input.py
+   * RE: fixed bug for time-dependent RE
+   * HF/LDA: removed global variables
+
  * **v2.0.0** (2017-01-06)
 
    * fixed reading of total energy in RE

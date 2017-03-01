@@ -32,6 +32,7 @@ class Results(object):
         'vh': r'$V_{H}$',
         'vxc': r'$V_{xc}$',
         'vks': r'$V_{KS}$',
+        'tden' : r'$\rho$',
     }
 
     @staticmethod

@@ -37,10 +37,14 @@ Generating documentation
    cd doc
    bash make_doc.sh  
 
-Run unit tests
---------------
+
+
+Updating iDEA
+-------------
+To update your working copy to the latest version, simply do
 
 .. code-block:: bash
 
-   # run this in the base directory
-   python -m unittest discover
+   # Pull all changes from central git repository
+   git pull
+

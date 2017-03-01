@@ -6,6 +6,8 @@ import importlib
 import os
 import pprint
 import sys
+import collections
+
 import results as rs
 
 def input_string(key,value):
@@ -82,8 +84,7 @@ class Input(object):
         run.MLP = False                      #: Run MLP approximation
         run.HF = False                       #: Run Hartree-Fock approximation
         run.MBPT = False                     #: Run Many-body pertubation theory
-        run.LAN = False                      #: Run Landauer approximation
-        
+        run.LAN = False                      #: Run Landauer approximation 
 
         ### System parameters
         self.sys = SystemSection()
@@ -138,6 +139,7 @@ class Input(object):
         ext.cimax = 1e5                                   #: Complex iterations
         ext.cdeltat = ext.ctmax/ext.cimax                 #: Complex time grid spacing (DERIVED)
         ext.RE = False                                    #: Reverse engineer many-body density
+        ext.OPT = False                                   #: Calculate the external potential for the exact density
         ext.ELF_GS = False                                #: Calculate ELF for the ground-state of the system     
         ext.ELF_TD = False                                #: Calculate ELF for the time-dependent part of the system
         
@@ -148,6 +150,7 @@ class Input(object):
         non.rtol = 1e-14                     #: Tolerance of real time evolution (Recommended: 1e-14)
         non.save_eig = False                 #: save eigenfunctions and eigenvalues of Hamiltonian
         non.RE = False                       #: Reverse engineer non-interacting density
+        non.OPT = False                      #: Calculate the external potential for the non-interacting density
         
 
         ### LDA parameters
@@ -160,6 +163,7 @@ class Input(object):
         lda.kerker_length = 2.1              #: Kerker screening length
         lda.tol = 1e-12                      #: Self-consistent convergence tolerance
         lda.save_eig = False                 #: save eigenfunctions and eigenvalues of Hamiltonian
+        lda.OPT = False                      #: Calculate the external potential for the LDA density 
         
 
         ### MLP parameters
@@ -169,6 +173,7 @@ class Input(object):
         mlp.tol = 1e-12                      #: Self-consistent convergence tollerance
         mlp.mix = 0.0                        #: Self-consistent mixing parameter (default 0, only use if doesn't converge)
         mlp.reference_potential = 'non'      #: Choice of reference potential for mixing with the SOA
+        mlp.OPT = False                      #: Calculate the external potential for the MLP density
 
         
         ### HF parameters
@@ -179,6 +184,7 @@ class Input(object):
         hf.nu = 0.9                          #: Mixing term
         hf.save_eig = False                  #: save eigenfunctions and eigenvalues of Hamiltonian
         hf.RE = False                        #: Reverse-engineer hf density
+        hf.OPT = False                       #: Calculate the external potential for the HF density
 
         
         ### MBPT parameters
@@ -196,6 +202,7 @@ class Input(object):
         mbpt.w = 'dynamical'                 #: whether to compute 'full' or 'dynamical' W
         mbpt.hedin_shift = True              #: whether to perform Hedin shift
         mbpt.RE = False                      #: Reverse-engineer mbpt density
+        mbpt.OPT = False                     #: Calculate the external potential for the MBPT density
         
 
         ### LAN parameters
@@ -208,6 +215,14 @@ class Input(object):
         self.re = InputSection()
         re = self.re
         re.save_eig = True                   #: save Kohn-Sham eigenfunctions and eigenvalues of reverse-engineered potential
+
+
+        ### OPT parameters
+        self.opt = InputSection()
+        opt = self.opt
+        opt.tol = 1e-3                       #: Tolerance of the error in the density  
+        opt.mu = 1.0                         #: 1st convergence parameter
+        opt.p = 0.05                         #: 2nd convergence parameter
 
 
     def check(self):
@@ -275,7 +290,7 @@ class Input(object):
 
 
     @classmethod
-    def from_python_file(self,filename):
+    def from_python_file(cls,filename):
         """Create Input from Python script."""
         tmp = Input()
         tmp.read_from_python_file(filename)
@@ -293,8 +308,22 @@ class Input(object):
         # import module into object
         pm = importlib.import_module(module)
 
-        # overvwrite member variables with those from object
-        self.__dict__.update(pm.__dict__)
+        # Replace default member variables with those from parameters file.
+        # We need to step into InputSection objects, as those may have varying
+        # numbers of parameters defined.
+        # The following recursive approach is adapted from 
+	# See http://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
+	def update(d, u):
+	    for k, v in u.iteritems():
+		if isinstance(v, InputSection):
+		    r = update(d.get(k, {}).__dict__, v.__dict__)
+		    d[k].__dict__ = r
+		    #d[k] = r
+		else:
+		    d[k] = u[k]
+	    return d 
+	self.__dict__ = update(self.__dict__, pm.__dict__)
+
         self.filename = filename
 
     ##########################################
@@ -374,6 +403,9 @@ class Input(object):
            if(pm.ext.RE == True):
               import RE
               results.add(RE.main(pm,'ext'), name='extre')
+           if(pm.ext.OPT == True):
+              import OPT
+              results.add(OPT.main(pm,'ext'), name='extopt')
         elif(pm.sys.NE == 2):
            if(pm.run.EXT == True):
               import EXT2
@@ -381,6 +413,9 @@ class Input(object):
            if(pm.ext.RE == True):
               import RE
               results.add(RE.main(pm,'ext'), name='extre')
+           if(pm.ext.OPT == True):
+              import OPT
+              results.add(OPT.main(pm,'ext'), name='extopt')
         elif(pm.sys.NE == 3):
            if(pm.run.EXT == True):
               import EXT3
@@ -388,6 +423,9 @@ class Input(object):
            if(pm.ext.RE == True):
               import RE
               results.add(RE.main(pm,'ext'), name='extre')
+           if(pm.ext.OPT == True):
+              import OPT
+              results.add(OPT.main(pm,'ext'), name='extopt')
         elif(pm.sys.NE >= 4):
            if(pm.run.EXT == True):
               print('EXT: cannot run exact with more than 3 electrons')
@@ -398,13 +436,23 @@ class Input(object):
         if(pm.non.RE == True):
               import RE
               results.add(RE.main(pm,'non'), name='nonre')
+        if(pm.non.OPT == True):
+              import OPT
+              results.add(OPT.main(pm,'non'), name='nonopt')
 
         if(pm.run.LDA == True):
               import LDA
               results.add(LDA.main(pm), name='lda')
+        if(pm.lda.OPT == True):
+              import OPT
+              results.add(OPT.main(pm,'lda'), name='ldaopt')
+
         if(pm.run.MLP == True):
               import MLP
               MLP.main(pm)
+        if(pm.mlp.OPT == True):
+              import OPT
+              results.add(OPT.main(pm,'mlp'), name='mlpopt')
 
         if(pm.run.HF == True):
               import HF
@@ -412,6 +460,9 @@ class Input(object):
         if(pm.hf.RE == True):
               import RE
               results.add(RE.main(pm,'hf'), name='hfre')
+        if(pm.hf.OPT == True):
+              import OPT
+              results.add(OPT.main(pm,'hf'), name='hfopt')
 
         if(pm.run.MBPT == True):
               import MBPT
@@ -419,6 +470,9 @@ class Input(object):
         if(pm.mbpt.RE == True):
               import RE
               results.add(RE.main(pm,'mbpt'), name='mbptre')
+        if(pm.mbpt.OPT == True):
+              import OPT
+              results.add(OPT.main(pm,'mbpt'), name='mbptopt')
 
         if(pm.run.LAN == True):
               import LAN
