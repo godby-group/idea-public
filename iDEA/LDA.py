@@ -126,9 +126,6 @@ def main(parameters):
    T[0,:] = np.ones(pm.sys.grid)/pm.sys.deltax**2 # Define kinetic energy operator							
    T[1,:] = -0.5*np.ones(pm.sys.grid)/pm.sys.deltax**2 
 
-   if pm.lda.mix_type not in [None, 'linear', 'pulay']:
-       raise ValueError("lda.mix_type must be None, 'linear' or 'pulay'")
-
    v_s = np.zeros(pm.sys.grid,dtype='float')
    v_ext = np.zeros(pm.sys.grid,dtype='float')
    Psi = np.zeros((pm.sys.NE,pm.sys.imax,pm.sys.grid), dtype=np.complex)
@@ -143,7 +140,7 @@ def main(parameters):
    #iteration = 1
 
    if pm.lda.mix_type == 'pulay':
-       mixer = mix.PulayMixer(pm, order=pm.lda.pulay_order)
+       mixer = mix.PulayMixer(pm, order=pm.lda.pulay_order, preconditioner=pm.lda.preconditioner)
 
    while convergence > pm.lda.tol and iteration < pm.lda.max_iter:
       n_old[:] = n[:]
@@ -151,7 +148,7 @@ def main(parameters):
       n_new,waves,energies = groundstate(v_s) # Calculate LDA density 
 
       if pm.lda.mix_type == 'pulay':
-          n = mixer.mix(n_old, n_new, energies, waves)
+          n = mixer.mix(n_old, n_new, energies, waves.T)
       elif pm.lda.mix_type == 'linear':
           n[:] = (1-pm.lda.mix)*n_old[:]+pm.lda.mix*n_new[:]
       else:
@@ -188,6 +185,7 @@ def main(parameters):
 
    if pm.run.time_dependence == True:
       for i in range(pm.sys.NE):
+           # TODO: Are we sure this is still needed???
          Psi[i,0,:] = waves[:,i]/np.sqrt(pm.sys.deltax)
       v_s_t = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
       v_xc_t = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')

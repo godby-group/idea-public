@@ -154,7 +154,8 @@ class Input(object):
         self.lda = InputSection()
         lda = self.lda
         lda.NE = 2                           #: Number of electrons used in construction of the LDA
-        lda.mix_type = 'linear'           
+        lda.mix_type = 'linear'              #: None, 'linear' or 'pulay'
+        lda.preconditioner = None            #: None, 'kerker' or 'full'
         lda.mix = 1.0                        #: linear mixing parameter
         lda.kerker_length = 2.1              #: Kerker screening length
         lda.tol = 1e-12                      #: Self-consistent convergence tolerance
@@ -222,6 +223,12 @@ class Input(object):
             if pm.mbpt.norb < pm.sys.NE:
                 self.sprint('MBPT: Warning - using {} orbitals for {} electrons'\
                         .format(pm.mbpt.norb, pm.sys.NE))
+
+        if pm.lda.mix_type not in [None, 'pulay', 'linear']:
+            raise ValueError("lda.mix_type must be None, 'linear' or 'pulay'")
+
+        if pm.lda.preconditioner not in [None, 'kerker', 'full']:
+            raise ValueError("lda.preconditioner must be None, 'kerker' or 'full'")
 
 
     def __str__(self):
