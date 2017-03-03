@@ -84,6 +84,26 @@ def coulomb(pm):
    return U
 
 
+lda_1 =  {
+   'a' :  -1.315,
+   'b' :  2.16,
+   'c' :  -1.71,
+   'd' :  0.638,
+}
+lda_2 =  {
+   'a' :  -1.19,
+   'b' :  1.77,
+   'c' :  -1.37,
+   'd' :  0.604,
+}
+lda_n =  {
+   'a' : -1.24,
+   'b' : 2.1,
+   'c' : -1.7,
+   'd' : 0.61,
+}
+
+
 def XC(pm , Den): 
    r"""Finite LDA approximation for the Exchange-Correlation potential
 
@@ -97,12 +117,41 @@ def XC(pm , Den):
    """
    V_xc = np.zeros(pm.sys.grid,dtype='float')
    if (pm.sys.NE == 1):
-      V_xc[:] = ((-1.315+2.16*Den[:]-1.71*(Den[:])**2)*Den[:]**0.638) 
+       lp = lda_1
    elif (pm.sys.NE == 2):
-      V_xc[:] = ((-1.19+1.77*Den[:]-1.37*(Den[:])**2)*Den[:]**0.604) 
+       lp = lda_2
    else:
-      V_xc[:] = ((-1.24+2.1*Den[:]-1.7*(Den[:])**2)*Den[:]**0.61) 
+       lp = lda_n
+
+   V_xc = (lp['a'] + lp['b'] * Den + lp['c'] * Den**2) * Den**lp['d']
+
    return V_xc
+
+def DXC(pm , n): 
+   r"""Derivative of finite LDA for the Exchange-Correlation potential
+
+   This function simply returns the derivative of XC
+
+   parameters
+   ----------
+   n : array_like
+        density
+
+   returns array_like
+        Exchange-Correlation potential
+   """
+   D_xc = np.zeros(pm.sys.grid,dtype='float')
+   if (pm.sys.NE == 1):
+       lp = lda_1
+   elif (pm.sys.NE == 2):
+       lp = lda_2
+   else:
+       lp = lda_n
+
+   D_xc = (lp['b'] + 2 * lp['c'] * n) * n**lp['d'] \
+        + (lp['a'] + lp['b'] * n + lp['c'] * n**2) * lp['d'] * n**(lp['d']-1)
+
+   return D_xc 
 
 
 def EXC(pm, Den): 
@@ -252,8 +301,8 @@ def main(parameters):
 
    while convergence > pm.lda.tol and iteration < pm.lda.max_iter:
       n_old[:] = n[:]
-      v_s = v_ext[:]+Hartree(n,U)+XC(n)
-      n_new,waves,energies = groundstate(v_s) # Calculate LDA density 
+      v_s = v_ext[:]+hartree(pm,n,U)+XC(pm,n)
+      n_new,waves,energies = groundstate(pm,v_s) # Calculate LDA density 
 
       if pm.lda.mix_type == 'pulay':
           n = mixer.mix(n_old, n_new, energies, waves.T)
@@ -272,19 +321,19 @@ def main(parameters):
 
       convergence = np.sum(abs(n-n_old))*pm.sys.deltax
       string = 'LDA: electron density convergence = {:.4e}'.format(convergence)
-      pm.sprint(string,1,newline=False)
+      #pm.sprint(string,1,newline=False)
+      pm.sprint(string,1,newline=True)
+      pm.sprint('LDA: E = {:.5f} Ha'.format(EXC(pm,n)),1,newline=True)
+
       iteration += 1
-
-<<<<<<< HEAD
-
 
    pm.sprint('',1)
    if iteration == pm.lda.max_iter:
        string = 'LDA: Warning: reached maximum number of iterations {}. terminating self-consistency'.format(iteration)
-     pm.sprint(string,1)
+       pm.sprint(string,1)
    else:
        pm.sprint('LDA: reached convergence in {} iterations.'.format(iteration),0)
-   pm.sprint('LDA: ground-state xc energy: %s' % EXC(n),1)
+   pm.sprint('LDA: ground-state xc energy: %s' % EXC(pm,n),1)
 
    v_h = hartree(pm, n,U)
    v_xc = XC(pm, n)

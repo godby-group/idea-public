@@ -2,6 +2,7 @@
 """
 import numpy as np
 import scipy.special as scsp
+import LDA
 
 
 
@@ -258,6 +259,7 @@ class FullPreconditioner:
         self.x_npt = pm.sys.grid
         self.x_delta = pm.sys.deltax
         self.NE = pm.sys.NE
+        self.pm = pm
 
        # set up coulomb repulsion matrix v(i,j)
         tmp = np.empty((self.x_npt, self.x_npt), dtype=int)
@@ -267,7 +269,11 @@ class FullPreconditioner:
         self.coulomb_repulsion = 1.0/(tmp * self.x_delta + pm.sys.acon)
 
     def precondition(self, r, eigv, eigf):
-        """Preconditioning using full dielectric matrix
+        r"""Preconditioning using full dielectric matrix
+
+        .. math :: 
+            
+            \frac{\delta V(x)}{\delta \rho(x')} = DXC(x) \delta(x-x') + v(x-x')
         
         parameters
         ----------
@@ -285,12 +291,18 @@ class FullPreconditioner:
         dx = self.x_delta
         nx = self.x_npt
         v = self.coulomb_repulsion
+        n = np.sum(np.abs(eigf[:self.NE])**2, axis=0)
+
+        M = np.zeros((nx,nx))
+        #print LDA.DXC(self.pm, n)/dx
+        np.fill_diagonal(M, LDA.DXC(self.pm, n)/dx)
+        M += v
 
         chi = self.chi(eigv,eigf)
         # this is the correct recipe for *density* mixing.
-        eps = np.eye(nx)/dx - np.dot(chi,v)*dx
+        eps = np.eye(nx)/dx - np.dot(chi,M)*dx
         # for *potential* mixing use
-        #eps = np.eye(nx)/dx - np.dot(v,chi)*dx
+        #eps = np.eye(nx)/dx - np.dot(M,chi)*dx
 
         epsinv = np.linalg.inv(eps)/dx**2 
         r = np.dot(epsinv, r.T) * dx
