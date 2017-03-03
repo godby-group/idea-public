@@ -102,14 +102,75 @@ class TestKerker(unittest.TestCase):
         pm.lda.kerker_length = 1e6
         pm.lda.mix = 1.0
 
-        mixer = mix.PulayMixer(pm, order=20, preconditioner='Kerker')
+        mixer = mix.PulayMixer(pm, order=20, preconditioner='kerker')
 
         den = NON.main(pm).gs_non_den
         # Note: Kerker always removes G=0 cmponent
-        # (but it is intended to be used on density *differences*)
+        # (it is intended to be used on density *differences*, where the G=0
+        # component vanishes anyhow)
         den -= np.average(den)
         den_cond = mixer.precondition(den, None, None)
 
 
         nt.assert_allclose(den, den_cond, 1e-3)
 
+
+
+class TestFull(unittest.TestCase):
+    """Tests for the full preconditioner
+    
+    """ 
+
+    def setUp(self):
+        """ Sets up harmonic oscillator system """
+        pm = input.Input()
+        pm.run.save = False
+        pm.run.verbosity = 'low'
+
+        # It might still be possible to speed this up
+        pm.sys.NE = 2                  #: Number of electrons
+        pm.sys.grid = 61               #: Number of grid points (must be odd)
+        pm.sys.xmax = 7.5              #: Size of the system
+        pm.sys.acon = 1.0              #: Smoothing of the Coloumb interaction
+        pm.sys.interaction_strength = 1#: Scales the strength of the Coulomb interaction
+        def v_ext(x):
+            """Initial external potential"""
+            return 0.5*(0.25**2)*(x**2)
+        pm.sys.v_ext = v_ext
+        
+        pm.non.save_eig = True
+
+        pm.lda.mix = 1.0
+
+        self.pm = pm
+
+
+    def test_chi_1(self):
+        """Testing potential-density response
+        
+        Testing some basic symmetry properties of the
+        potential-density response and the preconditioning matrices
+        required for density/potential mixing.
+
+        """
+        pm = self.pm
+
+        mixer = mix.PulayMixer(pm, order=1, preconditioner='full')
+
+        results = NON.main(pm)
+        den = results.gs_non_den
+        eigv = results.gs_non_eigv
+        eigf = results.gs_non_eigf
+
+        chi = mixer.preconditioner.chi(eigv, eigf)
+        v = mixer.preconditioner.coulomb_repulsion
+        dx = mixer.preconditioner.x_delta
+        nx = mixer.preconditioner.x_npt
+
+        nt.assert_allclose(chi, chi.T, 1e-6)
+        nt.assert_allclose(v, v.T, 1e-6)
+
+        # this is just for testing purposes
+        eps_pmix = np.eye(nx)/dx - np.dot(v,chi)*dx
+        eps_dmix = np.eye(nx)/dx - np.dot(chi,v)*dx
+        nt.assert_allclose(eps_pmix, eps_dmix.T, 1e-6)

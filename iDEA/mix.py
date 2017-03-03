@@ -12,7 +12,7 @@ class PulayMixer:
     as described on p.34 of [Kresse1996]_
 
     """
-    def __init__(self, pm, order, preconditioner='Kerker'):
+    def __init__(self, pm, order, preconditioner='kerker'):
         """Initializes variables
 
         parameters
@@ -22,7 +22,7 @@ class PulayMixer:
         pm: object
           input parameters
         preconditioner: string
-          May be 'Kerker' or ...
+          May be Non, 'kerker' or 'full' 
 
         """
         self.order = order
@@ -39,10 +39,12 @@ class PulayMixer:
         self.den_delta = np.zeros((order-1,self.x_npt), dtype=dtype)
         self.res_delta = np.zeros((order-1,self.x_npt), dtype=dtype)
 
-        if preconditioner == 'Kerker':
+        if preconditioner == 'kerker':
             self.preconditioner = KerkerPreconditioner(pm)
         elif preconditioner == None:
             self.preconditioner = StubPreconditioner(pm)
+        elif preconditioner == 'full':
+            self.preconditioner = FullPreconditioner(pm)
         else:
             raise ValueError("Unknown preconditioner {}".format(preconditioner))
 
@@ -262,26 +264,52 @@ class FullPreconditioner:
         for i in range(self.x_npt):
             for j in range(self.x_npt):
                 tmp[i,j] = np.abs(i - j)
-        self.coulomb_repulsion = 1.0/(tmp * self.x_delta + a)
+        self.coulomb_repulsion = 1.0/(tmp * self.x_delta + pm.sys.acon)
 
-    def precondition(self, f, eigv, eigf):
-        """Preconditioning using full dielectric matrix"""
+    def precondition(self, r, eigv, eigf):
+        """Preconditioning using full dielectric matrix
+        
+        parameters
+        ----------
+        r: array_like
+          array of residuals to be preconditioned
+        eigv: array_like
+          array of eigenvalues
+        eigf: array_like
+          array of eigenfunctions
+        
+        """
         #import matplotlib.pyplot as plt
         #x = np.linspace(-10,10,self.x_npt)
         #plt.plot(x,f)
+        dx = self.x_delta
+        nx = self.x_npt
+        v = self.coulomb_repulsion
 
-        eps = self.epsilon(eigv,eigf)
-        A = np.linalg.inv(eps)/self.x_delta**2 
-        f = np.dot(A, f.T) * self.x_delta
-        return f.T
+        chi = self.chi(eigv,eigf)
+        # this is the correct recipe for *density* mixing.
+        eps = np.eye(nx)/dx - np.dot(chi,v)*dx
+        # for *potential* mixing use
+        #eps = np.eye(nx)/dx - np.dot(v,chi)*dx
 
-    def epsilon(self,eigv, eigf):
-        r"""Computes RPA dielectric matrix
+        epsinv = np.linalg.inv(eps)/dx**2 
+        r = np.dot(epsinv, r.T) * dx
+        return r.T
+
+    def chi(self,eigv, eigf):
+        r"""Computes RPA polarizability
+
+        The static, non-local polarisability (or density-potential
+        response) in the Hartree approximation (often called RPA)
+        is computed as
 
         .. math ::
-            \varepsilon(x,x') = \sum_j^' \sum_k^{''} \phi_j(x)\phi_k^*(x)\phi_j^*(x')\phi_k(x') \frac{1}{\varepsilon_j-\varepsilon_k}
+            \chi^0(x,x') = \sum_j^{'} \sum_k^{''} \phi_j(x)\phi_k^*(x)\phi_j^*(x')\phi_k(x') \frac{2}{\varepsilon_j-\varepsilon_k}
 
         where :math:`\sum^'` sums over occupied states and :math:`\sum^{''}` sums over empty states
+
+        See also https://wiki.fysik.dtu.dk/gpaw/documentation/tddft/dielectric_response.html
+
 
         parameters
         ----------
@@ -296,33 +324,46 @@ class FullPreconditioner:
           dielectric matrix in real space
         """
 
-        N = len(eigv)
+        N = np.minimum(len(eigv), 10*self.NE)
         nx = self.x_npt
 
-        eps = np.zeros((nx,nx))
+        chi = np.zeros((nx,nx))
         #for j in range(0,self.NE):
         #    for k in range(self.NE,N):
         #        for ix1 in range(self.x_npt):
         #            eps[ix1, :] += eigf[j,ix1]*np.conj(eigf[k,ix1])*np.conj(eigf[j,:])*eigf[k,:] *2.0/(eigv[j] - eigv[k])
-	#print(np.sum(eigf[0]**2)*self.x_delta)
+
+        # eigenvalues should anyhow be real...
+        eigv = eigv.real
 
         for j in range(0,self.NE):
             for k in range(self.NE,N):
-		o1 = eigf[j] * np.conj(eigf[k])
-		o2 = np.conj(o1)
-		eps += np.outer(o1,o2) * 2.0/(eigv[j] - eigv[k])
-		if j==self.NE-1 and k==self.NE:
-			print(eigv[j] - eigv[k])
+		p1 = eigf[j] * np.conj(eigf[k])
+		p2 = np.conj(p1)
+                tmp = np.outer(p1,p2)
+		chi += tmp.real * 2.0/(eigv[j] - eigv[k])
+		#if j==self.NE-1 and k==self.NE:
+                #    print("")
+                #    print('{:.3e}'.format(eigv[j] - eigv[k]))
 
-   	print("max {}".format(np.max(eps)))
-   	print("min {}".format(np.min(eps)))
-        eps = np.dot(self.coulomb_repulsion,eps)*self.x_delta
-   	print("max {}".format(np.max(eps)))
-   	print("min {}".format(np.min(eps)))
-        eps = np.eye(nx)/self.x_delta - eps
+        #print(np.sum(eigf[1]**2)*self.x_delta)
+   	#print("max {}".format(np.max(eps)))
+   	#print("min {}".format(np.min(eps)))
+   	#print("max {}".format(np.max(eps)))
+   	#print("min {}".format(np.min(eps)))
+
+
+        #eps = np.dot(self.coulomb_repulsion,eps)*self.x_delta
+        #eps = np.eye(nx)/self.x_delta - eps
 	
+        #import matplotlib.pyplot as plt
+        #x = np.linspace(-10,10,self.x_npt)
+        #for i in [2,3]:
+        #    plt.plot(x,np.abs(eigf[i]), label=i)
+        #plt.legend()
+        #plt.show()
 	#print(np.diagonal(eps))
-        return eps
+        return chi
 
 
 
