@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
-def plot3d(O, name, pm, space='it', format='png', step=1, final=0):
+def plot3d(O, name, pm, space='it', format='png', step=1, final=None):
     """Plot quantity O(r,r';it) or O(r,r';iw)
 
     Produces pngs or mp4 movie
@@ -29,6 +29,11 @@ def plot3d(O, name, pm, space='it', format='png', step=1, final=0):
         Output format
         'mp4': mpeg 4 movie (requires ffmpeg)
         'png': collection of portable network graphics
+        'pdf': collection of pdf files
+    step: int
+        stride of indices in time domain
+    final: int
+        final index in time domain
 
     """
     import matplotlib.animation as animation
@@ -84,9 +89,9 @@ def plot3d(O, name, pm, space='it', format='png', step=1, final=0):
         print("Plotting {} frames".format(tau_npt))
 
     ims = []
-    if final == 0:
-		 final = tau_npt
-		 
+    if final is None:
+        final = tau_npt
+
     for it in range(0, int(final), int(step)):
         im_r = ax1.imshow(O.real[:,:,it],norm=plt.Normalize(vmin,vmax),
                 extent=extent, cmap=matplotlib.cm.bwr)
