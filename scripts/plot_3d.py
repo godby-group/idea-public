@@ -31,7 +31,7 @@ parser.add_argument(
     '--format',
     metavar='STRING',
     default='mp4',
-    help='Output format: "png" or "mp4"')
+    help='Output format: "png", "pdf" or "mp4"')
 parser.add_argument(
     '--stride',
     metavar='INT',
