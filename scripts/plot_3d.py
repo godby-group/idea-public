@@ -41,7 +41,7 @@ parser.add_argument(
     '--final',
     metavar='INT',
     default=0,   # If 0 will be replace with tau_n
-    help='Final fram to plot')
+    help='Final frame to plot')
 args = parser.parse_args()
 
 pm = Input.from_python_file(args.parameters)
