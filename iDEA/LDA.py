@@ -15,6 +15,7 @@ import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
 import results as rs
 import mix
+import minimize
 
 
 def groundstate(pm, v_KS):
@@ -31,18 +32,59 @@ def groundstate(pm, v_KS):
         density, normalised orbitals indexed as Psi[orbital_number][space_index], energies
    """	
    
-   T = np.zeros((2,pm.sys.grid),dtype='float') # Kinetic Energy operator
-   T[0,:] = np.ones(pm.sys.grid)/pm.sys.deltax**2 # Define kinetic energy operator							
-   T[1,:] = -0.5*np.ones(pm.sys.grid)/pm.sys.deltax**2 
-   H = copy.copy(T) # kinetic energy
-   H[0,:] += v_KS[:]
-   e,eig_func = spla.eig_banded(H,True) 
-   eig_func /= np.sqrt(pm.sys.deltax)
-   n = np.zeros(pm.sys.grid,dtype='float')
-   for i in range(pm.sys.NE):
-      n[:] += abs(eig_func[:,i])**2 # Calculate density
-   return n,eig_func,e
+   H = hamiltonian(pm, v_KS)
+   #e,eigf = spsla.eigsh(H, k=pm.sys.grid/2, which='SA') 
+   e,eigf = spla.eigh(H)
+   #e,eigf = spla.eig_banded(H,True) 
+   
+   n = electron_density(pm, eigf.T)
 
+   return n,eigf,e,H
+
+def electron_density(pm, orbitals):
+    r"""Compute density for given orbitals
+
+    parameters
+    ----------
+    orbitals: array_like
+      array of orbitals (norbitals, grid),
+      all orbitals normalised to 1 (think: dx=1)
+
+    returns
+    -------
+    n: array_like
+      electron density, properly normalised (also for dx!=1)
+    """
+    occupied = orbitals[:pm.sys.NE] / np.sqrt(pm.sys.deltax)
+    n = np.sum(occupied*occupied.conj(), axis=0)
+    return n
+
+
+def hamiltonian(pm, v_KS):
+    r"""Compute LDA Hamiltonian
+
+    Computes LDA Hamiltonian from a given Kohn-Sham potential.
+
+    parameters
+    ----------
+    v_KS : array_like
+         KS potential
+
+    returns array_like
+         Hamiltonian matrix
+    """
+    T = -0.5 * sps.diags([1,-2,1],[-1,0,1], shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr') / pm.sys.deltax**2
+    V = sps.diags(v_KS, 0, shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr')
+
+    # banded version
+    #H = np.zeros((2,pm.sys.grid),dtype='float')
+    ## 3-point stencil for 2nd derivative
+    #H[0,:] = np.ones(pm.sys.grid)/pm.sys.deltax**2
+    #H[1,:] = -0.5*np.ones(pm.sys.grid)/pm.sys.deltax**2 
+    #H[0,:] += v_KS[:]
+
+    return (T+V).toarray()
+    
 
 
 def hartree(pm, U, density):
@@ -289,7 +331,7 @@ def main(parameters):
       v_s[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # External potential
       v_ext[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # External potential
 
-   n,waves,energies = groundstate(pm, v_s) #Inital guess
+   n,waves,energies,H = groundstate(pm, v_s) #Inital guess
    U = coulomb(pm) # Create Coulomb matrix
    n_old = copy.deepcopy(n)
    convergence = 1.0
@@ -298,18 +340,29 @@ def main(parameters):
 
    if pm.lda.mix_type == 'pulay':
        mixer = mix.PulayMixer(pm, order=pm.lda.pulay_order, preconditioner=pm.lda.preconditioner)
+   elif pm.lda.mix_type == 'direct':
+       minimizer = minimize.CGMinimizer(pm, energy)
 
    while convergence > pm.lda.tol and iteration < pm.lda.max_iter:
       n_old[:] = n[:]
       v_s = v_ext[:]+hartree(pm,n,U)+XC(pm,n)
-      n_new,waves,energies = groundstate(pm,v_s) # Calculate LDA density 
+      n_new,waves,energies,H = groundstate(pm,v_s) # Calculate LDA density 
 
       if pm.lda.mix_type == 'pulay':
           n = mixer.mix(n_old, n_new, energies, waves.T)
       elif pm.lda.mix_type == 'linear':
           n[:] = (1-pm.lda.mix)*n_old[:]+pm.lda.mix*n_new[:]
+      elif pm.lda.mix_type == 'direct':
+          waves_new = minimizer.gradient_step(waves.T,H)
+          n = electron_density(pm, waves_new)
       else:
           n = n_new
+
+      #import matplotlib.pyplot as plt
+      #plt.plot(n)
+      #plt.show()
+      #if iteration > 20:
+      #    quit()
 
       # potential mixing
       #v_s_old = copy.copy(v_s)
@@ -317,7 +370,7 @@ def main(parameters):
       #   v_s[:] = v_ext[:]+hartree(pm, n, U)+XC(pm, n)
       #else:
       #   v_s[:] = (1-pm.lda.mix)*v_s_old[:]+pm.lda.mix*(v_ext[:]+hartree(pm, n, U)+XC(pm, n))
-      #n,waves,energies = groundstate(pm, v_s) # Calculate LDA density 
+      #n,waves,energies,H = groundstate(pm, v_s) # Calculate LDA density 
 
       convergence = np.sum(abs(n-n_old))*pm.sys.deltax
       string = 'LDA: electron density convergence = {:.4e}'.format(convergence)
