@@ -64,8 +64,8 @@ sys.v_pert_im = v_pert_im
 ### Exact parameters
 ext = InputSection()
 ext.par = 0                          #: Use parallelised solver and multiplication (0: serial, 1: parallel) Note: Recommend using parallel for large runs
-ext.ctol = 1e-14                     #: Tolerance of complex time evolution (Recommended: 1e-14)
-ext.rtol = 1e-14                     #: Tolerance of real time evolution (Recommended: 1e-14)
+ext.ctol = 1e-12                     #: Tolerance of complex time evolution (Recommended: 1e-14)
+ext.rtol = 1e-12                     #: Tolerance of real time evolution (Recommended: 1e-14)
 ext.ctmax = 1000.0                   #: Total complex time
 ext.cimax = 1e5                      #: Complex iterations
 ext.cdeltat = ext.ctmax/ext.cimax    #: Complex time grid spacing (DERIVED)

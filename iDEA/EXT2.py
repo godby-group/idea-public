@@ -507,7 +507,7 @@ def solve_imaginary_time(pm, A_reduced, wavefunction_reduced,
 
         # Solve Ax=b
         wavefunction_reduced, info = spla.cg(A_reduced,b_reduced,
-                                     x0=wavefunction_reduced,tol=pm.ext.ctol)
+                                     x0=wavefunction_reduced,tol=pm.ext.ctol/100)
 
         # Normalise the reduced wavefunction
         norm = np.linalg.norm(wavefunction_reduced)*pm.sys.deltax
