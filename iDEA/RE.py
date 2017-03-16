@@ -401,11 +401,11 @@ def main(parameters,approx):
 
    #Correct V_xc and V_ks etc.
    correct, correct_error = correction(np.real(V_xc[0,:]), 0.05, 0.15)
-   print 'Error in correction parameter = ', correct_error
+   print 'Approximate error in correction to asymptotic form of V_xc = ', correct_error
 
-   V_KS[0,:] - V_KS[0,:] - correct
+   V_KS[0,:] - V_KS[0,:]
    V_Hxc[0,:] = V_KS[0,:]-V_ext[:] # Calculate the Hartree exhange-correlation potential
-   V_xc[0,:] = V_Hxc[0,:]-V_h[0,:] # Calculate the exchange-correlation potential
+   V_xc[0,:] = V_Hxc[0,:]-V_h[0,:] - correct # Calculate the exchange-correlation potential
    E_KS = E_KS - pm.sys.NE*correct
    E_xc = xcenergy(approx,n_KS,V_h,V_xc,E_KS) # Calculate the exchange-correlation energy
 
