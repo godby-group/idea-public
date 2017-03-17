@@ -10,6 +10,38 @@ import collections
 
 import results as rs
 
+class SpaceGrid():
+   """Stores basic real space arrays 
+
+   These arrays should be helpful in many types of iDEA calculations.
+   Storing them in the Input object avoids having to recompute them
+   and reduces code duplication.
+   """
+
+   def __init__(self, pm):
+       self.npt = pm.sys.grid
+       self.delta = pm.sys.deltax
+       self.grid = np.linspace(-pm.sys.xmax, pm.sys.xmax, pm.sys.grid)
+
+       self.v_ext = np.zeros(self.npt, dtype=np.float)
+       for i in range(self.npt):
+           self.v_ext[i] = pm.sys.v_ext(self.grid[i])
+
+       self.v_int = np.zeros((pm.sys.grid,pm.sys.grid),dtype='float')
+       for i in xrange(pm.sys.grid):
+          for k in xrange(pm.sys.grid):
+             self.v_int[i,k] = 1.0/(abs(self.grid[i]-self.grid[k])+pm.sys.acon)
+
+
+
+   def __str__(self):
+       """Print variables of section and their values"""
+       s = ""
+       v = vars(self)
+       for key,value in v.iteritems():
+           s += input_string(key, value)
+       return s
+
 def input_string(key,value):
     """Prints a line of the input file"""
     if isinstance(value, basestring):
@@ -239,7 +271,7 @@ class Input(object):
                 self.sprint('MBPT: Warning - using {} orbitals for {} electrons'\
                         .format(pm.mbpt.norb, pm.sys.NE))
 
-        if pm.lda.mix_type not in [None, 'pulay', 'linear']:
+        if pm.lda.mix_type not in [None, 'pulay', 'linear', 'direct']:
             raise ValueError("lda.mix_type must be None, 'linear' or 'pulay'")
 
         if pm.lda.preconditioner not in [None, 'kerker', 'full']:
@@ -394,6 +426,9 @@ class Input(object):
 
         self.results = rs.Results()
         results = self.results
+
+        # prepare grid info
+	self.space = SpaceGrid(pm)
 
         # Execute required jobs
         if(pm.sys.NE == 1):
