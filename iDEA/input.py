@@ -413,23 +413,30 @@ class Input(object):
             #pm.sprint(s,1)
         
 
+    def setup(self):
+        """Prepares for performing calculations
+        
+        Creates necessary output folders, 
+        precomputes quantities on grids, etc.
+        """
+        self.make_dirs()
+
+	self.space = SpaceGrid(self)
+        self.results = rs.Results()
+
+
     def execute(self):
         """Run this job"""
         pm = self
         pm.check()
-        pm.make_dirs()
+        pm.setup()
 
         # Draw splash to screen
         import splash
         splash.draw(pm)
         pm.sprint('run name: ' + str(pm.run.name),1)
 
-        self.results = rs.Results()
-        results = self.results
-
-        # prepare grid info
-	self.space = SpaceGrid(pm)
-
+        results = pm.results
         # Execute required jobs
         if(pm.sys.NE == 1):
            if(pm.run.EXT == True):
