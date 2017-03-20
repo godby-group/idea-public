@@ -18,7 +18,7 @@ import mix
 import minimize
 
 
-def groundstate(pm, v_KS):
+def groundstate(pm, H):
    r"""Calculates the oribitals and ground state density for the system for a given potential
 
     .. math:: H \psi_{i} = E_{i} \psi_{i}
@@ -29,17 +29,17 @@ def groundstate(pm, v_KS):
         KS potential
 
    returns array_like, array_like, array_like
-        density, normalised orbitals indexed as Psi[orbital_number][space_index], energies
+        density, normalised orbitals indexed as eigf[space_index,orbital_number], energies
    """	
    
-   H = hamiltonian(pm, v_KS)
    #e,eigf = spsla.eigsh(H, k=pm.sys.grid/2, which='SA') 
    e,eigf = spla.eigh(H)
    #e,eigf = spla.eig_banded(H,True) 
    
-   n = electron_density(pm, eigf.T)
+   eigf /= np.sqrt(pm.sys.deltax)
+   n = electron_density(pm, eigf)
 
-   return n,eigf,e,H
+   return n,eigf,e
 
 def electron_density(pm, orbitals):
     r"""Compute density for given orbitals
@@ -47,20 +47,19 @@ def electron_density(pm, orbitals):
     parameters
     ----------
     orbitals: array_like
-      array of orbitals (norbitals, grid),
-      all orbitals normalised to 1 (think: dx=1)
+      array of properly normalised orbitals[space_index,orital_number]
 
     returns
     -------
     n: array_like
-      electron density, properly normalised (also for dx!=1)
+      electron density
     """
-    occupied = orbitals[:pm.sys.NE] / np.sqrt(pm.sys.deltax)
-    n = np.sum(occupied*occupied.conj(), axis=0)
+    occupied = orbitals[:, :pm.sys.NE]
+    n = np.sum(occupied*occupied.conj(), axis=1)
     return n
 
 
-def hamiltonian(pm, v_KS):
+def construct_hamiltonian(pm, v_KS):
     r"""Compute LDA Hamiltonian
 
     Computes LDA Hamiltonian from a given Kohn-Sham potential.
@@ -85,45 +84,60 @@ def hamiltonian(pm, v_KS):
 
     return (T+V).toarray()
     
+def update_hamiltonian(pm, H, v_KS):
+    r"""Update LDA Hamiltonian with new KS potential
+
+    parameters
+    ----------
+    H : array_like
+         old Hamiltonian matrix
+    v_KS : array_like
+         KS potential
+
+    returns array_like
+         Hamiltonian matrix
+    """
+    for i in range(pm.sys.grid):
+        H[i,i] = -0.5 * (-2.0) / pm.sys.deltax**2 + v_KS[i]
+
+    return H
 
 
-def hartree(pm, U, density):
-   r"""Constructs the hartree potential for a given density
+def hartree_potential(pm, density):
+   r"""Computes Hartree potential for a given density
 
    .. math::
 
-       V_{H} \left( x \right) = \int_{\forall} U\left( x,x' \right) n \left( x'\right) dx'
+       V_H(r) = = \int U(r,r') n(r')dr'
 
    parameters
    ----------
-   U : array_like
-        Coulomb matrix
+   density : array_like
+        given density
+
+   returns array_like
+   """
+   return np.dot(pm.space.v_int,density)*pm.sys.deltax
+
+def hartree_energy(pm, V_H, density):
+   r"""Computes Hartree energy for a given density
+
+   .. math::
+
+       E_H[n] = \frac{1}{2} \int n(r) V_H(r) dr
+
+   parameters
+   ----------
+   V_H : array_like
+        Hartree potential
         
    density : array_like
         given density
 
    returns array_like
    """
-   return np.dot(U,density)*pm.sys.deltax
+   return 0.5 * np.dot(V_H,density)*pm.sys.deltax
 
-
-def coulomb(pm):
-   r"""Constructs the coulomb matrix
-
-   .. math::
-
-       U \left( x,x' \right) = \frac{1}{|x-x'| + 1}
-
-   parameters
-   ----------
-
-   returns array_like
-   """
-   U = np.zeros((pm.sys.grid,pm.sys.grid),dtype='float')
-   for i in xrange(pm.sys.grid):
-      for k in xrange(pm.sys.grid):	
-         U[i,k] = 1.0/(abs(i*pm.sys.deltax-k*pm.sys.deltax)+pm.sys.acon)
-   return U
 
 
 lda_1 =  {
@@ -223,37 +237,102 @@ def EXC(pm, Den):
    return E_xc_LDA
 
 
-def energy(pm, density, eigf, eigv, V_H, V_xc):	 	
+def total_energy(pm, eigv, eigf=None, n=None, V_H=None, V_xc=None):	 	
    r"""Calculates the total energy of the self-consistent LDA density                 
+   Uses knowledge of Kohn-Sham eigenvalues
+
+   .. math ::
+       E = \sum_i \varepsilon_i + E_{xc}[n] - E_H[n] - \int \rho(r) V_{xc}(r)dr
+
 
    parameters
    ----------
    pm : array_like
         external potential
-   density : array_like
-		  density
-   eigf : array_like
-        eigenfunctions
    eigv : array_like
         eigenvalues
+   eigf : array_like
+        eigenfunctions
+   n : array_like
+        density
    V_H : array_like
         Hartree potential
-   F : array_like
-        Fock potential
+   V_xc : array_like
+        exchange-correlation potential
 
    returns float
    """		
+
+   if n is None:
+       if eigf is None:
+           raise ValueError("Need to specify either n or eigf")
+       else:
+           n = electron_density(pm, eigf)
+   if not V_H:
+       V_H = hartree_potential(pm, n)
+   if not V_xc:
+       V_xc = XC(pm,n)
    
    E_LDA = 0.0
    for i in range(pm.sys.NE):
       E_LDA += eigv[i]
-   for i in range(pm.sys.grid):
-      E_LDA += -0.5*(density[i]*V_H[i])*pm.sys.deltax
-   for i in range(pm.sys.grid):
-      E_LDA += -1.0*(density[i]*V_xc[i])*pm.sys.deltax
-   E_LDA += EXC(pm, density)
+   E_LDA += EXC(pm, n)
+
+   E_LDA -= hartree_energy(pm, V_H, n)
+   E_LDA -= 1.0 * np.dot(n, V_xc) * pm.sys.deltax
    return E_LDA.real
-   
+
+def total_energy_2(pm, eigf, n=None, V_H=None):
+   r"""Calculates the total energy of the self-consistent LDA density                 
+   Uses Kohn-Sham wave functions only
+
+   .. math::
+       E = \sum_i \langle \psi_i | T | \psi_i\rangle + E_H[n] + E_{xc}[n] + \int \rho(r) V_{ext}(r)dr
+
+   parameters
+   ----------
+   pm : array_like
+        external potential
+   eigf : array_like
+        eigenfunctions
+   density : array_like
+        density
+   V_H : array_like
+        Hartree potential
+
+   returns float
+   """		
+
+   if not n:
+       n = electron_density(pm, eigf)
+   if not V_H:
+       V_H = hartree_potential(pm, n)
+
+   E_LDA = 0.0
+   E_LDA += kinetic_energy(pm, eigf)
+   E_LDA += hartree_energy(pm, V_H, n)
+   E_LDA += EXC(pm, n)
+   E_LDA += np.dot(pm.space.v_ext, n) * pm.space.delta
+
+   return E_LDA.real
+  
+
+def kinetic_energy(pm, eigf):
+    r"""Compute kinetic energy of orbitals
+
+    Note: With our (perhaps slightly strange definition) of H, we have
+    <psi|H|psi> = psi^T H psi *dx
+
+    TODO: This would be much cheaper in reciprocal space
+    """
+    T = -0.5 * sps.diags([1,-2,1],[-1,0,1], shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr') / pm.sys.deltax**2
+
+    occ = eigf[:,:pm.sys.NE]
+    energies = (occ.conj() * T.dot(occ)).sum(0) * pm.sys.deltax
+
+    return np.sum(energies)
+
+
    
 def CalculateCurrentDensity(pm, n, j):
    r"""Calculates the current density of a time evolving wavefunction by solving the continuity equation.
@@ -324,15 +403,14 @@ def main(parameters):
    """
    pm = parameters
    
-   v_s = np.zeros(pm.sys.grid,dtype='float')
    v_ext = np.zeros(pm.sys.grid,dtype='float')
    Psi = np.zeros((pm.sys.NE,pm.sys.imax,pm.sys.grid), dtype=np.complex)
    for i in xrange(pm.sys.grid):
-      v_s[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # External potential
       v_ext[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # External potential
 
-   n,waves,energies,H = groundstate(pm, v_s) #Inital guess
-   U = coulomb(pm) # Create Coulomb matrix
+   H = construct_hamiltonian(pm, v_ext)
+   n,waves,energies = groundstate(pm, H) #Inital guess
+   U = pm.space.v_int # Coulomb matrix
    n_old = copy.deepcopy(n)
    convergence = 1.0
    iteration = 0
@@ -345,16 +423,31 @@ def main(parameters):
 
    while convergence > pm.lda.tol and iteration < pm.lda.max_iter:
       n_old[:] = n[:]
-      v_s = v_ext[:]+hartree(pm,n,U)+XC(pm,n)
-      n_new,waves,energies,H = groundstate(pm,v_s) # Calculate LDA density 
+      v_ks = v_ext[:]+hartree_potential(pm,n)+XC(pm,n)
+      H = update_hamiltonian(pm, H, v_ks)
+      n_new,waves,energies = groundstate(pm,H) # Calculate LDA density 
 
       if pm.lda.mix_type == 'pulay':
           n = mixer.mix(n_old, n_new, energies, waves.T)
       elif pm.lda.mix_type == 'linear':
           n[:] = (1-pm.lda.mix)*n_old[:]+pm.lda.mix*n_new[:]
       elif pm.lda.mix_type == 'direct':
-          waves_new = minimizer.gradient_step(waves.T,H)
-          n = electron_density(pm, waves_new)
+
+          E_1 = total_energy(pm, energies, eigf=waves)
+
+          cg_dirs = minimizer.gradient_step(waves.T,H)
+          theta = np.pi/300
+          waves2 = waves * cos(theta) + cg_dirs * sin(theta)
+          den2 = electron_density(pm, waves2)
+          v_ks2 = XC(pm, den2)
+          H2 = update_hamiltonian(pm,H,v_ks2)
+          n,waves,energies = groundstate(pm, H2) #Inital guess
+
+
+
+
+          #waves_new = minimizer.gradient_step(waves.T,H)
+          #n = electron_density(pm, waves_new)
       else:
           n = n_new
 
@@ -365,12 +458,12 @@ def main(parameters):
       #    quit()
 
       # potential mixing
-      #v_s_old = copy.copy(v_s)
+      #v_ks_old = copy.copy(v_ks)
       #if pm.lda.mix == 0:
-      #   v_s[:] = v_ext[:]+hartree(pm, n, U)+XC(pm, n)
+      #   v_ks[:] = v_ext[:]+hartree_potential(pm, n)+XC(pm, n)
       #else:
-      #   v_s[:] = (1-pm.lda.mix)*v_s_old[:]+pm.lda.mix*(v_ext[:]+hartree(pm, n, U)+XC(pm, n))
-      #n,waves,energies,H = groundstate(pm, v_s) # Calculate LDA density 
+      #   v_ks[:] = (1-pm.lda.mix)*v_ks_old[:]+pm.lda.mix*(v_ext[:]+hartree_potential(pm, n)+XC(pm, n))
+      #n,waves,energies,H = groundstate(pm, v_ks) # Calculate LDA density 
 
       convergence = np.sum(abs(n-n_old))*pm.sys.deltax
       string = 'LDA: electron density convergence = {:.4e}'.format(convergence)
@@ -388,14 +481,14 @@ def main(parameters):
        pm.sprint('LDA: reached convergence in {} iterations.'.format(iteration),0)
    pm.sprint('LDA: ground-state xc energy: %s' % EXC(pm,n),1)
 
-   v_h = hartree(pm, n,U)
+   v_h = hartree_potential(pm, n)
    v_xc = XC(pm, n)
 
-   LDA_E = energy(pm, n, waves, energies, v_h, v_xc)
+   LDA_E = total_energy(pm, energies, n=n)
    pm.sprint('LDA: ground-state energy: {}'.format(LDA_E),1)
    
    results = rs.Results()
-   results.add(v_s[:], 'gs_lda_vks')
+   results.add(v_ks[:], 'gs_lda_vks')
    results.add(v_h[:], 'gs_lda_vh')
    results.add(v_xc[:], 'gs_lda_vxc')
    results.add(n[:], 'gs_lda_den')
@@ -411,26 +504,26 @@ def main(parameters):
    if pm.run.time_dependence == True:
       for i in range(pm.sys.NE):
          Psi[i,0,:] = waves[:,i]
-      v_s_t = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
+      v_ks_t = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
       v_xc_t = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
       current = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
       n_t = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
-      v_s_t[0,:] = v_s[:]
+      v_ks_t[0,:] = v_ks[:]
       n_t[0,:] = n[:]
       for i in xrange(pm.sys.grid): 
-         v_s_t[1,i] = v_s[i]+pm.sys.v_pert((i*pm.sys.deltax-pm.sys.xmax))  
+         v_ks_t[1,i] = v_ks[i]+pm.sys.v_pert((i*pm.sys.deltax-pm.sys.xmax))  
          v_ext[i] += pm.sys.v_pert((i*pm.sys.deltax-pm.sys.xmax)) 
       for j in range(1,pm.sys.imax): 
          string = 'LDA: evolving through real time: t = ' + str(j*pm.sys.deltat) 
          pm.sprint(string,1,newline=False)
-         n_t,Psi = CrankNicolson(pm, v_s_t,Psi,n_t,j)
+         n_t,Psi = CrankNicolson(pm, v_ks_t,Psi,n_t,j)
          if j != pm.sys.imax-1:
-            v_s_t[j+1,:] = v_ext[:]+hartree(pm, n_t[j,:],U)+XC(pm, n_t[j,:])
+            v_ks_t[j+1,:] = v_ext[:]+hartree_potential(pm, n_t[j,:])+XC(pm, n_t[j,:])
          current[j,:] = CalculateCurrentDensity(pm, n_t,j)
          v_xc_t[j,:] = XC(pm, n_t[j,:])
 
       # Output results
-      results.add(v_s_t, 'td_lda_vks')
+      results.add(v_ks_t, 'td_lda_vks')
       results.add(v_xc_t, 'td_lda_vxc')
       results.add(n_t, 'td_lda_den')
       results.add(current, 'td_lda_cur')
