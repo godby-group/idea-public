@@ -76,3 +76,32 @@ class TestCG(unittest.TestCase):
 
         nt.assert_almost_equal(steepest_orth_all[i], steepest_orth)
 
+    def test_orthonormalisation(self):
+        """Testing orthonormalisation of a set of vectors
+
+        minimize.
+        This should do the same as Gram-Schmidt
+        """
+
+        m = 8   # dimension of space
+        n = 4   # number of vectors
+        vecs = np.random.rand(m,n)
+
+        q = np.empty((m,n))
+        # the regular Gram-Schmidt algorithm
+        for i in range(n):
+            v = vecs[:,i]
+            for j in range(i):
+                v -= np.dot(v,q[:,j]) / np.dot(q[:,j],q[:,j]) * q[:,j]
+            v /= np.linalg.norm(v)
+            q[:,i] = v
+
+        # is q an orthogonal matrix?
+        nt.assert_almost_equal(np.dot(q.T,q), np.identity(n))
+        
+        q2 = minimize.orthonormalize(vecs.T).T
+        # is q2 an orthogonal matrix?
+        nt.assert_almost_equal(np.dot(q2.T, q2), np.identity(n))
+
+        # are q and q2 the same?
+        nt.assert_almost_equal(q, q2)

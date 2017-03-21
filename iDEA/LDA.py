@@ -303,9 +303,9 @@ def total_energy_2(pm, eigf, n=None, V_H=None):
    returns float
    """		
 
-   if not n:
+   if n is None:
        n = electron_density(pm, eigf)
-   if not V_H:
+   if V_H is None:
        V_H = hartree_potential(pm, n)
 
    E_LDA = 0.0
@@ -408,10 +408,10 @@ def main(parameters):
    for i in xrange(pm.sys.grid):
       v_ext[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # External potential
 
+   # take external potential for initial guess
    H = construct_hamiltonian(pm, v_ext)
-   n,waves,energies = groundstate(pm, H) #Inital guess
+   n,waves,energies = groundstate(pm, H)
    U = pm.space.v_int # Coulomb matrix
-   n_old = copy.deepcopy(n)
    convergence = 1.0
    iteration = 0
    #iteration = 1
@@ -419,57 +419,47 @@ def main(parameters):
    if pm.lda.mix_type == 'pulay':
        mixer = mix.PulayMixer(pm, order=pm.lda.pulay_order, preconditioner=pm.lda.preconditioner)
    elif pm.lda.mix_type == 'direct':
-       minimizer = minimize.CGMinimizer(pm, energy)
+       minimizer = minimize.CGMinimizer(pm, total_energy_2)
 
+    
    while convergence > pm.lda.tol and iteration < pm.lda.max_iter:
-      n_old[:] = n[:]
+      n_old = n
       v_ks = v_ext[:]+hartree_potential(pm,n)+XC(pm,n)
       H = update_hamiltonian(pm, H, v_ks)
-      n_new,waves,energies = groundstate(pm,H) # Calculate LDA density 
 
-      if pm.lda.mix_type == 'pulay':
-          n = mixer.mix(n_old, n_new, energies, waves.T)
-      elif pm.lda.mix_type == 'linear':
-          n[:] = (1-pm.lda.mix)*n_old[:]+pm.lda.mix*n_new[:]
-      elif pm.lda.mix_type == 'direct':
+      if pm.lda.mix_type == 'direct': 
+          waves = minimizer.gradient_step(waves.T, H).T
+          n = electron_density(pm, waves)
+          s = 'LDA: E = {:.5f} Ha'.format(total_energy_2(pm,waves, n=n))
+          pm.sprint(s)
 
-          E_1 = total_energy(pm, energies, eigf=waves)
-
-          cg_dirs = minimizer.gradient_step(waves.T,H)
-          theta = np.pi/300
-          waves2 = waves * cos(theta) + cg_dirs * sin(theta)
-          den2 = electron_density(pm, waves2)
-          v_ks2 = XC(pm, den2)
-          H2 = update_hamiltonian(pm,H,v_ks2)
-          n,waves,energies = groundstate(pm, H2) #Inital guess
-
-
-
-
-          #waves_new = minimizer.gradient_step(waves.T,H)
-          #n = electron_density(pm, waves_new)
       else:
-          n = n_new
+      
+          n_new,waves,energies = groundstate(pm,H) # Calculate LDA density 
 
-      #import matplotlib.pyplot as plt
-      #plt.plot(n)
-      #plt.show()
-      #if iteration > 20:
-      #    quit()
+          s = 'LDA: E = {:.5f} Ha'.format(total_energy(pm,energies, n=n_new))
+          pm.sprint(s)
 
-      # potential mixing
-      #v_ks_old = copy.copy(v_ks)
-      #if pm.lda.mix == 0:
-      #   v_ks[:] = v_ext[:]+hartree_potential(pm, n)+XC(pm, n)
-      #else:
-      #   v_ks[:] = (1-pm.lda.mix)*v_ks_old[:]+pm.lda.mix*(v_ext[:]+hartree_potential(pm, n)+XC(pm, n))
-      #n,waves,energies,H = groundstate(pm, v_ks) # Calculate LDA density 
+          if pm.lda.mix_type == 'pulay':
+              n = mixer.mix(n_old, n_new, energies, waves.T)
+          elif pm.lda.mix_type == 'linear':
+              n[:] = (1-pm.lda.mix)*n_old[:]+pm.lda.mix*n_new[:]
+          else:
+              n = n_new
+
+          # potential mixing
+          #v_ks_old = copy.copy(v_ks)
+          #if pm.lda.mix == 0:
+          #   v_ks[:] = v_ext[:]+hartree_potential(pm, n)+XC(pm, n)
+          #else:
+          #   v_ks[:] = (1-pm.lda.mix)*v_ks_old[:]+pm.lda.mix*(v_ext[:]+hartree_potential(pm, n)+XC(pm, n))
+          #n,waves,energies,H = groundstate(pm, v_ks) # Calculate LDA density 
 
       convergence = np.sum(abs(n-n_old))*pm.sys.deltax
       string = 'LDA: electron density convergence = {:.4e}'.format(convergence)
       #pm.sprint(string,1,newline=False)
       pm.sprint(string,1,newline=True)
-      pm.sprint('LDA: E = {:.5f} Ha'.format(EXC(pm,n)),1,newline=True)
+      #pm.sprint('LDA: E = {:.5f} Ha'.format(EXC(pm,n)),1,newline=True)
 
       iteration += 1
 
@@ -484,7 +474,7 @@ def main(parameters):
    v_h = hartree_potential(pm, n)
    v_xc = XC(pm, n)
 
-   LDA_E = total_energy(pm, energies, n=n)
+   LDA_E = total_energy(pm, waves, n=n)
    pm.sprint('LDA: ground-state energy: {}'.format(LDA_E),1)
    
    results = rs.Results()
