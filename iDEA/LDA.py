@@ -430,15 +430,12 @@ def main(parameters):
       if pm.lda.mix_type == 'direct': 
           waves = minimizer.gradient_step(waves.T, H).T
           n = electron_density(pm, waves)
-          s = 'LDA: E = {:.5f} Ha'.format(total_energy_2(pm,waves, n=n))
-          pm.sprint(s)
+          en_tot = total_energy_2(pm,waves, n=n)
 
       else:
       
           n_new,waves,energies = groundstate(pm,H) # Calculate LDA density 
-
-          s = 'LDA: E = {:.5f} Ha'.format(total_energy(pm,energies, n=n_new))
-          pm.sprint(s)
+          en_tot = total_energy(pm,energies, n=n)
 
           if pm.lda.mix_type == 'pulay':
               n = mixer.mix(n_old, n_new, energies, waves.T)
@@ -454,12 +451,9 @@ def main(parameters):
           #else:
           #   v_ks[:] = (1-pm.lda.mix)*v_ks_old[:]+pm.lda.mix*(v_ext[:]+hartree_potential(pm, n)+XC(pm, n))
           #n,waves,energies,H = groundstate(pm, v_ks) # Calculate LDA density 
-
       convergence = np.sum(abs(n-n_old))*pm.sys.deltax
-      string = 'LDA: electron density convergence = {:.4e}'.format(convergence)
-      #pm.sprint(string,1,newline=False)
-      pm.sprint(string,1,newline=True)
-      #pm.sprint('LDA: E = {:.5f} Ha'.format(EXC(pm,n)),1,newline=True)
+      string = 'LDA: total energy = {:.8f} Ha, density conv = {:.3e}'.format(en_tot, convergence)
+      pm.sprint(string,1,newline=False)
 
       iteration += 1
 
@@ -469,12 +463,12 @@ def main(parameters):
        pm.sprint(string,1)
    else:
        pm.sprint('LDA: reached convergence in {} iterations.'.format(iteration),0)
-   pm.sprint('LDA: ground-state xc energy: %s' % EXC(pm,n),1)
 
+   pm.sprint('LDA: ground-state xc energy: %s' % EXC(pm,n),1)
    v_h = hartree_potential(pm, n)
    v_xc = XC(pm, n)
 
-   LDA_E = total_energy(pm, waves, n=n)
+   LDA_E = total_energy_2(pm, waves, n=n)
    pm.sprint('LDA: ground-state energy: {}'.format(LDA_E),1)
    
    results = rs.Results()

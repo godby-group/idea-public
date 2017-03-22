@@ -13,15 +13,24 @@ class CGMinimizer:
     as described on pp 1071 of [Payne1992]_
     """
 
-    def __init__(self, pm, total_energy=None, nstates=None):
+    def __init__(self, pm, total_energy=None, nstates=None, cg_restart=False, ndiag=20):
         """Initializes variables
 
         parameters
         ----------
         pm: object
           input parameters
-        H: callable
-          function returning Hamiltonian
+        total_energy: callable
+          function f(pm, waves) that returns total energy
+        nstates: int
+          how many states to retain.
+          currently, this must equal the number of occupied states
+          (for unoccupied states need to re-diagonalize)
+        cg_restart: int
+          cg history is restarted every cg_restart steps
+        ndiag: int
+          wave functions are diagonalised every ndiag steps
+          ndiag=0, diagonalisation is turned off.
 
         """
         self.pm = pm
@@ -38,6 +47,12 @@ class CGMinimizer:
             self.nstates = pm.sys.NE
         else:
             self.nstates = nstates
+
+        self.cg_restart = cg_restart
+        self.cg_counter = 0
+
+        self.ndiag = ndiag
+        self.diag_counter = 0
 
 
     def gradient_step(self, wfs, H):
@@ -66,52 +81,91 @@ class CGMinimizer:
         wfs *= self.sqdx
         wfs = wfs[:self.nstates]
 
+        wfs = self.subspace_diagonalization(wfs,H)
+
         energies = self.braket(wfs, H, wfs)
 
         steepest_dirs = self.steepest_dirs(H, wfs, energies)
         conjugate_dirs = self.conjugate_directions(steepest_dirs)
 
-        theta_1 = np.pi/30
-	# eqn (5.23)
         E_0 = self.total_energy(wfs)
         dE_dtheta_0 = 2 * np.sum(self.braket(conjugate_dirs, H, wfs).real)
 
-        wfs_1 = wfs * np.cos(theta_1) + conjugate_dirs * np.sin(theta_1)
-        wfs_1 = orthonormalize(wfs_1)
-        E_1 = self.total_energy(wfs_1)
-
-	#import matplotlib.pyplot as plt
-	#x = np.linspace(0, np.pi/2, self.pm.sys.grid)
-	#for i in range(2):
+        if dE_dtheta_0 > 0:
+            raise ValueError("First-order change along conjugate gradient direction is positive.")
+            
+        #import matplotlib.pyplot as plt
+        #x = np.linspace(0, np.pi/2, self.pm.sys.grid)
+        #for i in range(2):
         #    plt.plot(x, conjugate_dirs[i], label='cg{}'.format(i))
         #    plt.plot(x, wfs[i], label=str(i))
         #    plt.plot(x, wfs_1[i], label=str(i))
-	#plt.legend()
-	#plt.show()
+        #plt.legend()
+        #plt.show()
 
-	# eqns (5.28-5.29)
-	B_1 = 0.5 * dE_dtheta_0
-	A_1 = (E_0 - E_1 + B_1) / (1 - np.cos(2*theta_1))
+        # line search
+        mode = 'quadratic'
+        if mode=='payne':
+            theta_1 = np.pi/4
+            # eqn (5.23)
 
-	# eqn (5.30)
-	theta_opt = 0.5 * np.arctan(B_1/A_1)
+            while True:
+                wfs_1 = wfs * np.cos(theta_1) + conjugate_dirs * np.sin(theta_1)
+                wfs_1 = orthonormalize(wfs_1)
+                E_1 = self.total_energy(wfs_1)
+                if E_1 < E_0:
+                    break
+                else:
+                    theta_1 /= 2.0
 
-        # solution from mathematica, apparently equivalent
-	#theta_opt = - np.arctan( (A_1 + np.sqrt(A_1**2+B_1**2)) / B_1)
 
-	#print(E_0)
-	#print(E_1)
-	#print(dE_dtheta_0)
-	#print(theta_opt)
+            # eqns (5.28-5.29)
+            B_1 = 0.5 * dE_dtheta_0
+            A_1 = (E_0 - E_1 + B_1) / (1 - np.cos(2*theta_1))
 
-	#x = np.linspace(0, np.pi/2, 50)
-	#y = A_1 * np.cos(2*x) + B_1 * np.sin(2*x)
-	#import matplotlib.pyplot as plt
-   	#plt.plot(x,y)
-	#plt.show()
+            # eqn (5.30)
+            theta_opt = 0.5 * np.arctan(B_1/A_1)
 
-	wfs_new = wfs * np.cos(theta_opt) + conjugate_dirs * np.sin(theta_opt)
-	wfs_new = orthonormalize(wfs_new)
+        elif mode == 'quadratic':
+            lambda_1 = 1.0
+
+            while True:
+                wfs_1 = wfs + conjugate_dirs * lambda_1
+                wfs_1 = orthonormalize(wfs_1)
+                E_1 = self.total_energy(wfs_1)
+                if E_1 < E_0:
+                    break
+                else:
+                    lambda_1 /= 2.0
+
+            s = dE_dtheta_0 * lambda_1
+            a = (E_1 - E_0 - s) / lambda_1**2
+
+            theta_opt = -0.5 * s / (a * lambda_1)
+
+
+
+        
+
+
+        #print(E_0)
+        #print(E_1)
+        #print(dE_dtheta_0)
+        #print(theta_opt)
+
+        #if mode == 'payne':
+        #    x = np.linspace(0, np.pi/2, 50)
+        #    y = A_1 * np.cos(2*x) + B_1 * np.sin(2*x)
+        #elif mode == 'quadratic':
+        #    x = np.linspace(0, 1, 50)
+        #    y = a * (x - theta_opt)**2
+        #import matplotlib.pyplot as plt
+        #plt.plot(x,y)
+        #plt.show()
+        theta_opt = np.minimum(1.0,theta_opt)
+
+        wfs_new = wfs * np.cos(theta_opt) + conjugate_dirs * np.sin(theta_opt)
+        wfs_new = orthonormalize(wfs_new)
 
         #theta = 0.8
         #converged = False
@@ -130,15 +184,15 @@ class CGMinimizer:
         r"""Compute braket with operator O
 
         bra and ket may hold multiple vectors or may be empty.
-	Variants:
+        Variants:
 
         .. math:
             \lambda_i = \langle \psi_i | O | \psi_i \rangle
             \varphi_i = O | \psi_i \rangle
             \varphi_i = <psi_i | O
 
-	parameters
-	----------
+        parameters
+        ----------
         bra: array_like
           lhs of braket
         O: array_like
@@ -147,20 +201,20 @@ class CGMinimizer:
           rhs of braket
         """
         if O is None:
-	    if bra is None:
+            if bra is None:
                 return ket
             elif ket is None:
                 return bra.conj().T
             else:
                 return np.dot(bra.conj(), ket)
         else:
-	    if bra is None:
+            if bra is None:
                 return np.dot(O, wfs.T).T
             elif ket is None:
                 return np.dot(bra.conj(), O)
             else:
-		O_ket = np.dot(O, ket.T).T
-		return (bra.conj() * O_ket).sum(1)
+                O_ket = np.dot(O, ket.T).T
+                return (bra.conj() * O_ket).sum(1)
 
 
     def steepest_dirs(self, H, wavefunctions, energies):
@@ -221,10 +275,15 @@ class CGMinimizer:
         steepest_dirs: array_like
           steepest-descent directions
         """
+        self.cg_counter += 1
+
         steepest_prods = np.linalg.norm(steepest_dirs)**2
         gamma = steepest_prods / self.steepest_prods
         self.steepest_prods = steepest_prods
 
+        if self.cg_counter == self.cg_restart:
+            self.cg_dirs[:] = 0
+            self.cg_counter = 0
         cg_dirs = steepest_dirs + np.dot(gamma, self.cg_dirs)
         self.cg_dirs = cg_dirs
 
@@ -241,6 +300,46 @@ class CGMinimizer:
 
     #def minimize(self):
     #    xopt = sopt.fmin_cg(E, R, psi, full_output=True)
+
+     
+
+    def subspace_diagonalization(self, v_orth, H):
+        """Diagonalise suspace of wfs
+         
+        parameters
+        ----------
+        v_orth: array_like
+          (nwf,grid) array of orthonormal vectors, spanning occupied eigenspace
+        H: array_like
+          (grid,grid) Hamiltonian matrix
+
+        returns
+        -------
+        v_rot: array_like
+          (nwf, grid) array of orthonormal eigenvectors of H
+          (or at least close to eigenvectors)
+        """
+        self.diag_counter += 1
+
+        # we diagonlise only every ndiag steps
+        if not self.ndiag or self.diag_counter < self.ndiag:
+            return v_orth
+        else:
+            self.diag_counter = 0
+
+        # v = (grid,nwf)
+        v = v_orth.T
+        # overlap matrix
+        S = np.dot(v.conj().T,  np.dot(H, v))
+        # eigf = (nwf_old, nwf)
+        eigv, eigf = np.linalg.eigh(S)
+
+        v_rot = np.dot(v, eigf)
+        # need to rotate cg_dirs as well!
+        self.cg_dirs = np.dot(self.cg_dirs.T, eigf).T
+
+        return v_rot.T
+
 
 
 
@@ -271,6 +370,4 @@ def orthonormalize(vecs):
 
     # Q contains orthonormalised vectors as columns
     return Q.T
-
-
 
