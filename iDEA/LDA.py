@@ -237,7 +237,7 @@ def EXC(pm, Den):
    return E_xc_LDA
 
 
-def total_energy(pm, eigv, eigf=None, n=None, V_H=None, V_xc=None):	 	
+def total_energy_eigv(pm, eigv, eigf=None, n=None, V_H=None, V_xc=None):	 	
    r"""Calculates the total energy of the self-consistent LDA density                 
    Uses knowledge of Kohn-Sham eigenvalues
 
@@ -282,7 +282,7 @@ def total_energy(pm, eigv, eigf=None, n=None, V_H=None, V_xc=None):
    E_LDA -= 1.0 * np.dot(n, V_xc) * pm.sys.deltax
    return E_LDA.real
 
-def total_energy_2(pm, eigf, n=None, V_H=None):
+def total_energy_eigf(pm, eigf, n=None, V_H=None):
    r"""Calculates the total energy of the self-consistent LDA density                 
    Uses Kohn-Sham wave functions only
 
@@ -419,7 +419,7 @@ def main(parameters):
    if pm.lda.mix_type == 'pulay':
        mixer = mix.PulayMixer(pm, order=pm.lda.pulay_order, preconditioner=pm.lda.preconditioner)
    elif pm.lda.mix_type == 'direct':
-       minimizer = minimize.CGMinimizer(pm, total_energy_2)
+       minimizer = minimize.CGMinimizer(pm, total_energy_eigf)
 
     
    while convergence > pm.lda.tol and iteration < pm.lda.max_iter:
@@ -428,14 +428,14 @@ def main(parameters):
       H = update_hamiltonian(pm, H, v_ks)
 
       if pm.lda.mix_type == 'direct': 
-          waves = minimizer.gradient_step(waves.T, H).T
+          waves = minimizer.gradient_step(waves, H)
           n = electron_density(pm, waves)
-          en_tot = total_energy_2(pm,waves, n=n)
+          en_tot = total_energy_eigf(pm,waves, n=n)
 
       else:
       
           n_new,waves,energies = groundstate(pm,H) # Calculate LDA density 
-          en_tot = total_energy(pm,energies, n=n)
+          en_tot = total_energy_eigv(pm,energies, n=n)
 
           if pm.lda.mix_type == 'pulay':
               n = mixer.mix(n_old, n_new, energies, waves.T)
@@ -452,8 +452,8 @@ def main(parameters):
           #   v_ks[:] = (1-pm.lda.mix)*v_ks_old[:]+pm.lda.mix*(v_ext[:]+hartree_potential(pm, n)+XC(pm, n))
           #n,waves,energies,H = groundstate(pm, v_ks) # Calculate LDA density 
       convergence = np.sum(abs(n-n_old))*pm.sys.deltax
-      string = 'LDA: total energy = {:.8f} Ha, density conv = {:.3e}'.format(en_tot, convergence)
-      pm.sprint(string,1,newline=False)
+      string = 'LDA: E = {:.12f} Ha, delta n = {:.3e}, iter = {}'.format(en_tot, convergence, iteration)
+      pm.sprint(string,1,newline=True)
 
       iteration += 1
 
@@ -468,7 +468,7 @@ def main(parameters):
    v_h = hartree_potential(pm, n)
    v_xc = XC(pm, n)
 
-   LDA_E = total_energy_2(pm, waves, n=n)
+   LDA_E = total_energy_eigf(pm, waves, n=n)
    pm.sprint('LDA: ground-state energy: {}'.format(LDA_E),1)
    
    results = rs.Results()
