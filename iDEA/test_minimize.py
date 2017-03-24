@@ -7,9 +7,9 @@ import input
 import unittest
 
 import minimize
-import NON
 import scipy.sparse as sps
 import scipy.linalg as spla
+import LDA
 
 class TestCG(unittest.TestCase):
     """Tests for the conjugate gradient minimizer
@@ -21,19 +21,6 @@ class TestCG(unittest.TestCase):
         pm = input.Input()
         pm.run.save = False
         pm.run.verbosity = 'low'
-
-        # It might still be possible to speed this up
-        pm.sys.NE = 2                  #: Number of electrons
-        pm.sys.grid = 61               #: Number of grid points (must be odd)
-        pm.sys.xmax = 7.5              #: Size of the system
-        pm.sys.acon = 1.0              #: Smoothing of the Coloumb interaction
-        pm.sys.interaction_strength = 1#: Scales the strength of the Coulomb interaction
-        def v_ext(x):
-            """Initial external potential"""
-            return 0.5*(0.25**2)*(x**2)
-        pm.sys.v_ext = v_ext
-        
-        pm.ext.ctol = 1e-5
 
         self.pm = pm
 
@@ -113,3 +100,63 @@ class TestCG(unittest.TestCase):
 
         # are q and q2 the same?
         nt.assert_almost_equal(q, q2)
+
+class TestCGLDA(unittest.TestCase):
+    """Tests for the conjugate gradient minimizer
+
+    On an actual LDA system
+    
+    """ 
+    def setUp(self):
+        """ Sets up harmonic oscillator system """
+        pm = input.Input()
+        pm.run.save = False
+        pm.run.verbosity = 'low'
+
+        # It might still be possible to speed this up
+        pm.sys.NE = 2                  #: Number of electrons
+        pm.sys.grid = 61               #: Number of grid points (must be odd)
+        pm.sys.xmax = 7.5              #: Size of the system
+        pm.sys.acon = 1.0              #: Smoothing of the Coloumb interaction
+        pm.sys.interaction_strength = 1#: Scales the strength of the Coulomb interaction
+        def v_ext(x):
+            """Initial external potential"""
+            return 0.5*(0.25**2)*(x**2)
+        pm.sys.v_ext = v_ext
+        
+        pm.lda.save_eig = True
+        pm.lda.max_iter = 5  # just start, don't solve it perfectly
+        pm.lda.mix_type = 'direct'
+
+        pm.setup()
+        self.pm = pm
+
+    def test_derivative(self):
+        r"""Test total energy derivative vs finite differences
+
+        .. math::
+            \frac{dE}{d\lambda}(\lambda) \approx \frac{E(\lambda)+E(\lambda+\delta)}{\delta} 
+        """
+        pm = self.pm
+        minimizer = minimize.CGMinimizer(pm, total_energy=LDA.total_energy_eigf)
+
+        results = LDA.main(pm)  # solving using linear mixing
+        vks = results.gs_lda_vks
+        n = results.gs_lda_den
+        H = LDA.construct_hamiltonian(pm, vks)
+        wfs = results.gs_lda_eigf[:pm.sys.NE].T * minimizer.sqdx
+
+        # compute current conjugate direction
+        steepest = minimizer.steepest_dirs(H, wfs)
+        conjugate = minimizer.conjugate_directions(steepest, wfs)
+        dE_dL = 2 * np.sum(minimizer.braket(conjugate, H, wfs))
+
+        # compute finite difference derivative
+        delta = 1.0e-4
+        E_1 = minimizer.total_energy(wfs)
+        wfs_new = minimize.orthonormalize(wfs + delta * conjugate)
+        E_2 = minimizer.total_energy(wfs_new)
+        dE_dL_finite = (E_2 - E_1) / delta
+        
+        nt.assert_allclose(dE_dL, dE_dL_finite, rtol=1e-3)
+

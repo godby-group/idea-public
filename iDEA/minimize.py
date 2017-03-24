@@ -96,7 +96,7 @@ class CGMinimizer:
 
         E_0 = self.total_energy(wfs)
         #dE_dtheta_0 = 2 * np.sum(self.braket(conjugate_dirs, H, wfs).real) / self.nstates
-        dE_dtheta_0 = 2 * np.sum(self.braket(conjugate_dirs, H, wfs).real) #* self.dx
+        dE_dtheta_0 = 2 * np.sum(self.braket(conjugate_dirs, H, wfs).real)
 
         if dE_dtheta_0 > 0:
             raise ValueError("First-order change along conjugate gradient direction is positive.")
