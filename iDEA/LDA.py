@@ -138,29 +138,59 @@ def hartree_energy(pm, V_H, density):
    """
    return 0.5 * np.dot(V_H,density)*pm.sys.deltax
 
-
-
-lda_1 =  {
-   'a' :  -1.315,
-   'b' :  2.16,
-   'c' :  -1.71,
+# these are Mike's parameters for finite LDAs
+elda = {}
+elda[1] = {
+   'a' :  -0.803,
+   'b' :  0.82,
+   'c' :  -0.47,
    'd' :  0.638,
 }
-lda_2 =  {
-   'a' :  -1.19,
-   'b' :  1.77,
-   'c' :  -1.37,
+elda[2] =  {
+   'a' :  -0.74,
+   'b' :  0.68,
+   'c' :  -0.38,
    'd' :  0.604,
 }
-lda_n =  {
-   'a' : -1.24,
-   'b' : 2.1,
-   'c' : -1.7,
+elda['n'] =  {
+   'a' : -0.77,
+   'b' : 0.79,
+   'c' : -0.48,
    'd' : 0.61,
 }
 
+vlda = {}
+for n in [1,2,'n']:
+    eps = elda[n]
+    a = eps['a']
+    b = eps['b']
+    c = eps['c']
+    d = eps['d']
 
-def XC(pm , Den): 
+    vlda[n] = { 
+      'a': (d+1)*a,
+      'b': (d+2)*b,
+      'c': (d+3)*c,
+      'd': d
+    }
+
+dlda = {}
+for n in [1,2,'n']:
+    v = vlda[n]
+    a = v['a']
+    b = v['b']
+    c = v['c']
+    d = v['d']
+
+    dlda[n] = { 
+      'a': d*a,
+      'b': (d+1)*b,
+      'c': (d+2)*c,
+      'd': d-1
+    }
+
+
+def VXC(pm , Den): 
    r"""Finite LDA approximation for the Exchange-Correlation potential
 
    parameters
@@ -172,21 +202,20 @@ def XC(pm , Den):
         Exchange-Correlation potential
    """
    V_xc = np.zeros(pm.sys.grid,dtype='float')
-   if (pm.sys.NE == 1):
-       lp = lda_1
-   elif (pm.sys.NE == 2):
-       lp = lda_2
-   else:
-       lp = lda_n
 
-   V_xc = (lp['a'] + lp['b'] * Den + lp['c'] * Den**2) * Den**lp['d']
+   NE = pm.sys.NE
+   if NE > 2:
+       NE = 'n'
+   p = vlda[NE]
+
+   V_xc = (p['a'] + p['b'] * Den + p['c'] * Den**2) * Den**p['d']
 
    return V_xc
 
 def DXC(pm , n): 
    r"""Derivative of finite LDA for the Exchange-Correlation potential
 
-   This function simply returns the derivative of XC
+   This function simply returns the derivative of VXC
 
    parameters
    ----------
@@ -197,21 +226,24 @@ def DXC(pm , n):
         Exchange-Correlation potential
    """
    D_xc = np.zeros(pm.sys.grid,dtype='float')
-   if (pm.sys.NE == 1):
-       lp = lda_1
-   elif (pm.sys.NE == 2):
-       lp = lda_2
-   else:
-       lp = lda_n
 
-   D_xc = (lp['b'] + 2 * lp['c'] * n) * n**lp['d'] \
-        + (lp['a'] + lp['b'] * n + lp['c'] * n**2) * lp['d'] * n**(lp['d']-1)
+   NE = pm.sys.NE
+   if NE > 2:
+       NE = 'n'
+   p = dlda[NE]
+
+   D_xc = (p['a'] + p['b'] * n + p['c'] * n**2) * n**p['d']
+   #D_xc = (p['b'] + 2 * p['c'] * n) * n**p['d'] \
+   #     + (p['a'] + p['b'] * n + p['c'] * n**2) * p['d'] * n**(p['d']-1)
 
    return D_xc 
 
 
 def EXC(pm, Den): 
    r"""Finite LDA approximation for the Exchange-Correlation energy
+
+   .. math ::
+        E_{xc} = \int \varepsilon_{xc}(n(r)) n(r) dr
 
    parameters
    ----------
@@ -221,23 +253,19 @@ def EXC(pm, Den):
    returns float
         Exchange-Correlation energy
    """
-   E_xc_LDA = 0.0
-   if (pm.sys.NE == 1):
-      for i in xrange(pm.sys.grid):
-         e_xc_LDA = ((-0.803+0.82*Den[i]-0.47*(Den[i])**2)*Den[i]**0.638) 
-         E_xc_LDA += (Den[i])*(e_xc_LDA)*pm.sys.deltax
-   elif (pm.sys.NE == 2):
-      for i in xrange(pm.sys.grid):
-         e_xc_LDA = ((-0.74+0.68*Den[i]-0.38*(Den[i])**2)*Den[i]**0.604) 
-         E_xc_LDA += (Den[i])*(e_xc_LDA)*pm.sys.deltax
-   else:
-      for i in xrange(pm.sys.grid):
-         e_xc_LDA = ((-0.77+0.79*Den[i]-0.48*(Den[i])**2)*Den[i]**0.61)
-         E_xc_LDA += (Den[i])*(e_xc_LDA)*pm.sys.deltax
+
+   NE = pm.sys.NE
+   if NE > 2:
+       NE = 'n'
+   p = elda[NE]
+
+   e_xc = (p['a'] + p['b'] * Den + p['c'] * Den**2) * Den**p['d']
+   E_xc_LDA = np.dot(e_xc, Den) * pm.sys.deltax
+
    return E_xc_LDA
 
 
-def total_energy_eigv(pm, eigv, eigf=None, n=None, V_H=None, V_xc=None):	 	
+def total_energy_eigv(pm, eigv, eigf=None, n=None, V_H=None, V_xc=None):
    r"""Calculates the total energy of the self-consistent LDA density                 
    Uses knowledge of Kohn-Sham eigenvalues
 
@@ -271,7 +299,7 @@ def total_energy_eigv(pm, eigv, eigf=None, n=None, V_H=None, V_xc=None):
    if not V_H:
        V_H = hartree_potential(pm, n)
    if not V_xc:
-       V_xc = XC(pm,n)
+       V_xc = VXC(pm,n)
    
    E_LDA = 0.0
    for i in range(pm.sys.NE):
@@ -412,9 +440,8 @@ def main(parameters):
    H = construct_hamiltonian(pm, v_ext)
    n,waves,energies = groundstate(pm, H)
    U = pm.space.v_int # Coulomb matrix
-   convergence = 1.0
-   iteration = 0
-   #iteration = 1
+   convergence = 2*pm.sys.NE  # maximum density difference
+   iteration = 1
 
    if pm.lda.mix_type == 'pulay':
        mixer = mix.PulayMixer(pm, order=pm.lda.pulay_order, preconditioner=pm.lda.preconditioner)
@@ -422,9 +449,9 @@ def main(parameters):
        minimizer = minimize.CGMinimizer(pm, total_energy_eigf)
 
     
-   while convergence > pm.lda.tol and iteration < pm.lda.max_iter:
+   while convergence > pm.lda.tol and iteration <= pm.lda.max_iter:
       n_old = n
-      v_ks = v_ext[:]+hartree_potential(pm,n)+XC(pm,n)
+      v_ks = v_ext[:]+hartree_potential(pm,n)+VXC(pm,n)
       H = update_hamiltonian(pm, H, v_ks)
 
       if pm.lda.mix_type == 'direct': 
@@ -447,9 +474,9 @@ def main(parameters):
           # potential mixing
           #v_ks_old = copy.copy(v_ks)
           #if pm.lda.mix == 0:
-          #   v_ks[:] = v_ext[:]+hartree_potential(pm, n)+XC(pm, n)
+          #   v_ks[:] = v_ext[:]+hartree_potential(pm, n)+VXC(pm, n)
           #else:
-          #   v_ks[:] = (1-pm.lda.mix)*v_ks_old[:]+pm.lda.mix*(v_ext[:]+hartree_potential(pm, n)+XC(pm, n))
+          #   v_ks[:] = (1-pm.lda.mix)*v_ks_old[:]+pm.lda.mix*(v_ext[:]+hartree_potential(pm, n)+VXC(pm, n))
           #n,waves,energies,H = groundstate(pm, v_ks) # Calculate LDA density 
       convergence = np.sum(abs(n-n_old))*pm.sys.deltax
       string = 'LDA: E = {:.12f} Ha, delta n = {:.3e}, iter = {}'.format(en_tot, convergence, iteration)
@@ -457,16 +484,18 @@ def main(parameters):
 
       iteration += 1
 
+   iteration -= 1
+
    pm.sprint('',1)
-   if iteration == pm.lda.max_iter:
-       string = 'LDA: Warning: reached maximum number of iterations {}. terminating self-consistency'.format(iteration)
+   if convergence <= pm.lda.tol:
+       string = 'LDA: Warning: convergence not reached in {} iterations. terminating self-consistency'.format(iteration)
        pm.sprint(string,1)
    else:
        pm.sprint('LDA: reached convergence in {} iterations.'.format(iteration),0)
 
    pm.sprint('LDA: ground-state xc energy: %s' % EXC(pm,n),1)
    v_h = hartree_potential(pm, n)
-   v_xc = XC(pm, n)
+   v_xc = VXC(pm, n)
 
    LDA_E = total_energy_eigf(pm, waves, n=n)
    pm.sprint('LDA: ground-state energy: {}'.format(LDA_E),1)
@@ -502,9 +531,9 @@ def main(parameters):
          pm.sprint(string,1,newline=False)
          n_t,Psi = CrankNicolson(pm, v_ks_t,Psi,n_t,j)
          if j != pm.sys.imax-1:
-            v_ks_t[j+1,:] = v_ext[:]+hartree_potential(pm, n_t[j,:])+XC(pm, n_t[j,:])
+            v_ks_t[j+1,:] = v_ext[:]+hartree_potential(pm, n_t[j,:])+VXC(pm, n_t[j,:])
          current[j,:] = CalculateCurrentDensity(pm, n_t,j)
-         v_xc_t[j,:] = XC(pm, n_t[j,:])
+         v_xc_t[j,:] = VXC(pm, n_t[j,:])
 
       # Output results
       results.add(v_ks_t, 'td_lda_vks')
