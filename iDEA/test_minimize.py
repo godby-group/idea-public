@@ -44,7 +44,7 @@ class TestCG(unittest.TestCase):
         as more straightforward loop-based techniques
         """
         pm = self.pm
-        minimizer = minimize.CGMinimizer(pm)
+        minimizer = minimize.CGMinimizer(pm, total_energy='dummy')
 
         # prepare Hamiltonian
         sys = pm.sys
@@ -53,14 +53,13 @@ class TestCG(unittest.TestCase):
         V = sps.diags(sys.v_ext(x), 0, shape=(sys.grid, sys.grid), dtype=np.float, format='csr')
         H = (T+V).toarray()
         energies, wfs = spla.eigh(H)
-        wfs = wfs.T
 
-        steepest_orth_all = minimizer.steepest_dirs(H, wfs, energies)
+        steepest_orth_all = minimizer.steepest_dirs(H, wfs)
 
         # repeat orthogonalization for one single wave function
         i = 2 # could be any other state as well
-        wf = wfs[i]
-        steepest = -np.dot(H,wf) - energies[i] * wf
+        wf = wfs[:,i]
+        steepest = -(np.dot(H,wf) - energies[i] * wf)
 
         overlaps = np.dot(wfs.conj(), steepest)
         steepest_orth = steepest
@@ -68,13 +67,22 @@ class TestCG(unittest.TestCase):
             if j != i: 
                 steepest_orth -= overlaps[j] * wfs[j]
 
+        nt.assert_almost_equal(steepest_orth_all[i], steepest_orth)
+
         # masked variant
-        #overlaps = np.ma.array(np.dot(wfs.conj(), steepest), mask=False)
-        #overlaps.mask[i] = True
-        #steepest_orth = steepest - np.ma.dot(overlaps.T, wfs)
-        #steepest_orth = np.ma.getdata(steepest_orth)
+        overlaps = np.ma.array(np.dot(wfs.conj().T, steepest), mask=False)
+        overlaps.mask[i] = True
+        steepest_orth = steepest - np.ma.dot(overlaps.T, wfs)
+        steepest_orth = np.ma.getdata(steepest_orth)
 
         nt.assert_almost_equal(steepest_orth_all[i], steepest_orth)
+
+        # unmasked variant
+        overlaps = np.dot(wfs.conj().T, steepest)
+        steepest_orth = steepest - np.dot(overlaps.T, wfs)
+
+        nt.assert_almost_equal(steepest_orth_all[i], steepest_orth)
+
 
     def test_orthonormalisation(self):
         """Testing orthonormalisation of a set of vectors
@@ -99,7 +107,7 @@ class TestCG(unittest.TestCase):
         # is q an orthogonal matrix?
         nt.assert_almost_equal(np.dot(q.T,q), np.identity(n))
         
-        q2 = minimize.orthonormalize(vecs.T).T
+        q2 = minimize.orthonormalize(vecs)
         # is q2 an orthogonal matrix?
         nt.assert_almost_equal(np.dot(q2.T, q2), np.identity(n))
 

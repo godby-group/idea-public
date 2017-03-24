@@ -52,7 +52,7 @@ class CGMinimizer:
             self._total_energy = total_energy
 
         self.cg_restart = cg_restart
-        self.cg_counter = 0
+        self.cg_counter = 1
 
         self.ndiag = ndiag
         self.diag_counter = 0
@@ -84,16 +84,19 @@ class CGMinimizer:
         wfs *= self.sqdx
         wfs = wfs[:, :self.nstates]
 
-        wfs = self.subspace_diagonalization(wfs,H)
+        self.diag_counter += 1
+        if self.diag_counter == self.ndiag:
+            wfs = self.subspace_diagonalization(wfs,H)
+            self.diag_counter = 0
 
-        energies = self.braket(wfs, H, wfs)
-
-        steepest_dirs = self.steepest_dirs(H, wfs, energies)
+        steepest_dirs = self.steepest_dirs(H, wfs)
+        #print(np.linalg.norm(steepest_dirs, axis=0))
         conjugate_dirs = self.conjugate_directions(steepest_dirs, wfs)
+        #print(np.linalg.norm(conjugate_dirs, axis=0))
 
         E_0 = self.total_energy(wfs)
         #dE_dtheta_0 = 2 * np.sum(self.braket(conjugate_dirs, H, wfs).real) / self.nstates
-        dE_dtheta_0 = 2 * np.sum(self.braket(conjugate_dirs, H, wfs).real)
+        dE_dtheta_0 = 2 * np.sum(self.braket(conjugate_dirs, H, wfs).real) #* self.dx
 
         if dE_dtheta_0 > 0:
             raise ValueError("First-order change along conjugate gradient direction is positive.")
@@ -112,6 +115,7 @@ class CGMinimizer:
 
         if mode == 'trigonometric':
             # fitting sum of cosinus and sinus
+            # note: payne et al. actually normalize the cg direction (?)
             s_1 = np.pi/30
             new_wfs = lambda s: wfs * np.cos(s) + conjugate_dirs * np.sin(s)
 
@@ -123,7 +127,7 @@ class CGMinimizer:
 
         elif mode == 'quadratic':
             # fitting simple parabola
-            s_1 = 1.0
+            s_1 = 1.0 
             new_wfs = lambda s: wfs + conjugate_dirs * s
 
             b = lambda s: dE_dtheta_0 * s
@@ -135,22 +139,25 @@ class CGMinimizer:
             wfs_1 = new_wfs(s_1)
             wfs_1 = orthonormalize(wfs_1)
             E_1 = self.total_energy(wfs_1)
+
+            break
             if E_1 < E_0:
                 break
             else:
                 s_1 /= 2.0
 
-        print("")
+        #print("")
         # eqn (5.30)
         s_opt = s_min(E_1, s_1)
         # we don't want the step to get too large
         s_opt = np.minimum(1.5,s_opt) 
 
-        print("E_0: {}".format(E_0))
-        print("dE_0: {}".format(dE_dtheta_0))
-        print("E_1: {}".format(E_1))
-        print("step_1: {}".format(s_1))
-        print("step: {}".format(s_opt))
+        #print("E_0: {}".format(E_0))
+        #print("dE_0: {}".format(dE_dtheta_0))
+        #print("E_1: {}".format(E_1))
+        #print("step_1: {}".format(s_1))
+        #print("step: {}".format(s_opt))
+        #print("stepnorm: {}".format(s_opt * np.linalg.norm(conjugate_dirs, axis=0)))
 
         #if mode == 'trigonometric':
         #    x = np.linspace(0, np.pi/2, 50)
@@ -215,7 +222,7 @@ class CGMinimizer:
                 return (bra.conj() * O_ket).sum(0)
 
 
-    def steepest_dirs(self, H, wfs, energies):
+    def steepest_dirs(self, H, wfs):
         r"""Compute steepest descent directions
 
         Compute steepest descent directions and project out components pointing
@@ -232,8 +239,6 @@ class CGMinimizer:
           Hamiltonian matrix (grid,grid)
         wavefunctions: array_like
           wave function array (grid, nwf)
-        energies: array_like
-          energies of wave functions (grid)
 
         returns
         -------
@@ -241,6 +246,9 @@ class CGMinimizer:
           steepest descent directions (grid, nwf)
         """
         nwf = wfs.shape[-1]
+
+        energies = self.braket(wfs, H, wfs)
+
 
         # steepest = (grid,nwf)
         # energies*wfs multiplies over last dimension of wfs
@@ -250,17 +258,12 @@ class CGMinimizer:
         # overlaps = (nwf, nwf)
         ## 1st index denotes wave function
         ## 2nd index denotes descent direction
-        #overlaps = np.ma.array(np.dot(wfs.conj().T, steepest), mask=False)
-        #for i in range(nwf):
-        #    overlaps.mask[i,i] = True # exclude index i in summation
 
-        ## need to contract over first index (wave functions)
-        ## steepest_orth = (grid, nwf)
-        #steepest_orth = steepest - np.ma.dot(wfs, overlaps)
-        #steepest_orth = np.ma.getdata(steepest_orth)
-
-        # note: vaphi_i is, by definition, already
-        # orthogonal to psi_i
+        # note: varphi_i orthogonal to psi_i by construction thus no need to
+        # restrict sum to j \neq i
+        # note: not sure whether this is needed at all - it doesn't seem to do
+        # anything (and it shouldn't, if the wfs are perfect eigenvectors of H)
+        
         overlaps = np.dot(wfs.conj().T, steepest)
         steepest_orth = steepest - np.dot(wfs,overlaps)
 
@@ -289,7 +292,6 @@ class CGMinimizer:
         cg_dirs: array_like
           conjugate directions (grid, nwf)
         """
-        self.cg_counter += 1
 
         steepest_prods = np.linalg.norm(steepest_dirs)**2
         gamma = np.sum(steepest_prods) / np.sum(self.steepest_prods)
@@ -303,6 +305,7 @@ class CGMinimizer:
         # cg_dirs = (grid, nwf)
         #cg_dirs = steepest_dirs + np.dot(gamma, self.cg_dirs)
         cg_dirs = steepest_dirs + gamma * self.cg_dirs
+        #print(gamma)
 
         # orthogonalize to wfs vector
         # note that wfs vector is normalised to #electrons!
@@ -312,6 +315,8 @@ class CGMinimizer:
         cg_dirs = cg_dirs - np.dot(wfs, overlaps)
         #cg_dirs = cg_dirs - np.sum(np.dot(cg_dirs.conj(), wfs.T)) * wfs
         self.cg_dirs = cg_dirs
+
+        self.cg_counter += 1
 
         return cg_dirs
 
@@ -345,14 +350,6 @@ class CGMinimizer:
           (grid, nwf) array of orthonormal eigenvectors of H
           (or at least close to eigenvectors)
         """
-        self.diag_counter += 1
-
-        # we diagonlise only every ndiag steps
-        if not (self.diag_counter == self.ndiag):
-            return v
-
-        # v = (grid,nwf)
-
         # overlap matrix
         S = np.dot(v.conj().T,  np.dot(H, v))
         # eigf = (nwf_old, nwf_new)
@@ -361,8 +358,6 @@ class CGMinimizer:
         v_rot = np.dot(v, eigf)
         # need to rotate cg_dirs as well!
         self.cg_dirs = np.dot(self.cg_dirs, eigf)
-
-        self.diag_counter = 0
 
         return v_rot
 
