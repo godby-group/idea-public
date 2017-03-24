@@ -7,9 +7,6 @@ import unittest
 import numpy as np
 import numpy.testing as nt
 
-# decimal places for comparison of results
-d = 6
-
 class LDATestHarmonic(unittest.TestCase):
     """ Tests on the harmonic oscillator potential
 
@@ -47,18 +44,43 @@ class LDATestHarmonic(unittest.TestCase):
     def test_total_energy_1(self):
         r"""Compares total energy computed via two methods
         
+        One method uses the exchange-correlation *energy* while another
+        method uses the exchange-correlation *potential*.
         """
         pm = self.pm
         results = LDA.main(pm)
 
         eigf = results.gs_lda_eigf
-        # check eigenfunctions are normalised as expected
-        norms = np.sum(eigf*eigf.conj(), axis=1) * pm.sys.deltax
-        nt.assert_allclose(norms, np.ones(len(eigf)))
         eigv = results.gs_lda_eigv
 
-        E1 = LDA.total_energy(pm, eigv, eigf=eigf.T)
-        E2 = LDA.total_energy_2(pm, eigf.T)
+        # check that eigenfunctions are normalised as expected
+        norms = np.sum(eigf*eigf.conj(), axis=1) * pm.sys.deltax
+        nt.assert_allclose(norms, np.ones(len(eigf)))
 
-        self.assertAlmostEqual(E1,E2)
+        E1 = LDA.total_energy_eigv(pm, eigv, eigf=eigf.T)
+        E2 = LDA.total_energy_eigf(pm, eigf.T)
 
+        self.assertAlmostEqual(E1,E2, delta=1e-12)
+
+    def test_kinetic_energy_1(self):
+        r"""Compares kinetic energy function vs hamiltonian
+        
+        One method uses the exchange-correlation *energy* while another
+        method uses the exchange-correlation *potential*.
+        """
+        pm = self.pm
+        results = LDA.main(pm)
+
+        eigf = results.gs_lda_eigf[:pm.sys.NE].T
+        #eigv = results.gs_lda_eigv
+
+        n = LDA.electron_density(pm, eigf)
+        v_ks = 0
+        H = LDA.construct_hamiltonian(pm, v_ks)
+
+
+        eigv = np.dot(eigf.T, np.dot(H, eigf)) * pm.sys.deltax
+        T_1 = np.sum(eigv)
+        T_2 = LDA.kinetic_energy(pm, eigf)
+
+        self.assertAlmostEqual(T_1, T_2)

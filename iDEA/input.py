@@ -194,6 +194,7 @@ class Input(object):
         lda.mix = 1.0                        #: linear mixing parameter
         lda.kerker_length = 2.1              #: Kerker screening length
         lda.tol = 1e-12                      #: Self-consistent convergence tolerance
+        lda.max_iter = 1000                  #: Maximum number of iterations in LDA self-consistency
         lda.save_eig = False                 #: save eigenfunctions and eigenvalues of Hamiltonian
         lda.OPT = False                      #: Calculate the external potential for the LDA density 
         

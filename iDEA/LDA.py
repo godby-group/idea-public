@@ -139,7 +139,7 @@ def hartree_energy(pm, V_H, density):
    return 0.5 * np.dot(V_H,density)*pm.sys.deltax
 
 # these are Mike's parameters for finite LDAs
-elda = {}
+elda = {}  # parameters for \varepsilon_{xc}(n)
 elda[1] = {
    'a' :  -0.803,
    'b' :  0.82,
@@ -159,7 +159,7 @@ elda['n'] =  {
    'd' : 0.61,
 }
 
-vlda = {}
+vlda = {}  # parameters for V_{xc}(n)
 for n in [1,2,'n']:
     eps = elda[n]
     a = eps['a']
@@ -174,7 +174,7 @@ for n in [1,2,'n']:
       'd': d
     }
 
-dlda = {}
+dlda = {} # parameters for dV_{xc}(n)/dn
 for n in [1,2,'n']:
     v = vlda[n]
     a = v['a']
@@ -239,7 +239,7 @@ def DXC(pm , n):
    return D_xc 
 
 
-def EXC(pm, Den): 
+def EXC(pm, n): 
    r"""Finite LDA approximation for the Exchange-Correlation energy
 
    .. math ::
@@ -247,7 +247,7 @@ def EXC(pm, Den):
 
    parameters
    ----------
-   Den : array_like
+   n : array_like
         density
 
    returns float
@@ -259,8 +259,8 @@ def EXC(pm, Den):
        NE = 'n'
    p = elda[NE]
 
-   e_xc = (p['a'] + p['b'] * Den + p['c'] * Den**2) * Den**p['d']
-   E_xc_LDA = np.dot(e_xc, Den) * pm.sys.deltax
+   e_xc = (p['a'] + p['b'] * n + p['c'] * n**2) * n**p['d']
+   E_xc_LDA = np.dot(e_xc, n) * pm.sys.deltax
 
    return E_xc_LDA
 
@@ -304,10 +304,11 @@ def total_energy_eigv(pm, eigv, eigf=None, n=None, V_H=None, V_xc=None):
    E_LDA = 0.0
    for i in range(pm.sys.NE):
       E_LDA += eigv[i]
-   E_LDA += EXC(pm, n)
 
    E_LDA -= hartree_energy(pm, V_H, n)
-   E_LDA -= 1.0 * np.dot(n, V_xc) * pm.sys.deltax
+   E_LDA -= np.dot(n, V_xc) * pm.sys.deltax
+   E_LDA += EXC(pm, n)
+
    return E_LDA.real
 
 def total_energy_eigf(pm, eigf, n=None, V_H=None):
@@ -352,6 +353,11 @@ def kinetic_energy(pm, eigf):
     <psi|H|psi> = psi^T H psi *dx
 
     TODO: This would be much cheaper in reciprocal space
+
+    parameters
+    ----------
+    eigf: array_like
+      (grid, nwf) eigen functions
     """
     T = -0.5 * sps.diags([1,-2,1],[-1,0,1], shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr') / pm.sys.deltax**2
 
@@ -450,7 +456,8 @@ def main(parameters):
 
     
    while convergence > pm.lda.tol and iteration <= pm.lda.max_iter:
-      n_old = n
+      n_old = copy.copy(n)
+
       v_ks = v_ext[:]+hartree_potential(pm,n)+VXC(pm,n)
       H = update_hamiltonian(pm, H, v_ks)
 
@@ -467,7 +474,7 @@ def main(parameters):
           if pm.lda.mix_type == 'pulay':
               n = mixer.mix(n_old, n_new, energies, waves.T)
           elif pm.lda.mix_type == 'linear':
-              n[:] = (1-pm.lda.mix)*n_old[:]+pm.lda.mix*n_new[:]
+              n = (1-pm.lda.mix)*n_old + pm.lda.mix*n_new
           else:
               n = n_new
 
@@ -487,7 +494,7 @@ def main(parameters):
    iteration -= 1
 
    pm.sprint('',1)
-   if convergence <= pm.lda.tol:
+   if convergence > pm.lda.tol:
        string = 'LDA: Warning: convergence not reached in {} iterations. terminating self-consistency'.format(iteration)
        pm.sprint(string,1)
    else:
