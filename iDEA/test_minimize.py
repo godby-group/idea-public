@@ -11,6 +11,8 @@ import scipy.sparse as sps
 import scipy.linalg as spla
 import LDA
 
+machine_epsilon = np.finfo(float).eps
+
 class TestCG(unittest.TestCase):
     """Tests for the conjugate gradient minimizer
     
@@ -41,7 +43,7 @@ class TestCG(unittest.TestCase):
         H = (T+V).toarray()
         energies, wfs = spla.eigh(H)
 
-        steepest_orth_all = minimizer.steepest_dirs(H, wfs)
+        steepest_orth_all = minimizer.steepest_dirs(wfs, H)
 
         # repeat orthogonalization for one single wave function
         i = 2 # could be any other state as well
@@ -125,29 +127,29 @@ class TestCGLDA(unittest.TestCase):
         pm.sys.v_ext = v_ext
         
         pm.lda.save_eig = True
-        pm.lda.max_iter = 5  # just start, don't solve it perfectly
         pm.lda.mix_type = 'direct'
 
         pm.setup()
         self.pm = pm
 
     def test_derivative(self):
-        r"""Test total energy derivative vs finite differences
+        r"""Compare analytical total energy derivative vs finite differences
 
         .. math::
             \frac{dE}{d\lambda}(\lambda) \approx \frac{E(\lambda)+E(\lambda+\delta)}{\delta} 
         """
         pm = self.pm
-        minimizer = minimize.CGMinimizer(pm, total_energy=LDA.total_energy_eigf)
+        pm.lda.max_iter = 5  # just start, don't solve it perfectly
 
         results = LDA.main(pm)  # solving using linear mixing
         vks = results.gs_lda_vks
         n = results.gs_lda_den
-        H = LDA.construct_hamiltonian(pm, vks)
-        wfs = results.gs_lda_eigf[:pm.sys.NE].T * minimizer.sqdx
+        H = LDA.banded_to_full(LDA.hamiltonian(pm, vks))
+        wfs = results.gs_lda_eigf[:pm.sys.NE].T * np.sqrt(pm.sys.deltax)
 
         # compute current conjugate direction
-        steepest = minimizer.steepest_dirs(H, wfs)
+        minimizer = minimize.CGMinimizer(pm, total_energy=LDA.total_energy_eigf)
+        steepest = minimizer.steepest_dirs(wfs, H)
         conjugate = minimizer.conjugate_directions(steepest, wfs)
         dE_dL = 2 * np.sum(minimizer.braket(conjugate, H, wfs))
 
@@ -157,6 +159,11 @@ class TestCGLDA(unittest.TestCase):
         wfs_new = minimize.orthonormalize(wfs + delta * conjugate)
         E_2 = minimizer.total_energy(wfs_new)
         dE_dL_finite = (E_2 - E_1) / delta
+        wfs_new = minimize.orthonormalize(wfs + delta * conjugate)
         
-        nt.assert_allclose(dE_dL, dE_dL_finite, rtol=1e-3)
+        # this can be quite close to machine epsilon
+        # for the energy difference
+        atol = np.abs(E_1) * 10 * machine_epsilon / delta
+        rtol = atol / np.abs(dE_dL_finite)
+        nt.assert_allclose(dE_dL, dE_dL_finite, rtol=rtol)
 

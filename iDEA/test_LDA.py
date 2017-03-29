@@ -6,6 +6,7 @@ import input
 import unittest
 import numpy as np
 import numpy.testing as nt
+import scipy.sparse as sps
 
 class LDATestHarmonic(unittest.TestCase):
     """ Tests on the harmonic oscillator potential
@@ -44,8 +45,9 @@ class LDATestHarmonic(unittest.TestCase):
     def test_total_energy_1(self):
         r"""Compares total energy computed via two methods
         
-        One method uses the exchange-correlation *energy* while another
-        method uses the exchange-correlation *potential*.
+        One method uses the energy eigenvalues + correction terms.
+        The other uses it only for the kinetic part, while the rest
+        is computed usin energy functinals.
         """
         pm = self.pm
         results = LDA.main(pm)
@@ -63,10 +65,10 @@ class LDATestHarmonic(unittest.TestCase):
         self.assertAlmostEqual(E1,E2, delta=1e-12)
 
     def test_kinetic_energy_1(self):
-        r"""Compares kinetic energy function vs hamiltonian
+        r"""Checks kinetic energy
         
-        One method uses the exchange-correlation *energy* while another
-        method uses the exchange-correlation *potential*.
+        Constructs Hamiltonian with KS-potential set to zero
+        and computes expectation values.
         """
         pm = self.pm
         results = LDA.main(pm)
@@ -76,11 +78,33 @@ class LDATestHarmonic(unittest.TestCase):
 
         n = LDA.electron_density(pm, eigf)
         v_ks = 0
-        H = LDA.construct_hamiltonian(pm, v_ks)
+        H = LDA.banded_to_full(LDA.hamiltonian(pm, v_ks))
 
 
-        eigv = np.dot(eigf.T, np.dot(H, eigf)) * pm.sys.deltax
-        T_1 = np.sum(eigv)
+        H_psi = np.dot(H,eigf)
+        T_1 = 0
+        for i in range(pm.sys.NE):
+            T_1 += np.dot(eigf[:,i].T, H_psi[:,i]) * pm.sys.deltax
         T_2 = LDA.kinetic_energy(pm, eigf)
 
         self.assertAlmostEqual(T_1, T_2)
+
+    def test_hamiltonian_1(self):
+        r"""Test construction of Hamiltonian
+
+        Hamiltonian is constructed in banded form for speed.
+        This checks that the construction actually works.
+        """
+        pm = self.pm
+        v_ext = pm.space.v_ext
+        H = LDA.banded_to_full(LDA.hamiltonian(pm, v_ext))
+
+        grid = pm.sys.grid
+        sd = pm.space.second_derivative_5point
+        T = -0.5 * sps.diags(sd,[-2,-1,0,1,2],shape=(grid,grid), dtype=np.float, format='csr')
+        V = sps.diags(v_ext, 0, shape=(grid,grid), dtype=np.float, format='csr')
+
+        H2 = (T+V).toarray()
+
+        nt.assert_allclose(H,H2)
+

@@ -32,8 +32,11 @@ class SpaceGrid():
           for k in xrange(pm.sys.grid):
              self.v_int[i,k] = 1.0/(abs(self.grid[i]-self.grid[k])+pm.sys.acon)
 
-       self.second_derivative_3point = np.array([1,-2,1], dtype=np.float)
-       self.second_derivative_5point = 1.0/16 * np.array([-1,16,-30,16,-1], dtype=np.float)
+       self.second_derivative_3point = np.array([1,-2,1], dtype=np.float) / pm.sys.deltax**2
+       self.second_derivative_3point_reduced = np.array([-2,1], dtype=np.float) / pm.sys.deltax**2
+
+       self.second_derivative_5point = 1.0/16 * np.array([-1,16,-30,16,-1], dtype=np.float) / pm.sys.deltax**2
+       self.second_derivative_5point_reduced = 1.0/16 * np.array([-30,16,-1], dtype=np.float) / pm.sys.deltax**2
 
 
 

@@ -33,8 +33,8 @@ def groundstate(pm, H):
    """	
    
    #e,eigf = spsla.eigsh(H, k=pm.sys.grid/2, which='SA') 
-   e,eigf = spla.eigh(H)
-   #e,eigf = spla.eig_banded(H,True) 
+   #e,eigf = spla.eigh(H)
+   e,eigf = spla.eig_banded(H,True) 
    
    eigf /= np.sqrt(pm.sys.deltax)
    n = electron_density(pm, eigf)
@@ -65,9 +65,24 @@ def ks_potential(pm, n):
     v_ks = pm.space.v_ext + hartree_potential(pm,n) + VXC(pm,n)
     return v_ks
 
+def banded_to_full(H):
+    r"""Convert band matrix to full matrix
+
+    For diagonalisation, the Hamiltonian matrix may be stored as a symmetric
+    band matrix with H[i,:] the ith off-diagonal.
+    """
+    nbnd, npt = H.shape
+
+    H_full = np.zeros((npt,npt),dtype=np.float)
+    for ioff in range(nbnd):
+	d = np.arange(npt-ioff)
+	H_full[d,d+ioff] = H[ioff,d]
+	H_full[d+ioff,d] = H[ioff,d]
+
+    return H_full
 
 
-def construct_hamiltonian(pm, v_KS=None, wfs=None):
+def hamiltonian(pm, v_KS=None, wfs=None, H=None):
     r"""Compute LDA Hamiltonian
 
     Computes LDA Hamiltonian from a given Kohn-Sham potential.
@@ -80,42 +95,33 @@ def construct_hamiltonian(pm, v_KS=None, wfs=None):
     returns array_like
          Hamiltonian matrix
     """
-    sd = pm.space.second_derivative_5point
-    T = -0.5 * sps.diags(sd,[-2,-1,0,1,2], shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr') / pm.sys.deltax**2
-    #T = -0.5 * sps.diags(sd,[-1,0,1], shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr') / pm.sys.deltax**2
+    #sd = pm.space.second_derivative_5point
+    #T = -0.5 * sps.diags(sd,[-2,-1,0,1,2], shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr') / pm.sys.deltax**2
+    ##T = -0.5 * sps.diags(sd,[-1,0,1], shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr') / pm.sys.deltax**2
 
-    if wfs is None:
-        V = sps.diags(v_KS, 0, shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr')
-    else:
-        V = sps.diags(ks_potential(pm, electron_density(pm,wfs)), 0, shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr')
+    #if wfs is None:
+    #    V = sps.diags(v_KS, 0, shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr')
+    #else:
+    #    V = sps.diags(ks_potential(pm, electron_density(pm,wfs)), 0, shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr')
+    #return (T+V).toarray()
 
     # banded version
-    #H = np.zeros((2,pm.sys.grid),dtype='float')
-    ## 3-point stencil for 2nd derivative
-    #H[0,:] = np.ones(pm.sys.grid)/pm.sys.deltax**2
-    #H[1,:] = -0.5*np.ones(pm.sys.grid)/pm.sys.deltax**2 
-    #H[0,:] += v_KS[:]
+    sd = pm.space.second_derivative_5point_reduced
+    nbnd = len(sd)
+    if H is None:
+        H = np.zeros((5, pm.sys.grid), dtype=np.float)
+        for i in range(nbnd):
+            H[i,:] = -0.5 * sd[i]
+    else:
+        # just need to recompute diagonal
+        H[0,:] = -0.5 * sd[0]
 
-    return (T+V).toarray()
-    
-def update_hamiltonian(pm, H, v_KS):
-    r"""Update LDA Hamiltonian with new KS potential
-
-    parameters
-    ----------
-    H : array_like
-         old Hamiltonian matrix
-    v_KS : array_like
-         KS potential
-
-    returns array_like
-         Hamiltonian matrix
-    """
-    for i in range(pm.sys.grid):
-        H[i,i] = -0.5 * (-2.0) / pm.sys.deltax**2 + v_KS[i]
+    if not(wfs is None):
+        v_KS = ks_potential(pm, electron_density(pm, wfs))
+    H[0,:] += v_KS
 
     return H
-
+    
 
 def hartree_potential(pm, density):
    r"""Computes Hartree potential for a given density
@@ -369,7 +375,7 @@ def kinetic_energy(pm, eigf):
       (grid, nwf) eigen functions
     """
     sd = pm.space.second_derivative_5point
-    T = -0.5 * sps.diags(sd, [-2,-1,0,1,2], shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr') / pm.sys.deltax**2
+    T = -0.5 * sps.diags(sd, [-2,-1,0,1,2], shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr')
     #T = -0.5 * sps.diags(sd, [-1,0,1], shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr') / pm.sys.deltax**2
 
     occ = eigf[:,:pm.sys.NE]
@@ -451,12 +457,12 @@ def main(parameters):
    v_ext = pm.space.v_ext
 
    # take external potential for initial guess
-   H = construct_hamiltonian(pm, v_ext)
+   H = hamiltonian(pm, v_ext)
    n_inp,waves,energies = groundstate(pm, H)
    en_tot = total_energy_eigv(pm,energies, n=n_inp)
 
    # need n_inp and n_out to kickstart mixing
-   H = update_hamiltonian(pm, H, ks_potential(pm, n_inp))
+   H = hamiltonian(pm, ks_potential(pm, n_inp), H=H)
    n_out,waves_out,energies = groundstate(pm, H)
 
 
@@ -465,7 +471,7 @@ def main(parameters):
    elif pm.lda.mix_type == 'cg':
        minimizer = minimize.CGMinimizer(pm, total_energy_eigf)
    elif pm.lda.mix_type == 'mixh':
-       minimizer = minimize.DiagMinimizer(pm, total_energy_eigf, construct_hamiltonian)
+       minimizer = minimize.DiagMinimizer(pm, total_energy_eigf, hamiltonian)
 
    iteration = 1
    n = copy.copy(n_inp)
@@ -477,13 +483,13 @@ def main(parameters):
           # this is for minimization
           # start with n_inp, H[n_inp]
 
-          waves = minimizer.step(waves, H)
+          waves = minimizer.step(waves, banded_to_full(H))
           n_inp = electron_density(pm, waves)
           en_tot_old = en_tot
           en_tot = total_energy_eigf(pm,waves, n=n_inp)
 
           v_ks = ks_potential(pm, n_inp)
-          H = update_hamiltonian(pm, H, v_ks)
+          H = hamiltonian(pm, v_ks, H=H)
 
           # n_out is only needed for convergence check!
           # disable for speed!
@@ -491,26 +497,23 @@ def main(parameters):
 
           dn = np.sum(abs(n_out-n_inp))*pm.sys.deltax
           de = en_tot - en_tot_old
-          n = n_inp
 
       elif pm.lda.mix_type == 'mixh': 
           # this is for minimization
           # start with n_inp, H[n_inp]
 
-          H, waves = minimizer.h_step(H)
+          H, waves = minimizer.h_step(banded_to_full(H))
           n_inp = electron_density(pm, waves)
           en_tot_old = en_tot
           en_tot = total_energy_eigf(pm,waves, n=n_inp)
 
           # n_out is only needed for convergence check!
           # disable for speed!
-          H_out = construct_hamiltonian(pm, ks_potential(pm, n_inp))
+          H_out = hamiltonian(pm, ks_potential(pm, n_inp))
           n_out,waves_out,energies_out = groundstate(pm,H_out)
 
           dn = np.sum(abs(n_out-n_inp))*pm.sys.deltax
           de = en_tot - en_tot_old
-
-          n = n_inp
 
 
       else:
@@ -538,13 +541,12 @@ def main(parameters):
 
           # compute new n_out
           v_ks = ks_potential(pm, n_inp)
-          H = update_hamiltonian(pm, H, v_ks)
+          H = hamiltonian(pm, v_ks, H=H)
           n_out,waves_out,energies_out = groundstate(pm,H)
 
           # compute self-consistent density error
           dn = np.sum(abs(n_inp-n_out))*pm.sys.deltax
           de = en_tot - en_tot_old
-          n = n_inp
 
 
       #import matplotlib.pyplot as plt
@@ -558,7 +560,7 @@ def main(parameters):
       #plt.show()
       gap = energies_out[pm.sys.NE]- energies_out[pm.sys.NE-1]
       if gap < 1e-3:
-          print("LDA: Warning: small KS gap {:.3e} Ha. Convergence may be slow.".format(gap))
+          pm.sprint("LDA: Warning: small KS gap {:.3e} Ha. Convergence may be slow.".format(gap))
 
 
       converged = dn < pm.lda.tol and np.abs(de) < pm.lda.etol
@@ -575,6 +577,10 @@ def main(parameters):
        pm.sprint(string,1)
    else:
        pm.sprint('LDA: reached convergence in {} iterations.'.format(iteration),0)
+
+   n = n_out
+   waves = waves_out
+   energies = energies_out
 
    v_h = hartree_potential(pm, n)
    v_xc = VXC(pm, n)
