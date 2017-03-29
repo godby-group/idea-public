@@ -463,7 +463,7 @@ def main(parameters):
 
    # need n_inp and n_out to kickstart mixing
    H = hamiltonian(pm, ks_potential(pm, n_inp), H=H)
-   n_out,waves_out,energies = groundstate(pm, H)
+   n_out,waves_out,energies_out = groundstate(pm, H)
 
 
    if pm.lda.mix_type == 'pulay':
@@ -522,7 +522,7 @@ def main(parameters):
 
           # compute new n_inp
           if pm.lda.mix_type == 'pulay':
-              n_inp = mixer.mix(n_inp, n_out, energies, waves.T)
+              n_inp = mixer.mix(n_inp, n_out, energies_out, waves_out.T)
           elif pm.lda.mix_type == 'linear':
               n_inp = (1-pm.lda.mix)*n_inp + pm.lda.mix*n_out
           else:
@@ -537,7 +537,7 @@ def main(parameters):
 
           # compute total energy at n_inp
           en_tot_old = en_tot
-          en_tot = total_energy_eigv(pm,energies, n=n_inp)
+          en_tot = total_energy_eigv(pm,energies_out, n=n_inp)
 
           # compute new n_out
           v_ks = ks_potential(pm, n_inp)
