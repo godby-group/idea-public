@@ -32,6 +32,9 @@ class SpaceGrid():
           for k in xrange(pm.sys.grid):
              self.v_int[i,k] = 1.0/(abs(self.grid[i]-self.grid[k])+pm.sys.acon)
 
+       self.second_derivative_3point = np.array([1,-2,1], dtype=np.float)
+       self.second_derivative_5point = 1.0/16 * np.array([-1,16,-30,16,-1], dtype=np.float)
+
 
 
    def __str__(self):
@@ -193,7 +196,8 @@ class Input(object):
         lda.preconditioner = None            #: None, 'kerker' or 'full'
         lda.mix = 1.0                        #: linear mixing parameter
         lda.kerker_length = 2.1              #: Kerker screening length
-        lda.tol = 1e-12                      #: Self-consistent convergence tolerance
+        lda.tol = 1e-12                      #: density tolerance of self consistent cycle
+        lda.etol = 1e-14                     #: total energy tolerance of self consistent cycle
         lda.max_iter = 1000                  #: Maximum number of iterations in LDA self-consistency
         lda.save_eig = False                 #: save eigenfunctions and eigenvalues of Hamiltonian
         lda.OPT = False                      #: Calculate the external potential for the LDA density 
@@ -272,7 +276,7 @@ class Input(object):
                 self.sprint('MBPT: Warning - using {} orbitals for {} electrons'\
                         .format(pm.mbpt.norb, pm.sys.NE))
 
-        if pm.lda.mix_type not in [None, 'pulay', 'linear', 'direct']:
+        if pm.lda.mix_type not in [None, 'pulay', 'linear', 'cg', 'mixh']:
             raise ValueError("lda.mix_type must be None, 'linear' or 'pulay'")
 
         if pm.lda.preconditioner not in [None, 'kerker', 'full']:
