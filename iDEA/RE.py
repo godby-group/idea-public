@@ -400,13 +400,17 @@ def main(parameters,approx):
    V_xc[0,:] = V_Hxc[0,:]-V_h[0,:] # Calculate the exchange-correlation potential
 
    #Correct V_xc and V_ks etc.
+   #For some reason eigenvalues, eigv, and sum of eigenvalues, E_KS, are returned separately
+   #GroundState() could just return the array of eigenvalues
+   #This hasn't been changed yet to avoid breaking anything before RE.py is tidied up
    correct, correct_error = correction(np.real(V_xc[0,:]), 0.05, 0.15)
    print 'Approximate error in correction to asymptotic form of V_xc = ', correct_error
 
    V_KS[0,:] - V_KS[0,:]
    V_Hxc[0,:] = V_KS[0,:]-V_ext[:] # Calculate the Hartree exhange-correlation potential
    V_xc[0,:] = V_Hxc[0,:]-V_h[0,:] - correct # Calculate the exchange-correlation potential
-   E_KS = E_KS - pm.sys.NE*correct
+   E_KS = E_KS - pm.sys.NE*correct # Correct sum of eigenvalues
+   eigv[:] = eigv[:] - correct # Correct the actual eigenvalues
    E_xc = xcenergy(approx,n_KS,V_h,V_xc,E_KS) # Calculate the exchange-correlation energy
 
    # Store results
