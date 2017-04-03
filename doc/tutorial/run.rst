@@ -10,7 +10,7 @@ Simply edit the parameters file :code:`parameters.py` and run
 
 .. code-block:: bash
 
-    python iDEA.py
+    python run.py
 
 In order not to overwrite results from different calculations,
 make sure to choose different run names for different inputs
@@ -31,8 +31,8 @@ added to PYTHONPATH. To test this has worked simply perform the following
 
     cd $test_folder                  # some folder you have created
     cp $path_to_iDEA/parameters.py . # where you have downloaded iDEA
-    cp $path_to_iDEA/iDEA.py .
-    python iDEA.py
+    cp $path_to_iDEA/run.py .
+    python run.py
 
 Here, we are running iDEA much in the same way as before but your
 :code:`$test_folder` can be located anywhere on your computer.
