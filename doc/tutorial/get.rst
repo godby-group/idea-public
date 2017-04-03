@@ -8,13 +8,16 @@ Installation requirements
  * `Python <http://www.python.org>`_ 2.7 or later
  * `numpy <http://www.numpy.org>`_ 1.10 or later
  * `scipy <http://www.scipy.org>`_ 0.17 or later
+ * Fortran90 compiler, such as `gfortran <https://gcc.gnu.org/fortran/>`_ 5 or
+   later, `ifort <https://software.intel.com/en-us/fortran-compilers>`_ 14 or
+   later
  * *(optional)* `Intel MKL  <https://software.intel.com/en-us/intel-mkl>`_ 11.3
    or later for parallel execution
 
  * *(optional)* `Sphinx <http://sphinx-doc.org>`_ 1.4 or later for generating
    the documentation
 
- * *(optional)* `matplotlib <http://matplotlib.org/>` 1.4.3 or later for post-processing
+ * *(optional)* `matplotlib <http://matplotlib.org/>`_ 1.4.3 or later for post-processing
 
 Installing iDEA
 ----------------
