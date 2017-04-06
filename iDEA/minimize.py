@@ -15,7 +15,7 @@ class CGMinimizer:
     as described on pp 1071 of [Payne1992]_
     """
 
-    def __init__(self, pm, total_energy=None, nstates=None, cg_restart=5):
+    def __init__(self, pm, total_energy=None, nstates=None, cg_restart=5, line_fit='quadratic'):
         """Initializes variables
 
         parameters
@@ -30,9 +30,9 @@ class CGMinimizer:
           (for unoccupied states need to re-diagonalize)
         cg_restart: int
           cg history is restarted every cg_restart steps
-        ndiag: int
-          wave functions are diagonalised every ndiag steps
-          ndiag=0, diagonalisation is turned off.
+        line_fit: str
+          select method for line-search
+          'quadratic' (default), 'linear' or 'trigonometric'
 
         """
         self.pm = pm
@@ -61,6 +61,8 @@ class CGMinimizer:
 
         self.cg_restart = cg_restart
         self.cg_counter = 1
+
+        self.line_fit = line_fit
 
     def exact_dirs(self, wfs, H):
         r"""Search direction from exact diagonalization
@@ -104,6 +106,8 @@ class CGMinimizer:
         wfs *= self.sqdx
         wfs = wfs[:, :self.nstates]
 
+        #wfs = orthonormalize(wfs)
+        # subspace diagonalisation also makes sure that wfs  are orthonormal
         wfs = self.subspace_diagonalization(wfs,H)
 
         exact = False
@@ -113,11 +117,11 @@ class CGMinimizer:
             steepest_dirs = self.steepest_dirs(wfs, H)
             conjugate_dirs = self.conjugate_directions(steepest_dirs, wfs)
 
-        wfs_new = self.line_search(wfs, conjugate_dirs, H)
+        wfs_new = self.line_search(wfs, conjugate_dirs, H, mode=self.line_fit)
 
         return wfs_new / self.sqdx
 
-    def line_search(self, wfs, dirs, H, mode='quadratic'):
+    def line_search(self, wfs, dirs, H, mode):
         r"""Performs a line search along cg direction
 
         Trying to minimize total energy
@@ -133,28 +137,81 @@ class CGMinimizer:
         #if dE_ds_0 > 0:
         #    if np.abs(dE_ds_0 / E_0) < 10*machine_epsilon:
         #        
-        #        #self.pm.lda.mix_type = 'pulay' # this would switch to pulay
+        #        #self.pm.lda.scf_type = 'pulay' # this would switch to pulay
         #        wfs_new = wfs + 1.0 * dirs
         if dE_ds_0 > 0:
                 s = "CG: Warning: Energy derivative along conjugate gradient direction"
                 s += "\nis positive: dE/dlambda = {:.3e}".format(dE_ds_0)
                 #s += "\nSwitching to 'stupid' line-search mode"
                 #s += "\nSwitching to Pulay mixing "
-                #self.pm.lda.mix_type = 'pulay' # this would switch to pulay
+                #self.pm.lda.scf_type = 'pulay' # this would switch to pulay
                 self.pm.sprint(s)
                 #raise ValueError(s)
 
 
-        if  mode == 'stupid':
-            # simply scan along the direction from 0 to 1
-            # and take lowest value
-            npt = 10
-            lambdas = np.linspace(0.1,1,npt)
-            total_energies = [self.total_energy(orthonormalize(wfs+lambdas[i]*dirs)) for i in range(npt)]
-            imin = np.argmin(total_energies)
 
-            wfs_new = wfs + lambdas[imin] * dirs
+        # Use only E_0 and dE_ds_0, assume constant H
+        # This is useful, if the energy landscape is flat up to machine precision
+        if mode == 'linear':
+            H_dirs = np.dot(H, dirs)
+            a = (wfs.conj() * H_dirs).sum()
+            b = (dirs.conj() * H_dirs).sum()
+            s_opt = -a/b
+            wfs_new = wfs + s_opt * dirs
 
+        # Use E_0, dE_ds_0 and E_1 + perform parabolic fit
+        elif mode == 'quadratic':
+            s_1 = 0.7 
+            new_wfs = lambda s: wfs + dirs * s
+
+            b = lambda s: dE_ds_0 * s
+            a = lambda E_1, s: (E_1 - E_0 - b(s)) / s**2
+            s_min = lambda E_1, s: -0.5 * b(s) / (a(E_1,s) * s)
+
+            wfs_1 = new_wfs(s_1)
+            wfs_1 = orthonormalize(wfs_1)
+            E_1 = self.total_energy(wfs_1)
+
+            eval_max = 10
+            for i in range(eval_max):
+                if E_1 < E_0:
+                    break
+                else:
+                    s_1 /= 2.0
+                    #print(s_1)
+
+                wfs_1 = new_wfs(s_1)
+                wfs_1 = orthonormalize(wfs_1)
+                E_1 = self.total_energy(wfs_1)
+                i += 1
+
+            # if energy landscape is just noise
+            epsilon = machine_epsilon * np.abs(E_0)
+            if np.abs(E_0 - E_1) < 1e4*epsilon and np.abs(dE_ds_0) < epsilon:
+                # this is non-selfconsistent for the moment
+                # (would need to recompute H otherwise)
+                H_dirs = np.dot(H, dirs)
+                a = (wfs.conj() * H_dirs).sum()
+                b = (dirs.conj() * H_dirs).sum()
+                s_opt = -a/b
+                #dE_ds_1 = 2 * np.sum(self.braket(dirs[:,:self.NE], H, wfs_1[:,:self.NE]).real)
+
+                print(s_opt)
+
+            else:
+                # eqn (5.30)
+                s_opt = s_min(E_1, s_1)
+
+
+            # we don't want the step to get too large
+            s_opt = np.minimum(1.5,s_opt) 
+            #print(s_opt)
+
+            if s_opt < 0:
+                self.pm.sprint("CG: Warning: s_opt = {:.3e} < 0".format(s_opt))
+            #s_opt = np.maximum(0,s_opt)
+
+            wfs_new = new_wfs(s_opt)
 
         # [Payne1992]_ method for (single-band) cg
         # Not sure this is really appropriate here
@@ -174,36 +231,22 @@ class CGMinimizer:
             s_opt = np.minimum(1.5,s_opt) 
             wfs_new = wfs * np.cos(s_opt) + dirs * np.sin(s_opt)
 
-        elif mode == 'quadratic':
-            # fitting simple parabola
-            s_1 = 0.7 
-            new_wfs = lambda s: wfs + dirs * s
 
-            b = lambda s: dE_ds_0 * s
-            a = lambda E_1, s: (E_1 - E_0 - b(s)) / s**2
-            s_min = lambda E_1, s: -0.5 * b(s) / (a(E_1,s) * s)
 
-            while True:
-                wfs_1 = new_wfs(s_1)
-                wfs_1 = orthonormalize(wfs_1)
-                E_1 = self.total_energy(wfs_1)
+        showstuff=False
+        if  showstuff:
+            # simply scan along the direction from 0 to 1
+            # and take lowest value
+            npt = 10
+            lambdas = np.linspace(0,1,npt)
+            total_energies = [self.total_energy(orthonormalize(wfs+lambdas[i]*dirs)) for i in range(npt)]
 
-                break
-                if E_1 < E_0:
-                    break
-                else:
-                    s_1 /= 2.0
+            #wfs_new = wfs + lambdas[imin] * dirs
 
-            # eqn (5.30)
-            s_opt = s_min(E_1, s_1)
-            # we don't want the step to get too large
-            s_opt = np.minimum(1.5,s_opt) 
-
-            if s_opt < 0:
-                self.pm.sprint("CG: Warning: s_opt = {:.3e} < 0".format(s_opt))
-            #s_opt = np.maximum(0,s_opt)
-
-            wfs_new = new_wfs(s_opt)
+            import matplotlib.pyplot as plt
+            plt.plot(lambdas,total_energies)
+            plt.plot(s_opt,total_energies[0],'ro')
+            plt.show()
 
         #print("E_0: {}".format(E_0))
         #print("dE_0: {}".format(dE_dtheta_0))
@@ -268,10 +311,11 @@ class CGMinimizer:
         r"""Compute steepest descent directions
 
         Compute steepest descent directions and project out components pointing
-        along other orbitals.
+        along other orbitals
+        (equivalent to steepest descent with the proper Lagrange multipliers).
 
         .. math:
-            \zeta^{'m}_i = -(H-\lambda_i^m)\psi_i^m - \sum_{j\neq i} \langle \psi_j|\zeta_i^m\rangle \psi_j
+            \zeta^{'m}_i = -(H \psi_i^m + \sum_j \langle \psi_j^m | H | \psi_i^m\rangle \psi_j^m
 
         See eqns (5.10), (5.12) in [Payne1992]_
 
@@ -289,24 +333,12 @@ class CGMinimizer:
         """
         nwf = wfs.shape[-1]
 
-        energies = self.braket(wfs, H, wfs)
-
-
-        # steepest = (grid,nwf)
-        # energies*wfs multiplies over last dimension of wfs
-        steepest = -(np.dot(H, wfs) - energies*wfs)
-
-        # eqn (5.12)
-        # overlaps = (nwf, nwf)
-        ## 1st index denotes wave function
-        ## 2nd index denotes descent direction
-
-        # note: varphi_i orthogonal to psi_i by construction thus no need to
-        # restrict sum to j \neq i
-        # note: not sure whether this is needed at all - it doesn't seem to do
-        # anything (and it shouldn't, if the wfs are perfect eigenvectors of H)
-        
+        # \zeta_i = - H v_i
+        steepest = - self.braket(None, H, wfs)
+        # overlaps = (iwf, idir)
         overlaps = np.dot(wfs.conj().T, steepest)
+
+        # \zeta_i += \sum_j <v_j|H|v_i> v_j
         steepest_orth = steepest - np.dot(wfs,overlaps)
 
         return steepest_orth
@@ -355,7 +387,6 @@ class CGMinimizer:
         # overlaps: 1st index wf, 2nd index cg dir
         overlaps = np.dot(wfs.conj().T, cg_dirs)
         cg_dirs = cg_dirs - np.dot(wfs, overlaps)
-        #cg_dirs = cg_dirs - np.sum(np.dot(cg_dirs.conj(), wfs.T)) * wfs
         self.cg_dirs = cg_dirs
 
         self.cg_counter += 1

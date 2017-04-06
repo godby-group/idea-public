@@ -1,9 +1,18 @@
-"""Computes approximations to VKS, VH, VXC using the LDA self consistently. For ground state calculations the code outputs the LDA orbitals 
-and energies of the system, the ground-state charge density and the Kohn-Sham potential. For time dependent calculation the code also outputs 
-the time-dependent charge and current densities anjd the time-dependent Kohn-Sham potential. Note: Uses the [adiabatic] local density 
-approximations ([A]LDA) to calculate the [time-dependent] electron density [and current] for a system of N electrons.
-"""
+"""Performs self-consistent LDA calculation
 
+Uses the [adiabatic] local density approximations ([A]LDA) to calculate the
+[time-dependent] electron density [and current] for a system of N electrons.
+
+Computes approximations to VKS, VH, VXC using the LDA self-consistently. 
+For ground state calculations the code outputs the LDA orbitals and energies of
+the system, the ground-state charge density and the Kohn-Sham potential. 
+For time dependent calculation the code also outputs the time-dependent charge
+and current densities and the time-dependent Kohn-Sham potential. 
+
+Note: Uses the LDAs developed in [Entwistle2016]_ for finite slab systems
+in one dimension.
+
+"""
 
 import pickle
 import numpy as np
@@ -25,11 +34,17 @@ def groundstate(pm, H):
                        
    parameters
    ----------
-   v_KS : array_like
-        KS potential
+   H: array_like
+     Hamiltonian matrix (band form)
 
-   returns array_like, array_like, array_like
-        density, normalised orbitals indexed as eigf[space_index,orbital_number], energies
+   returns
+   -------
+   n: array_like
+     density
+   eigf: array_like
+     normalised orbitals, index as eigf[space_index,orbital_number]
+   e: array_like
+     orbital energies
    """	
    
    #e,eigf = spsla.eigsh(H, k=pm.sys.grid/2, which='SA') 
@@ -59,8 +74,17 @@ def electron_density(pm, orbitals):
     return n
 
 def ks_potential(pm, n):
-    r"""Comput Kohn-Sham potential from wave functions
+    r"""Compute Kohn-Sham potential from density
 
+    parameters
+    ----------
+    n: array_like
+      electron density
+
+    returns
+    -------
+    v_ks: array_like
+      kohn-sham potential
     """
     v_ks = pm.space.v_ext + hartree_potential(pm,n) + VXC(pm,n)
     return v_ks
@@ -91,14 +115,18 @@ def hamiltonian(pm, v_KS=None, wfs=None, H=None):
     ----------
     v_KS : array_like
          KS potential
+    wfs : array_like
+         kohn-sham orbitals. if specified, v_KS is computed from wfs
+    H : array_like
+         old hamiltonian. if specified, we just update the diagonal of H.
 
     returns array_like
-         Hamiltonian matrix
+         Hamiltonian matrix (in banded form)
     """
+    # sparse version
     #sd = pm.space.second_derivative_5point
     #T = -0.5 * sps.diags(sd,[-2,-1,0,1,2], shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr') / pm.sys.deltax**2
     ##T = -0.5 * sps.diags(sd,[-1,0,1], shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr') / pm.sys.deltax**2
-
     #if wfs is None:
     #    V = sps.diags(v_KS, 0, shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr')
     #else:
@@ -273,8 +301,6 @@ def DXC(pm , n):
    p = dlda[NE]
 
    D_xc = (p['a'] + p['b'] * n + p['c'] * n**2) * n**p['d']
-   #D_xc = (p['b'] + 2 * p['c'] * n) * n**p['d'] \
-   #     + (p['a'] + p['b'] * n + p['c'] * n**2) * p['d'] * n**(p['d']-1)
 
    return D_xc 
 
@@ -282,7 +308,8 @@ def DXC(pm , n):
 
 def total_energy_eigv(pm, eigv, eigf=None, n=None, V_H=None, V_xc=None):
    r"""Calculates the total energy of the self-consistent LDA density                 
-   Uses knowledge of Kohn-Sham eigenvalues
+
+   Relies on knowledge of Kohn-Sham eigenvalues and the density.
 
    .. math ::
        E = \sum_i \varepsilon_i + E_{xc}[n] - E_H[n] - \int \rho(r) V_{xc}(r)dr
@@ -328,7 +355,8 @@ def total_energy_eigv(pm, eigv, eigf=None, n=None, V_H=None, V_xc=None):
 
 def total_energy_eigf(pm, eigf, n=None, V_H=None):
    r"""Calculates the total energy of the self-consistent LDA density                 
-   Uses Kohn-Sham wave functions only
+
+   Uses Kohn-Sham wave functions only.
 
    .. math::
        E = \sum_i \langle \psi_i | T | \psi_i\rangle + E_H[n] + E_{xc}[n] + \int \rho(r) V_{ext}(r)dr
@@ -461,45 +489,34 @@ def main(parameters):
    n_inp,waves,energies = groundstate(pm, H)
    en_tot = total_energy_eigv(pm,energies, n=n_inp)
 
-   # need n_inp and n_out to kickstart mixing
+   # need n_inp and n_out to start mixing
    H = hamiltonian(pm, ks_potential(pm, n_inp), H=H)
    n_out,waves_out,energies_out = groundstate(pm, H)
 
 
-   if pm.lda.mix_type == 'pulay':
-       mixer = mix.PulayMixer(pm, order=pm.lda.pulay_order, preconditioner=pm.lda.preconditioner)
-   elif pm.lda.mix_type == 'cg':
+   if pm.lda.scf_type == 'pulay':
+       mixer = mix.PulayMixer(pm, order=pm.lda.pulay_order, preconditioner=pm.lda.pulay_preconditioner)
+   elif pm.lda.scf_type == 'cg':
        minimizer = minimize.CGMinimizer(pm, total_energy_eigf)
-   elif pm.lda.mix_type == 'mixh':
+   elif pm.lda.scf_type == 'mixh':
        minimizer = minimize.DiagMinimizer(pm, total_energy_eigf, hamiltonian)
 
    iteration = 1
-   n = copy.copy(n_inp)
    converged = False
    while (not converged) and iteration <= pm.lda.max_iter:
 
 
-      if pm.lda.mix_type ==  'cg': 
-          # this is for minimization
-          # start with n_inp, H[n_inp]
+      if pm.lda.scf_type ==  'cg': 
+          # conjugate-gradient minimization
+          # start with waves, H[waves]
 
           waves = minimizer.step(waves, banded_to_full(H))
           n_inp = electron_density(pm, waves)
           en_tot_old = en_tot
           en_tot = total_energy_eigf(pm,waves, n=n_inp)
 
-          v_ks = ks_potential(pm, n_inp)
-          H = hamiltonian(pm, v_ks, H=H)
-
-          # n_out is only needed for convergence check!
-          # disable for speed!
-          n_out,waves_out,energies_out = groundstate(pm,H)
-
-          dn = np.sum(abs(n_out-n_inp))*pm.sys.deltax
-          de = en_tot - en_tot_old
-
-      elif pm.lda.mix_type == 'mixh': 
-          # this is for minimization
+      elif pm.lda.scf_type == 'mixh': 
+          # minimization that mixes hamiltonian directoy
           # start with n_inp, H[n_inp]
 
           H, waves = minimizer.h_step(banded_to_full(H))
@@ -512,18 +529,14 @@ def main(parameters):
           H_out = hamiltonian(pm, ks_potential(pm, n_inp))
           n_out,waves_out,energies_out = groundstate(pm,H_out)
 
-          dn = np.sum(abs(n_out-n_inp))*pm.sys.deltax
-          de = en_tot - en_tot_old
-
-
       else:
-          # This is the regular mixing loop
+          # mixing schemes
           # start with n_inp, n_out
 
           # compute new n_inp
-          if pm.lda.mix_type == 'pulay':
+          if pm.lda.scf_type == 'pulay':
               n_inp = mixer.mix(n_inp, n_out, energies_out, waves_out.T)
-          elif pm.lda.mix_type == 'linear':
+          elif pm.lda.scf_type == 'linear':
               n_inp = (1-pm.lda.mix)*n_inp + pm.lda.mix*n_out
           else:
               n_inp = n_out
@@ -539,33 +552,28 @@ def main(parameters):
           en_tot_old = en_tot
           en_tot = total_energy_eigv(pm,energies_out, n=n_inp)
 
-          # compute new n_out
-          v_ks = ks_potential(pm, n_inp)
-          H = hamiltonian(pm, v_ks, H=H)
-          n_out,waves_out,energies_out = groundstate(pm,H)
+      # compute new ks-potential, update hamiltonian
+      v_ks = ks_potential(pm, n_inp)
+      H = hamiltonian(pm, v_ks, H=H)
 
-          # compute self-consistent density error
-          dn = np.sum(abs(n_inp-n_out))*pm.sys.deltax
-          de = en_tot - en_tot_old
+      # compute new n_out
+      # Note: in minimisation schemes (cg, hmix), n_out is only needed for
+      # checking self-consistency of the density and its computation could be
+      # disabled for speedup
+      n_out,waves_out,energies_out = groundstate(pm,H)
 
-
-      #import matplotlib.pyplot as plt
-      #plt.plot(n_out, label='n_out')
-      #plt.plot(n_inp, label='n_inp')
-      ##for i in [1,2]:
-      ##    plt.plot(waves[:,i], label='state {}'.format(i))
-
-      ##plt.plot(v_ext, label='v_ext')
-      #plt.legend()
-      #plt.show()
       gap = energies_out[pm.sys.NE]- energies_out[pm.sys.NE-1]
       if gap < 1e-3:
-          pm.sprint("LDA: Warning: small KS gap {:.3e} Ha. Convergence may be slow.".format(gap))
+          s = "LDA: Warning: small KS gap {:.3e} Ha. Convergence may be slow.".format(gap)
+          pm.sprint(s)
 
-
+      # compute self-consistent density error
+      dn = np.sum(np.abs(n_inp-n_out))*pm.sys.deltax
+      de = en_tot - en_tot_old
       converged = dn < pm.lda.tol and np.abs(de) < pm.lda.etol
-      string = 'LDA: E = {:.8f} Ha, de = {:+.3e}, dn = {:.3e}, iter = {}'.format(en_tot, de, dn, iteration)
-      pm.sprint(string,1,newline=True)
+      s = 'LDA: E = {:.8f} Ha, de = {:+.3e}, dn = {:.3e}, iter = {}'\
+              .format(en_tot, de, dn, iteration)
+      pm.sprint(s,1,newline=True)
 
       iteration += 1
 
@@ -573,14 +581,20 @@ def main(parameters):
    pm.sprint('')
 
    if not converged:
-       string = 'LDA: Warning: convergence not reached in {} iterations. terminating self-consistency'.format(iteration)
-       pm.sprint(string,1)
+       s = 'LDA: Warning: convergence not reached in {} iterations. Terminating.'.format(iteration)
+       pm.sprint(s,1)
    else:
        pm.sprint('LDA: reached convergence in {} iterations.'.format(iteration),0)
 
-   n = n_out
-   waves = waves_out
-   energies = energies_out
+   n = n_inp
+   # for regular mixing, there are no energies/wave functions
+   # for the input density. so we take those of the output density
+   if pm.lda.scf_type not in ['cg','hmix']:
+       waves = waves_out
+       energies = energies_out
+       n = n_out
+   else:
+       energies = energies_out # could compute <psi|H|psi> though...
 
    v_h = hartree_potential(pm, n)
    v_xc = VXC(pm, n)

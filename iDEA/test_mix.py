@@ -116,8 +116,8 @@ class TestKerker(unittest.TestCase):
 
 
 
-class TestFull(unittest.TestCase):
-    """Tests for the full preconditioner
+class TestRPA(unittest.TestCase):
+    """Tests for the RPA preconditioner
     
     """ 
 
@@ -155,7 +155,7 @@ class TestFull(unittest.TestCase):
         """
         pm = self.pm
 
-        mixer = mix.PulayMixer(pm, order=1, preconditioner='full')
+        mixer = mix.PulayMixer(pm, order=1, preconditioner='rpa')
 
         results = NON.main(pm)
         den = results.gs_non_den

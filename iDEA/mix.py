@@ -13,7 +13,7 @@ class PulayMixer:
     as described on p.34 of [Kresse1996]_
 
     """
-    def __init__(self, pm, order, preconditioner='kerker'):
+    def __init__(self, pm, order, preconditioner=None):
         """Initializes variables
 
         parameters
@@ -23,7 +23,7 @@ class PulayMixer:
         pm: object
           input parameters
         preconditioner: string
-          May be Non, 'kerker' or 'full' 
+          May be None, 'kerker' or 'rpa' 
 
         """
         self.order = order
@@ -44,8 +44,8 @@ class PulayMixer:
             self.preconditioner = KerkerPreconditioner(pm)
         elif preconditioner == None:
             self.preconditioner = StubPreconditioner(pm)
-        elif preconditioner == 'full':
-            self.preconditioner = FullPreconditioner(pm)
+        elif preconditioner == 'rpa':
+            self.preconditioner = RPAPreconditioner(pm)
         else:
             raise ValueError("Unknown preconditioner {}".format(preconditioner))
 
@@ -243,8 +243,11 @@ class KerkerPreconditioner:
 
 
 
-class FullPreconditioner:
-    """Performs preconditioning using full dielectric function
+class RPAPreconditioner:
+    """Performs preconditioning using RPA dielectric function
+
+    The static dielectric function as a function of x and x'
+    is computed in the Hartree approximation.
 
     """
 
@@ -269,7 +272,7 @@ class FullPreconditioner:
         self.coulomb_repulsion = 1.0/(tmp * self.x_delta + pm.sys.acon)
 
     def precondition(self, r, eigv, eigf):
-        r"""Preconditioning using full dielectric matrix
+        r"""Preconditioning using RPA dielectric matrix
 
         .. math :: 
             
@@ -311,9 +314,8 @@ class FullPreconditioner:
     def chi(self,eigv, eigf):
         r"""Computes RPA polarizability
 
-        The static, non-local polarisability (or density-potential
-        response) in the Hartree approximation (often called RPA)
-        is computed as
+        The static, non-local polarisability (aka density-potential response) in
+        the Hartree approximation (often called RPA):
 
         .. math ::
             \chi^0(x,x') = \sum_j^{'} \sum_k^{''} \phi_j(x)\phi_k^*(x)\phi_j^*(x')\phi_k(x') \frac{2}{\varepsilon_j-\varepsilon_k}
@@ -321,7 +323,6 @@ class FullPreconditioner:
         where :math:`\sum^'` sums over occupied states and :math:`\sum^{''}` sums over empty states
 
         See also https://wiki.fysik.dtu.dk/gpaw/documentation/tddft/dielectric_response.html
-
 
         parameters
         ----------
@@ -358,23 +359,9 @@ class FullPreconditioner:
                 #    print("")
                 #    print('{:.3e}'.format(eigv[j] - eigv[k]))
 
-        #print(np.sum(eigf[1]**2)*self.x_delta)
-   	#print("max {}".format(np.max(eps)))
-   	#print("min {}".format(np.min(eps)))
-   	#print("max {}".format(np.max(eps)))
-   	#print("min {}".format(np.min(eps)))
-
-
         #eps = np.dot(self.coulomb_repulsion,eps)*self.x_delta
         #eps = np.eye(nx)/self.x_delta - eps
 	
-        #import matplotlib.pyplot as plt
-        #x = np.linspace(-10,10,self.x_npt)
-        #for i in [2,3]:
-        #    plt.plot(x,np.abs(eigf[i]), label=i)
-        #plt.legend()
-        #plt.show()
-	#print(np.diagonal(eps))
         return chi
 
 

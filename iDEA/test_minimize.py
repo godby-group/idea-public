@@ -72,6 +72,58 @@ class TestCG(unittest.TestCase):
 
         nt.assert_almost_equal(steepest_orth_all[i], steepest_orth)
 
+    def test_conjugate(self):
+        r"""Check that gradient is computed correctly
+        
+        Use conjugate-gradient method on a quadratic function in
+        n-dimensional space, where it is guaranteed to converge
+        in n steps.
+
+        Task: minimize the function
+        
+        .. math ::
+            E(v) = \sum_{i=1}^2 v_i^* H v_i
+            \triangle_{v_i} E = H v_i
+            
+        for a fixed matrix H and a set of orthonormal vectors v_i.
+        
+        Note: The dimension n of the vector space is the grid spacing
+        times number of electrons.
+        """
+        pm = self.pm
+        pm.sys.grid = 10  
+        sqdx = np.sqrt(pm.sys.deltax)
+        pm.setup()
+
+        ndim = pm.sys.grid * pm.sys.NE
+
+        E = lambda wfs: (wfs.conj() * np.dot(H, wfs)).sum()
+        E_scaled = lambda pm, wfs: E(wfs*sqdx)
+
+        # do not restart the cg
+        minimizer = minimize.CGMinimizer(pm, 
+                total_energy=E_scaled, 
+                cg_restart=ndim+1,
+                line_fit='linear')
+
+        # start with random guess
+        np.random.seed(1)
+        wfs = np.random.rand(pm.sys.grid,pm.sys.NE)
+        wfs = minimize.orthonormalize(wfs)
+        H = LDA.banded_to_full(LDA.hamiltonian(pm, wfs=wfs/sqdx))
+
+        # keeping H constant, we should find the minimum in ndim steps
+        # (if it weren't for the orthonormality condition!...)
+        for i in range(ndim):
+            wfs = minimizer.step(wfs/sqdx,H) * sqdx
+        E_1 = E(wfs)
+
+        # compute lowest energy using diagonalisation
+        energies_2, wfs_2 = spla.eigh(H)
+        E_2 = np.sum(energies_2[:pm.sys.NE])
+
+        nt.assert_allclose(E_1, E_2)
+
 
     def test_orthonormalisation(self):
         """Testing orthonormalisation of a set of vectors
@@ -127,12 +179,12 @@ class TestCGLDA(unittest.TestCase):
         pm.sys.v_ext = v_ext
         
         pm.lda.save_eig = True
-        pm.lda.mix_type = 'direct'
+        pm.lda.scf_type = 'cg'
 
         pm.setup()
         self.pm = pm
 
-    def test_derivative(self):
+    def test_energy_derivative(self):
         r"""Compare analytical total energy derivative vs finite differences
 
         .. math::
@@ -166,4 +218,3 @@ class TestCGLDA(unittest.TestCase):
         atol = np.abs(E_1) * 10 * machine_epsilon / delta
         rtol = atol / np.abs(dE_dL_finite)
         nt.assert_allclose(dE_dL, dE_dL_finite, rtol=rtol)
-
