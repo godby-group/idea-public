@@ -195,9 +195,8 @@ class TestCGLDA(unittest.TestCase):
 
         results = LDA.main(pm)  # solving using linear mixing
         vks = results.gs_lda_vks
-        n = results.gs_lda_den
-        H = LDA.banded_to_full(LDA.hamiltonian(pm, vks))
         wfs = results.gs_lda_eigf[:pm.sys.NE].T * np.sqrt(pm.sys.deltax)
+        H = LDA.banded_to_full(LDA.hamiltonian(pm, vks))
 
         # compute current conjugate direction
         minimizer = minimize.CGMinimizer(pm, total_energy=LDA.total_energy_eigf)
@@ -206,7 +205,7 @@ class TestCGLDA(unittest.TestCase):
         dE_dL = 2 * np.sum(minimizer.braket(conjugate, H, wfs))
 
         # compute finite difference derivative
-        delta = 1.0e-4
+        delta = 1.0e-6
         E_1 = minimizer.total_energy(wfs)
         wfs_new = minimize.orthonormalize(wfs + delta * conjugate)
         E_2 = minimizer.total_energy(wfs_new)
@@ -215,6 +214,7 @@ class TestCGLDA(unittest.TestCase):
         
         # this can be quite close to machine epsilon
         # for the energy difference
-        atol = np.abs(E_1) * 10 * machine_epsilon / delta
+        atol = np.abs(E_1) * 100 * machine_epsilon / delta
         rtol = atol / np.abs(dE_dL_finite)
+
         nt.assert_allclose(dE_dL, dE_dL_finite, rtol=rtol)

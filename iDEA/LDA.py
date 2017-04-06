@@ -499,12 +499,13 @@ def main(parameters):
    elif pm.lda.scf_type == 'cg':
        minimizer = minimize.CGMinimizer(pm, total_energy_eigf)
    elif pm.lda.scf_type == 'mixh':
-       minimizer = minimize.DiagMinimizer(pm, total_energy_eigf, hamiltonian)
+       minimizer = minimize.DiagMinimizer(pm, total_energy_eigf)
+       H_mix = copy.copy(H)
 
    iteration = 1
    converged = False
    while (not converged) and iteration <= pm.lda.max_iter:
-
+      en_tot_old = en_tot
 
       if pm.lda.scf_type ==  'cg': 
           # conjugate-gradient minimization
@@ -512,22 +513,22 @@ def main(parameters):
 
           waves = minimizer.step(waves, banded_to_full(H))
           n_inp = electron_density(pm, waves)
-          en_tot_old = en_tot
+
+          # compute total energy at n_inp
           en_tot = total_energy_eigf(pm,waves, n=n_inp)
 
       elif pm.lda.scf_type == 'mixh': 
-          # minimization that mixes hamiltonian directoy
+          # minimization that mixes hamiltonian directly
           # start with n_inp, H[n_inp]
 
-          H, waves = minimizer.h_step(banded_to_full(H))
-          n_inp = electron_density(pm, waves)
-          en_tot_old = en_tot
-          en_tot = total_energy_eigf(pm,waves, n=n_inp)
+          n_tmp,waves_tmp,energies_tmp = groundstate(pm,H_mix)
+          H_tmp = hamiltonian(pm, ks_potential(pm, n_tmp), H=H_mix)
 
-          # n_out is only needed for convergence check!
-          # disable for speed!
-          H_out = hamiltonian(pm, ks_potential(pm, n_inp))
-          n_out,waves_out,energies_out = groundstate(pm,H_out)
+          H_mix = minimizer.h_step(H_mix, H_tmp)
+          n_inp,waves_inp,energies_inp = groundstate(pm,H_mix)
+
+          # compute total energy at n_inp
+          en_tot = total_energy_eigv(pm,energies_inp, n=n_inp)
 
       else:
           # mixing schemes
@@ -549,7 +550,6 @@ def main(parameters):
           #   v_ks = (1-pm.lda.mix)*v_ks_old+pm.lda.mix*ks_potential(n_out)
 
           # compute total energy at n_inp
-          en_tot_old = en_tot
           en_tot = total_energy_eigv(pm,energies_out, n=n_inp)
 
       # compute new ks-potential, update hamiltonian
@@ -586,15 +586,17 @@ def main(parameters):
    else:
        pm.sprint('LDA: reached convergence in {} iterations.'.format(iteration),0)
 
-   n = n_inp
-   # for regular mixing, there are no energies/wave functions
-   # for the input density. so we take those of the output density
-   if pm.lda.scf_type not in ['cg','hmix']:
+   if pm.lda.scf_type in ['cg', 'hmix']:
+       # for minimisation techniques, we take the input density
+       # and the waves produced by the algorithm
+       n = n_inp
+       energies = energies_out # could compute <psi|H|psi> though...
+   else:
+       # for regular mixing, there are no energies/wave functions
+       # for the input density. so we take those of the output density
+       n = n_out
        waves = waves_out
        energies = energies_out
-       n = n_out
-   else:
-       energies = energies_out # could compute <psi|H|psi> though...
 
    v_h = hartree_potential(pm, n)
    v_xc = VXC(pm, n)

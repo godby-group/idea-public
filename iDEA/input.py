@@ -196,6 +196,7 @@ class Input(object):
         lda = self.lda
         lda.NE = 2                           #: Number of electrons used in construction of the LDA
         lda.scf_type = 'linear'              #: None, 'linear', 'pulay' or 'cg'
+        lda.pulay_order = 20                 #: history of steps for pulay
         lda.pulay_preconditioner = None      #: None, 'kerker' or 'rpa'
         lda.mix = 1.0                        #: linear mixing parameter
         lda.kerker_length = 2.1              #: Kerker screening length

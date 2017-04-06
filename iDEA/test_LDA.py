@@ -89,7 +89,7 @@ class LDATestHarmonic(unittest.TestCase):
 
         self.assertAlmostEqual(T_1, T_2)
 
-    def test_hamiltonian_1(self):
+    def test_banded_hamiltonian_1(self):
         r"""Test construction of Hamiltonian
 
         Hamiltonian is constructed in banded form for speed.

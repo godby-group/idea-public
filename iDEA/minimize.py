@@ -15,7 +15,7 @@ class CGMinimizer:
     as described on pp 1071 of [Payne1992]_
     """
 
-    def __init__(self, pm, total_energy=None, nstates=None, cg_restart=5, line_fit='quadratic'):
+    def __init__(self, pm, total_energy=None, nstates=None, cg_restart=3, line_fit='quadratic'):
         """Initializes variables
 
         parameters
@@ -133,21 +133,11 @@ class CGMinimizer:
         E_0 = self.total_energy(wfs)
         dE_ds_0 = 2 * np.sum(self.braket(dirs[:,:self.NE], H, wfs[:,:self.NE]).real)
 
-        ## If we are just dealing with noise, take a full step
-        #if dE_ds_0 > 0:
-        #    if np.abs(dE_ds_0 / E_0) < 10*machine_epsilon:
-        #        
-        #        #self.pm.lda.scf_type = 'pulay' # this would switch to pulay
-        #        wfs_new = wfs + 1.0 * dirs
         if dE_ds_0 > 0:
                 s = "CG: Warning: Energy derivative along conjugate gradient direction"
                 s += "\nis positive: dE/dlambda = {:.3e}".format(dE_ds_0)
-                #s += "\nSwitching to 'stupid' line-search mode"
-                #s += "\nSwitching to Pulay mixing "
-                #self.pm.lda.scf_type = 'pulay' # this would switch to pulay
                 self.pm.sprint(s)
                 #raise ValueError(s)
-
 
 
         # Use only E_0 and dE_ds_0, assume constant H
@@ -185,9 +175,10 @@ class CGMinimizer:
                 E_1 = self.total_energy(wfs_1)
                 i += 1
 
-            # if energy landscape is just noise
+            # if energy landscape is just noise,
+            # fall back to linear algorithm
             epsilon = machine_epsilon * np.abs(E_0)
-            if np.abs(E_0 - E_1) < 1e4*epsilon and np.abs(dE_ds_0) < epsilon:
+            if np.abs(E_0 - E_1) < 100*epsilon: # and np.abs(dE_ds_0) < epsilon:
                 # this is non-selfconsistent for the moment
                 # (would need to recompute H otherwise)
                 H_dirs = np.dot(H, dirs)
@@ -205,11 +196,10 @@ class CGMinimizer:
 
             # we don't want the step to get too large
             s_opt = np.minimum(1.5,s_opt) 
-            #print(s_opt)
+            #s_opt = np.maximum(0,s_opt)
 
             if s_opt < 0:
                 self.pm.sprint("CG: Warning: s_opt = {:.3e} < 0".format(s_opt))
-            #s_opt = np.maximum(0,s_opt)
 
             wfs_new = new_wfs(s_opt)
 
@@ -232,7 +222,6 @@ class CGMinimizer:
             wfs_new = wfs * np.cos(s_opt) + dirs * np.sin(s_opt)
 
 
-
         showstuff=False
         if  showstuff:
             # simply scan along the direction from 0 to 1
@@ -247,23 +236,6 @@ class CGMinimizer:
             plt.plot(lambdas,total_energies)
             plt.plot(s_opt,total_energies[0],'ro')
             plt.show()
-
-        #print("E_0: {}".format(E_0))
-        #print("dE_0: {}".format(dE_dtheta_0))
-        #print("E_1: {}".format(E_1))
-        #print("step_1: {}".format(s_1))
-        #print("step: {}".format(s_opt))
-        #print("stepnorm: {}".format(s_opt * np.linalg.norm(dirs, axis=0)))
-
-        #if mode == 'trigonometric':
-        #    x = np.linspace(0, np.pi/2, 50)
-        #    y = A_1(E_1,s_opt) * np.cos(2*x) + B_1 * np.sin(2*x)
-        #elif mode == 'quadratic':
-        #    x = np.linspace(0, 1, 50)
-        #    y = a(E_1,s_opt) * (x - s_opt)**2
-        #import matplotlib.pyplot as plt
-        #plt.plot(x,y)
-        #plt.show()
 
         wfs_new = orthonormalize(wfs_new)
 
@@ -468,11 +440,14 @@ def orthonormalize(v):
 class DiagMinimizer:
     """Performs minimization using exact diagonalisation
 
-    This would be too slow for ab initio codes
-    but is something we can afford in the iDEA world.
+    This would be too slow for ab initio codes but is something we can afford
+    in the iDEA world.
+
+    Not yet fully implemented though (still missing analytic derivatives and a
+    proper line search algorithm).
     """
 
-    def __init__(self, pm, total_energy=None, hamiltonian=None):
+    def __init__(self, pm, total_energy=None):
         """Initializes variables
 
         parameters
@@ -498,11 +473,6 @@ class DiagMinimizer:
         else:
             self._total_energy = total_energy
 
-        if hamiltonian is None:
-            raise ValueError("Need to provide hamiltonian function that computes hamiltonian from given set of single-particle wave functions.")
-        else:
-            self._hamiltonian = hamiltonian
-
 
     def total_energy(self, wfs):
         r"""Compute total energy for given wave function
@@ -512,130 +482,23 @@ class DiagMinimizer:
         """
         return self._total_energy(self.pm, wfs/self.sqdx)
 
-    def step(self, wfs, H):
+
+    def h_step(self, H0, H1):
         r"""Performs one minimisation step
 
         parameters
         ----------
-        wfs: array_like
-          (grid, nwf) input wave functions
-        H: array_like
-          input Hamiltonian
+        H0: array_like
+          input Hamiltonian to be mixed (banded form)
+        H1: array_like
+          output Hamiltonian to be mixed (banded form)
 
         returns
         -------
-        wfs: array_like
-          (grid, nwf) updated wave functions
-        """
-        # internally work with dx=1
-        wfs *= self.sqdx
-        wfs = wfs[:, :self.nstates]
-
-
-        E_0 = self.total_energy(wfs)
-
-        ## TODO: implement analytic derivative
-        #dE_dtheta_0 = 2 * np.sum(self.braket(dirs, H, wfs).real)
-
-        #if dE_dtheta_0 > 0:
-        #    raise ValueError("First-order change along conjugate gradient direction is positive.")
-
-        H0 = H
-
-        en1, wfs1 = spla.eigh(H)
-        H1 = self.hamiltonian(wfs1)
-
-
-        lambdas = np.linspace(0.0,1.0,50)
-        total_energies = []
-
-        # self-consistent variant
-        for l in lambdas:
-            Hl = (1-l) * H0 + l * H1
-            enl, wfsl = spla.eigh(Hl)
-
-            #import matplotlib.pyplot as plt
-            #fig, axs = plt.subplots(1,1)
-            #plt.plot(np.sum(wfsl[:,:self.nstates]**2,axis=1))
-            #plt.show()
-            
-            El = self.total_energy(wfsl)
-            total_energies.append(El)
-
-        # non-selfconsistent variant
-
-        #print(total_energies)
-        #print(lambdas)
-        te=np.array(total_energies)
-        import matplotlib.pyplot as plt
-        fig, axs = plt.subplots(1,1)
-        plt.plot(lambdas, total_energies)
-        axs.set_ylim(np.min(total_energies), np.max(total_energies))
-        plt.show()
-
-        imin = np.argmin(total_energies)
-        l = lambdas[imin]
-        Hl = (1-l) * H0 + l * H1
-        enl, wfsl = spla.eigh(Hl)
-        wfs_new = wfsl
-        
-
-
-
-        #elif mode == 'quadratic':
-        #    # fitting simple parabola
-        #    s_1 = 0.7 
-        #    new_wfs = lambda s: wfs + dirs * s
-
-        #    b = lambda s: dE_dtheta_0 * s
-        #    a = lambda E_1, s: (E_1 - E_0 - b(s)) / s**2
-        #    s_min = lambda E_1, s: -0.5 * b(s) / (a(E_1,s) * s)
-
-
-        #    while True:
-        #        wfs_1 = new_wfs(s_1)
-        #        wfs_1 = orthonormalize(wfs_1)
-        #        E_1 = self.total_energy(wfs_1)
-
-        #        break
-        #        if E_1 < E_0:
-        #            break
-        #        else:
-        #            s_1 /= 2.0
-
-        ## eqn (5.30)
-        #s_opt = s_min(E_1, s_1)
-        ## we don't want the step to get too large
-        #s_opt = np.minimum(1.5,s_opt) 
-
-        #print("E_0: {}".format(E_0))
-        #print("dE_0: {}".format(dE_dtheta_0))
-        #print("E_1: {}".format(E_1))
-        #print("step_1: {}".format(s_1))
-        #print("step: {}".format(s_opt))
-        #print("stepnorm: {}".format(s_opt * np.linalg.norm(dirs, axis=0)))
-
-
-        #wfs_new = new_wfs(s_opt)
-        wfs_new = orthonormalize(wfs_new)
-
-        return wfs_new / self.sqdx
-
-    def h_step(self, H):
-        r"""Performs one minimisation step
-
-        parameters
-        ----------
         H: array_like
-          input Hamiltonian
-
-        returns
-        -------
-        wfs: array_like
-          (grid, nwf) updated wave functions
+          mixed hamiltonian (banded form)
         """
-        H0 = H
-        en0, wfs0 = spla.eigh(H)
+        en0, wfs0 = spla.eig_banded(H0, lower=True)
         E_0 = self.total_energy(wfs0)
 
         ## TODO: implement analytic derivative
@@ -644,18 +507,14 @@ class DiagMinimizer:
         #if dE_dtheta_0 > 0:
         #    raise ValueError("First-order change along conjugate gradient direction is positive.")
 
-        en1, wfs1 = spla.eigh(H)
-        H1 = self.hamiltonian(wfs1)
-
-
-        nl = 50
+        nl = 10
         lambdas = np.linspace(0.0,1.0,nl)
         total_energies = []
 
         # self-consistent variant
         for l in lambdas:
             Hl = (1-l) * H0 + l * H1
-            enl, wfsl = spla.eigh(Hl)
+            enl, wfsl = spla.eig_banded(Hl, lower=True)
 
             #import matplotlib.pyplot as plt
             #fig, axs = plt.subplots(1,1)
@@ -665,25 +524,22 @@ class DiagMinimizer:
             El = self.total_energy(wfsl)
             total_energies.append(El)
 
-        # non-selfconsistent variant
-
-        #print(total_energies)
-        #print(lambdas)
-        te=np.array(total_energies)
-        print(te-te[0])
-        import matplotlib.pyplot as plt
-        fig, axs = plt.subplots(1,1)
-        plt.plot(lambdas, total_energies)
-        axs.set_ylim(np.min(total_energies), np.max(total_energies))
-        plt.show()
+        #te=np.array(total_energies)
+        ##print(te-te[0])
+        #import matplotlib.pyplot as plt
+        #fig, axs = plt.subplots(1,1)
+        #plt.plot(lambdas, te)
+        ##axs.set_ylim(np.min(total_energies), np.max(total_energies))
+        #plt.show()
 
         imin = np.argmin(total_energies)
 
+        # simple search for minimium (to be improved)
         if imin == 0:
             l= 1.0/nl
             while True:
                 Hl = (1-l) * H0 + l * H1
-                enl, wfsl = spla.eigh(Hl)
+                enl, wfsl = spla.eig_banded(Hl, lower=True)
                 El = self.total_energy(wfsl)
                 if El < E_0:
                     break
@@ -694,17 +550,6 @@ class DiagMinimizer:
             l = lambdas[imin]
 
         Hl = (1-l) * H0 + l * H1
-        enl, wfsl = spla.eigh(Hl)
 
-        return Hl, wfsl/self.sqdx
+        return Hl
         
-
-
-    def hamiltonian(self, wfs):
-        r"""Compute Hamiltonian for given wave function
-
-        This method must be provided by the calling module
-        and is initialized in the constructor.
-        """
-        return self._hamiltonian(self.pm, wfs=wfs/self.sqdx)
-
