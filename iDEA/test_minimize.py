@@ -79,6 +79,12 @@ class TestCG(unittest.TestCase):
         n-dimensional space, where it is guaranteed to converge
         in n steps.
 
+        Note: This exact condition actually doesn't apply here because we
+        are orthonormalising the vectors (i.e. rotating) after each step.
+        This renders this test a bit pointless...
+        I am currently taking 2*n steps and am still far from machine
+        precision.
+
         Task: minimize the function
         
         .. math ::
@@ -89,6 +95,7 @@ class TestCG(unittest.TestCase):
         
         Note: The dimension n of the vector space is the grid spacing
         times number of electrons.
+
         """
         pm = self.pm
         pm.sys.grid = 10  
@@ -114,7 +121,7 @@ class TestCG(unittest.TestCase):
 
         # keeping H constant, we should find the minimum in ndim steps
         # (if it weren't for the orthonormality condition!...)
-        for i in range(ndim):
+        for i in range(2*ndim):
             wfs = minimizer.step(wfs/sqdx,H) * sqdx
         E_1 = E(wfs)
 
@@ -122,7 +129,7 @@ class TestCG(unittest.TestCase):
         energies_2, wfs_2 = spla.eigh(H)
         E_2 = np.sum(energies_2[:pm.sys.NE])
 
-        nt.assert_allclose(E_1, E_2)
+        nt.assert_allclose(E_1, E_2, rtol=1e-7)
 
 
     def test_orthonormalisation(self):
