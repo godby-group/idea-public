@@ -32,7 +32,7 @@ class CGMinimizer:
           cg history is restarted every cg_restart steps
         line_fit: str
           select method for line-search
-          'quadratic' (default), 'linear' or 'trigonometric'
+          'quadratic' (default), 'quadratic-der' or 'trigonometric'
 
         """
         self.pm = pm
@@ -142,7 +142,7 @@ class CGMinimizer:
 
         # Use only E_0 and dE_ds_0, assume constant H
         # This is useful, if the energy landscape is flat up to machine precision
-        if mode == 'linear':
+        if mode == 'quadratic-der':
             H_dirs = np.dot(H, dirs)
             a = (wfs.conj() * H_dirs).sum()
             b = (dirs.conj() * H_dirs).sum()
@@ -507,56 +507,35 @@ class DiagMinimizer:
         H: array_like
           mixed hamiltonian (banded form)
         """
-        en0, wfs0 = spla.eig_banded(H0, lower=True)
-        E_0 = self.total_energy(wfs0)
-
         ## TODO: implement analytic derivative
         #dE_dtheta_0 = 2 * np.sum(self.braket(dirs, H, wfs).real)
-
-        #if dE_dtheta_0 > 0:
-        #    raise ValueError("First-order change along conjugate gradient direction is positive.")
-
-        nl = 10
-        lambdas = np.linspace(0.0,1.0,nl)
-        total_energies = []
+        # For the moment, we simply fit the parabola through 3 points
+        npt = 3
+        lambdas = np.linspace(0, 1, npt)
+        energies = np.zeros(npt)
 
         # self-consistent variant
-        for l in lambdas:
+        for i in range(npt):
+            l = lambdas[i]
             Hl = (1-l) * H0 + l * H1
             enl, wfsl = spla.eig_banded(Hl, lower=True)
+            energies[i] = self.total_energy(wfsl)
+        
+        # improve numerical stability
+        energies -= energies[0]
 
-            #import matplotlib.pyplot as plt
-            #fig, axs = plt.subplots(1,1)
-            #plt.plot(np.sum(wfsl[:,:self.nstates]**2,axis=1))
-            #plt.show()
-            
-            El = self.total_energy(wfsl)
-            total_energies.append(El)
+        p = np.polyfit(lambdas, energies,2)
+        a,b,c = p
+        l = -b / (2*a)
 
-        #te=np.array(total_energies)
-        ##print(te-te[0])
+        # don't want step to get too large
+        l = np.minimum(1,l)
+        
         #import matplotlib.pyplot as plt
         #fig, axs = plt.subplots(1,1)
-        #plt.plot(lambdas, te)
+        #plt.plot(lambdas, energies)
         ##axs.set_ylim(np.min(total_energies), np.max(total_energies))
         #plt.show()
-
-        imin = np.argmin(total_energies)
-
-        # simple search for minimium (to be improved)
-        if imin == 0:
-            l= 1.0/nl
-            while True:
-                Hl = (1-l) * H0 + l * H1
-                enl, wfsl = spla.eig_banded(Hl, lower=True)
-                El = self.total_energy(wfsl)
-                if El < E_0:
-                    break
-                else:
-                    l /= 2.0
-
-        else:
-            l = lambdas[imin]
 
         Hl = (1-l) * H0 + l * H1
 

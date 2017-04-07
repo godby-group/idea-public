@@ -106,7 +106,7 @@ def banded_to_full(H):
     return H_full
 
 
-def hamiltonian(pm, v_KS=None, wfs=None, H=None):
+def hamiltonian(pm, v_KS=None, wfs=None):
     r"""Compute LDA Hamiltonian
 
     Computes LDA Hamiltonian from a given Kohn-Sham potential.
@@ -136,19 +136,16 @@ def hamiltonian(pm, v_KS=None, wfs=None, H=None):
     # banded version
     sd = pm.space.second_derivative_5point_reduced
     nbnd = len(sd)
-    if H is None:
-        H = np.zeros((5, pm.sys.grid), dtype=np.float)
-        for i in range(nbnd):
-            H[i,:] = -0.5 * sd[i]
-    else:
-        # just need to recompute diagonal
-        H[0,:] = -0.5 * sd[0]
+    H_new = np.zeros((nbnd, pm.sys.grid), dtype=np.float)
+
+    for i in range(nbnd):
+        H_new[i,:] = -0.5 * sd[i]
 
     if not(wfs is None):
         v_KS = ks_potential(pm, electron_density(pm, wfs))
-    H[0,:] += v_KS
+    H_new[0,:] += v_KS
 
-    return H
+    return H_new
     
 
 def hartree_potential(pm, density):
@@ -490,7 +487,7 @@ def main(parameters):
    en_tot = total_energy_eigv(pm,energies, n=n_inp)
 
    # need n_inp and n_out to start mixing
-   H = hamiltonian(pm, ks_potential(pm, n_inp), H=H)
+   H = hamiltonian(pm, ks_potential(pm, n_inp))
    n_out,waves_out,energies_out = groundstate(pm, H)
 
 
@@ -522,7 +519,7 @@ def main(parameters):
           # start with n_inp, H[n_inp]
 
           n_tmp,waves_tmp,energies_tmp = groundstate(pm,H_mix)
-          H_tmp = hamiltonian(pm, ks_potential(pm, n_tmp), H=H_mix)
+          H_tmp = hamiltonian(pm, ks_potential(pm, n_tmp))
 
           H_mix = minimizer.h_step(H_mix, H_tmp)
           n_inp,waves_inp,energies_inp = groundstate(pm,H_mix)
@@ -554,7 +551,7 @@ def main(parameters):
 
       # compute new ks-potential, update hamiltonian
       v_ks = ks_potential(pm, n_inp)
-      H = hamiltonian(pm, v_ks, H=H)
+      H = hamiltonian(pm, v_ks)
 
       # compute new n_out
       # Note: in minimisation schemes (cg, hmix), n_out is only needed for
