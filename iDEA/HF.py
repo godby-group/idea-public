@@ -70,12 +70,17 @@ def fock(pm, eigf, U):
    returns array_like
    """
    F = np.zeros((pm.sys.grid,pm.sys.grid), dtype='complex')
-   for k in range(pm.sys.NE):
-      for j in range(pm.sys.grid):
-         for i in range(pm.sys.grid):
-            F[i,j] += -(np.conjugate(eigf[k,i])*U[i,j]*eigf[k,j])
-   return F
+   #for k in range(pm.sys.NE):
+   #   for j in range(pm.sys.grid):
+   #      for i in range(pm.sys.grid):
+   #         F[i,j] += -(np.conjugate(eigf[k,i])*U[i,j]*eigf[k,j])
 
+   for i in range(pm.sys.NE):
+       orb = eigf[i]
+       F -= np.tensordot(orb.conj(), orb, axes=0)
+   F = F * U
+
+   return F
 
 def groundstate(pm, v_ext, v_H, F):	 	
    r"""Calculates the oribitals and ground state density for the system for a given Fock operator
@@ -98,7 +103,9 @@ def groundstate(pm, v_ext, v_H, F):
    """		
    
    # construct K and V
-   K = -0.5*sps.diags([1, -2, 1],[-1, 0, 1], shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).todense()/(pm.sys.deltax**2)     			
+   sd = pm.space.second_derivative
+   sd_ind = pm.space.second_derivative_indices
+   K = -0.5*sps.diags(sd, sd_ind, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).todense()
    V_ext = sps.diags(v_ext, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).todense()
    V_H = sps.diags(v_H, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).todense()
    
@@ -166,6 +173,8 @@ def main(parameters):
       Results object
    """
    pm = parameters
+   if not hasattr(pm, 'space'):
+      pm.setup_space()
    
    # Construct external potential and initial orbitals
    V_H = np.zeros(pm.sys.grid)
