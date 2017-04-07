@@ -389,15 +389,16 @@ def total_energy_eigf(pm, eigf, n=None, V_H=None):
 def kinetic_energy(pm, eigf):
     r"""Compute kinetic energy of orbitals
 
-    Note: With our (perhaps slightly strange definition) of H, we have
-    <psi|H|psi> = psi^T H psi *dx
+    With our (perhaps slightly strange definition) of H, we have
+      <psi|T|psi> = psi^T T psi dx
 
-    TODO: This would be much cheaper in reciprocal space
+    Note: This would be much cheaper in reciprocal space
 
     parameters
     ----------
     eigf: array_like
       (grid, nwf) eigen functions
+
     """
     sd = pm.space.second_derivative
     sd_ind = pm.space.second_derivative_indices
