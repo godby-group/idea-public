@@ -124,7 +124,7 @@ def hamiltonian(pm, v_KS=None, wfs=None):
          Hamiltonian matrix (in banded form)
     """
     # sparse version
-    #sd = pm.space.second_derivative_5point
+    #sd = pm.space.second_derivative
     #T = -0.5 * sps.diags(sd,[-2,-1,0,1,2], shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr') / pm.sys.deltax**2
     ##T = -0.5 * sps.diags(sd,[-1,0,1], shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr') / pm.sys.deltax**2
     #if wfs is None:
@@ -134,7 +134,7 @@ def hamiltonian(pm, v_KS=None, wfs=None):
     #return (T+V).toarray()
 
     # banded version
-    sd = pm.space.second_derivative_5point_reduced
+    sd = pm.space.second_derivative_band
     nbnd = len(sd)
     H_new = np.zeros((nbnd, pm.sys.grid), dtype=np.float)
 
@@ -399,8 +399,9 @@ def kinetic_energy(pm, eigf):
     eigf: array_like
       (grid, nwf) eigen functions
     """
-    sd = pm.space.second_derivative_5point
-    T = -0.5 * sps.diags(sd, [-2,-1,0,1,2], shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr')
+    sd = pm.space.second_derivative
+    sd_ind = pm.space.second_derivative_indices
+    T = -0.5 * sps.diags(sd, sd_ind, shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr')
     #T = -0.5 * sps.diags(sd, [-1,0,1], shape=(pm.sys.grid, pm.sys.grid), dtype=np.float, format='csr') / pm.sys.deltax**2
 
     occ = eigf[:,:pm.sys.NE]
@@ -478,6 +479,8 @@ def main(parameters):
       Results object
    """
    pm = parameters
+   if not hasattr(pm, 'space'):
+       pm.setup_space()
    
    v_ext = pm.space.v_ext
 

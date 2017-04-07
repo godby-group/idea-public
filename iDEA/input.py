@@ -32,11 +32,17 @@ class SpaceGrid():
           for k in xrange(pm.sys.grid):
              self.v_int[i,k] = 1.0/(abs(self.grid[i]-self.grid[k])+pm.sys.acon)
 
-       self.second_derivative_3point = np.array([1,-2,1], dtype=np.float) / pm.sys.deltax**2
-       self.second_derivative_3point_reduced = np.array([-2,1], dtype=np.float) / pm.sys.deltax**2
-
-       self.second_derivative_5point = 1.0/16 * np.array([-1,16,-30,16,-1], dtype=np.float) / pm.sys.deltax**2
-       self.second_derivative_5point_reduced = 1.0/16 * np.array([-30,16,-1], dtype=np.float) / pm.sys.deltax**2
+       stencil = pm.sys.stencil
+       if stencil == 3:
+           self.second_derivative = np.array([1,-2,1], dtype=np.float) / self.delta**2
+           self.second_derivative_indices = [-1,0,1]
+           self.second_derivative_band = np.array([-2,1], dtype=np.float) / self.delta**2
+       elif stencil == 5:
+           self.second_derivative = 1.0/16 * np.array([-1,16,-30,16,-1], dtype=np.float) / self.delta**2
+           self.second_derivative_indices = [-2,-1,0,1,2]
+           self.second_derivative_band = 1.0/16 * np.array([-30,16,-1], dtype=np.float) / self.delta**2
+       else:
+           raise ValueError("sys.stencil = {} not implemented. Please select 3 or 5.".format(stencil))
 
 
 
@@ -129,6 +135,7 @@ class Input(object):
         sys = self.sys
         sys.NE = 2                           #: Number of electrons
         sys.grid = 201                       #: Number of grid points (must be odd)
+        sys.stencil = 3                      #: discretisation of 2nd derivative (3 or 5). 
         sys.xmax = 10.0                      #: Size of the system
         sys.tmax = 1.0                       #: Total real time
         sys.imax = 1000                      #: Number of real time iterations
@@ -422,23 +429,23 @@ class Input(object):
             #pm.sprint(s,1)
         
 
-    def setup(self):
+    def setup_space(self):
         """Prepares for performing calculations
         
-        Creates necessary output folders, 
         precomputes quantities on grids, etc.
         """
-        self.make_dirs()
-
 	self.space = SpaceGrid(self)
-        self.results = rs.Results()
 
 
     def execute(self):
         """Run this job"""
         pm = self
+
         pm.check()
-        pm.setup()
+        pm.setup_space()
+
+        self.make_dirs()
+        self.results = rs.Results()
 
         # Draw splash to screen
         import splash

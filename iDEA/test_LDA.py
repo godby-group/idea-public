@@ -38,8 +38,8 @@ class LDATestHarmonic(unittest.TestCase):
         sys.v_ext = v_ext
 
         pm.lda.save_eig = True
+        pm.setup_space()
         
-        pm.setup()
         self.pm = pm
 
     def test_total_energy_1(self):
@@ -100,8 +100,9 @@ class LDATestHarmonic(unittest.TestCase):
         H = LDA.banded_to_full(LDA.hamiltonian(pm, v_ext))
 
         grid = pm.sys.grid
-        sd = pm.space.second_derivative_5point
-        T = -0.5 * sps.diags(sd,[-2,-1,0,1,2],shape=(grid,grid), dtype=np.float, format='csr')
+        sd = pm.space.second_derivative
+        sd_ind = pm.space.second_derivative_indices
+        T = -0.5 * sps.diags(sd,sd_ind,shape=(grid,grid), dtype=np.float, format='csr')
         V = sps.diags(v_ext, 0, shape=(grid,grid), dtype=np.float, format='csr')
 
         H2 = (T+V).toarray()

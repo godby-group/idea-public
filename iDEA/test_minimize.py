@@ -100,7 +100,7 @@ class TestCG(unittest.TestCase):
         pm = self.pm
         pm.sys.grid = 10  
         sqdx = np.sqrt(pm.sys.deltax)
-        pm.setup()
+        pm.setup_space()
 
         ndim = pm.sys.grid * pm.sys.NE
 
@@ -111,7 +111,7 @@ class TestCG(unittest.TestCase):
         minimizer = minimize.CGMinimizer(pm, 
                 total_energy=E_scaled, 
                 cg_restart=ndim+1,
-                line_fit='linear')
+                line_fit='quadratic-der')
 
         # start with random guess
         np.random.seed(1)
@@ -188,7 +188,6 @@ class TestCGLDA(unittest.TestCase):
         pm.lda.save_eig = True
         pm.lda.scf_type = 'cg'
 
-        pm.setup()
         self.pm = pm
 
     def test_energy_derivative(self):

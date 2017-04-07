@@ -230,21 +230,9 @@ class CGMinimizer:
             s_opt = np.minimum(1.5,s_opt) 
             wfs_new = wfs * np.cos(s_opt) + dirs * np.sin(s_opt)
 
+        else:
+            raise ValueError("CG: Unrecognised line-search mode '{}'".format(mode))
 
-        showstuff=False
-        if  showstuff:
-            # simply scan along the direction from 0 to 1
-            # and take lowest value
-            npt = 10
-            lambdas = np.linspace(0,1,npt)
-            total_energies = [self.total_energy(orthonormalize(wfs+lambdas[i]*dirs)) for i in range(npt)]
-
-            #wfs_new = wfs + lambdas[imin] * dirs
-
-            import matplotlib.pyplot as plt
-            plt.plot(lambdas,total_energies)
-            plt.plot(s_opt,total_energies[0],'ro')
-            plt.show()
 
         wfs_new = orthonormalize(wfs_new)
 
