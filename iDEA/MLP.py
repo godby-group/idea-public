@@ -87,7 +87,7 @@ def Elf(den,KS,posDef=False):
    # Gradient of the density
    gradDen = np.gradient(den,pm.sys.deltax)
    # Unscaled measure
-   c = np.arange(den.shape[0])
+   c = np.arange(den.shape[0], dtype=np.float)
    for i in range(pm.sys.NE):
       c += np.abs(grad[i,:])**2
    c -= 0.25*((np.abs(gradDen)**2)/den)
@@ -209,15 +209,20 @@ def ExtrapolateCD(J,j,n,upper_bound):
 def main(parameters):
    global T, pm
    pm = parameters
+   if not hasattr(pm, 'space'):
+      pm.setup_space()
 
-   T = np.zeros((2,pm.sys.grid),dtype='float') # Kinetic Energy operator
-   T[0,:] = np.ones(pm.sys.grid)/pm.sys.deltax**2 # Define kinetic energy operator							
-   T[1,:] = -0.5*np.ones(pm.sys.grid)/pm.sys.deltax**2 
+   # Initalise matrices
+   sd = pm.space.second_derivative_band
+   nbnd = len(sd)
+   T = np.zeros((nbnd,pm.sys.grid),dtype=np.float)
+   for i in range(nbnd):
+       T[i,:] = -0.5 * sd[i]
 
+   v_s = copy.copy(pm.space.v_ext)
+   v_ext = copy.copy(pm.space.v_ext)
+   v_ref = copy.copy(pm.space.v_ext)
 
-   v_s = np.zeros(pm.sys.grid,dtype='float')
-   v_ext = np.zeros(pm.sys.grid,dtype='float')
-   v_ref = np.zeros(pm.sys.grid,dtype='float')
    Psi = np.zeros((pm.sys.NE,pm.sys.imax,pm.sys.grid), dtype='complex')
    for i in xrange(pm.sys.grid):
       v_s[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # External potential

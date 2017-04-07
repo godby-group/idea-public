@@ -357,6 +357,8 @@ def main(parameters,approx):
    global pm
 
    pm = parameters
+   if not hasattr(pm, 'space'):
+      pm.setup_space()
 
    # Constants used in the code
    sqdx = math.sqrt(pm.sys.deltax)		
@@ -365,9 +367,12 @@ def main(parameters,approx):
    if pm.run.time_dependence == False:
       imax = 1
    # Initialise matrices
-   T = np.zeros((2,pm.sys.grid),dtype='complex')
-   T[0,:] = np.ones(pm.sys.grid,dtype='complex')/pm.sys.deltax**2		
-   T[1,:] = -0.5*np.ones(pm.sys.grid,dtype='float')/pm.sys.deltax**2
+   sd = pm.space.second_derivative_band
+   nbnd = len(sd)
+   T = np.zeros((nbnd,pm.sys.grid),dtype='complex')
+   for i in range(nbnd):
+      T[i,:] = -0.5 * sd[i]
+
    J_MB = np.zeros((imax,pm.sys.grid),dtype='float')
    cost_n = np.zeros(imax,dtype='float')	
    cost_J = np.zeros(imax,dtype='float')
