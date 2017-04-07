@@ -198,6 +198,7 @@ def main(parameters):
 
         pm.sprint('MBPT: transforming S to imaginary frequency',0)
         S = fft_t(S, st, dir='it2if')
+        save(S, "S{}_iw".format(cycle))
 
         pm.sprint('MBPT: updating S(iw)',0)
         # real for real orbitals...
@@ -210,7 +211,7 @@ def main(parameters):
             delta += H.vx
         for i in range(st.tau_npt):
             S[:,:,i] += delta
-        save(S, "S{}_iw".format(cycle))
+        save(S, "D{}_iw".format(cycle))
 
 
         pm.sprint('MBPT: computing expectation values <i|sigma(w)|j>',0)

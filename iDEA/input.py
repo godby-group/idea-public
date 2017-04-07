@@ -148,6 +148,7 @@ class Input(object):
             """
             return 0.5*(0.25**2)*(x**2)
         sys.v_ext = v_ext
+        #sys.v_ext = lambda x: 0.5*(0.25**2)*(x**2)
         
         def v_pert(x): 
             """Time-dependent perturbation potential
@@ -159,6 +160,7 @@ class Input(object):
                 return y + v_pert_im(x)
             return y
         sys.v_pert = v_pert
+        #sys.v_pert = lambda x: 0.5*(0.25**2)*(x**2)
         
         def v_pert_im(x):                                        
             """Imaginary perturbation potential
@@ -336,7 +338,6 @@ class Input(object):
                 sys.stdout.write('\r' + string)
                 sys.stdout.flush()
 
-
     @classmethod
     def from_python_file(cls,filename):
         """Create Input from Python script."""
@@ -357,19 +358,22 @@ class Input(object):
         pm = importlib.import_module(module)
 
         # Replace default member variables with those from parameters file.
-        # We need to step into InputSection objects, as those may have varying
-        # numbers of parameters defined.
         # The following recursive approach is adapted from 
 	# See http://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
-	def update(d, u):
+	def update(d, u, l=1):
 	    for k, v in u.iteritems():
+                # We need to step into InputSection objects, as those may have varying
+                # numbers of parameters defined.
 		if isinstance(v, InputSection):
-		    r = update(d.get(k, {}).__dict__, v.__dict__)
+		    r = update(d.get(k, {}).__dict__, v.__dict__, l+1)
 		    d[k].__dict__ = r
 		    #d[k] = r
-		else:
+                # We only want to copy contents of the input sections
+                # No need to copy any of the builtin attributes added
+                elif l > 1:
 		    d[k] = u[k]
 	    return d 
+
 	self.__dict__ = update(self.__dict__, pm.__dict__)
 
         self.filename = filename
@@ -444,7 +448,8 @@ class Input(object):
         pm.check()
         pm.setup_space()
 
-        self.make_dirs()
+        if pm.run.save:
+            pm.make_dirs()
         self.results = rs.Results()
 
         # Draw splash to screen
@@ -537,13 +542,20 @@ class Input(object):
               results.add(LAN.main(pm), name='lan')
 
         # All jobs done
-        # store log in file
-        f = open(pm.output_dir + '/iDEA.log', 'w')
-        f.write(pm.log)
-        f.close()
+        if pm.run.save:
+            # store log in file
+            f = open(pm.output_dir + '/iDEA.log', 'w')
+            f.write(pm.log)
+            f.close()
+
+            # store pickled version of parameters object
+            import pickle
+            f = open(pm.output_dir + '/parameters.p', 'wr')
+	    pickle.dump(self, f)
+            f.close()
 
         results.log = pm.log
-        pm.log = ''
+        pm.log = ''  # avoid appending, when pm is run again
 
         string = 'all jobs done \n'
         pm.sprint(string,1)
