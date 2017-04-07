@@ -163,8 +163,9 @@ class CGMinimizer:
             E_1 = self.total_energy(wfs_1)
 
             eval_max = 10
+            epsilon = 10 *  machine_epsilon * np.abs(E_0)
             for i in range(eval_max):
-                if E_1 < E_0:
+                if E_1 < E_0 + epsilon:
                     break
                 else:
                     s_1 /= 2.0
@@ -176,19 +177,27 @@ class CGMinimizer:
                 i += 1
 
             # if energy landscape is just noise,
-            # fall back to linear algorithm
-            epsilon = machine_epsilon * np.abs(E_0)
-            if np.abs(E_0 - E_1) < 100*epsilon: # and np.abs(dE_ds_0) < epsilon:
+            # rely on gradient information only
+            if np.abs(E_0 - E_1) < epsilon: # and np.abs(dE_ds_0) < epsilon:
                 # this is non-selfconsistent for the moment
-                # (would need to recompute H otherwise)
-                H_dirs = np.dot(H, dirs)
-                a = (wfs.conj() * H_dirs).sum()
-                b = (dirs.conj() * H_dirs).sum()
-                s_opt = -a/b
+                # (would need to recompute H from wfs_1 otherwise)
+                dE_ds_1 = 2 * np.sum(self.braket(dirs[:,:self.NE], H, wfs_1[:,:self.NE]).real)
+                if dE_ds_1 < 0:
+                        s = "CG: Warning: Energy derivative along conjugate gradient direction"
+                        s += "\n at E1 is negative: dE/dlambda = {:.3e}".format(dE_ds_1)
+                        self.pm.sprint(s)
+                s_opt = - dE_ds_0/(dE_ds_1 - dE_ds_0) * s_1 
+                #dE_ds_1 = 
+                #H_dirs = np.dot(H, dirs)
+                #a = (wfs.conj() * H_dirs).sum()
+                #b = (dirs.conj() * H_dirs).sum()
+                #s_opt = -a/b
                 #dE_ds_1 = 2 * np.sum(self.braket(dirs[:,:self.NE], H, wfs_1[:,:self.NE]).real)
 
+                print(s_1)
                 print(s_opt)
 
+            # else use energy E_1
             else:
                 # eqn (5.30)
                 s_opt = s_min(E_1, s_1)
