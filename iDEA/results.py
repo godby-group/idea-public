@@ -168,19 +168,33 @@ class Results(object):
 
         openfile = False
         if f is None:
-            f = h5py.File(outname, "w")
+            f = h5py.File(outname, "a")
             openfile = True
 
         for key,val in self.__dict__.iteritems():
             if list is None or key in list:
                 if isinstance(val, Results):
-                    grp = f.create_group(key)
+                    try:
+                        grp = f.create_group(key)
+                    except ValueError:
+                        grp = f[key]
                     val.save_hdf5(pm, dir, f=grp)
-                #elif: isinstance(val, np.ndarray):
+                #elif isinstance(val, np.ndarray):
                 #    f.create_dataset(key, data=val)
                 else:
-                    pm.sprint("Saving {} to {}".format(key,outname),0)
-                    f.create_dataset(key, data=val)
-                    #np.savetxt(outname, val)
+                    if isinstance(val, np.ndarray):
+                        compression = 'lzf'
+                    else:
+                        compression = None
+
+                    if key not in f.keys():
+                        pm.sprint("Saving {} to {}".format(key,outname),0)
+                        f.create_dataset(key, data=val, compression=compression)
+                    else:
+                        # Note: deleting data in hdf5 is not guaranteed to
+                        # free the corresponding disk space
+                        pm.sprint("Overwriting {} in {}. This can waste disk space.".format(key,outname),0)
+                        del f[key]
+                        f.create_dataset(key, data=val, compression=compression)
         if openfile:
             f.close()
