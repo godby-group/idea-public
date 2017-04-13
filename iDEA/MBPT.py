@@ -122,11 +122,11 @@ def main(parameters):
     results.add(h0.orbitals, name="gs_mbpt_eigf0")
     results.add(h0.e_fermi, name="gs_mbpt_efermi0")
 
+    # Note: This needs to be defined *within* main in order to avoid having
+    # to pass a long list of arguments
     def save(O, shortname, force_dg=False):
         """Auxiliary function for saving 3d objects
         
-        Note: This needs to be defined *within* main in order to avoid having
-        to pass a long list of arguments
         """
         if (shortname in pm.mbpt.save_diag) or force_dg:
             name = "gs_mbpt_{}_dg".format(shortname)

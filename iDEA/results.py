@@ -137,3 +137,64 @@ class Results(object):
                     pickle.dump(val,f)
                     f.close()
                     #np.savetxt(outname, val)
+
+
+    def save_hdf5(self, pm, dir=None, list=None, f=None):
+        """Save results to HDF5 database.
+        
+        This requires the h5py python package.
+
+        parameters
+        ----------
+        pm : object
+            iDEA.input.Input object
+        dir : string
+            directory where to save results
+            default: pm.output_dir + '/raw'
+        verbosity : string
+            additional info will be printed for verbosity 'high'
+        list : array_like
+            if set, only the listed results will be saved
+        f : HDF5 handle
+            handle of HDF5 file (or group) to write to
+        """
+        try:
+            import h5py
+        except ImportError:
+            raise ImportError("Need hd5py package for saving results in HDF5 format.")
+        if dir is None:
+            dir = pm.output_dir + '/raw'
+        outname = "{}/store.hdf5".format(dir)
+
+        openfile = False
+        if f is None:
+            f = h5py.File(outname, "a")
+            openfile = True
+
+        for key,val in self.__dict__.iteritems():
+            if list is None or key in list:
+                if isinstance(val, Results):
+                    try:
+                        grp = f.create_group(key)
+                    except ValueError:
+                        grp = f[key]
+                    val.save_hdf5(pm, dir, f=grp)
+                #elif isinstance(val, np.ndarray):
+                #    f.create_dataset(key, data=val)
+                else:
+                    if isinstance(val, np.ndarray):
+                        compression = 'lzf'
+                    else:
+                        compression = None
+
+                    if key not in f.keys():
+                        pm.sprint("Saving {} to {}".format(key,outname),0)
+                        f.create_dataset(key, data=val, compression=compression)
+                    else:
+                        # Note: deleting data in hdf5 is not guaranteed to
+                        # free the corresponding disk space
+                        pm.sprint("Overwriting {} in {}. This can waste disk space.".format(key,outname),0)
+                        del f[key]
+                        f.create_dataset(key, data=val, compression=compression)
+        if openfile:
+            f.close()

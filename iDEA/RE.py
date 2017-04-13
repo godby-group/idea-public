@@ -357,6 +357,8 @@ def main(parameters,approx):
    global pm
 
    pm = parameters
+   if not hasattr(pm, 'space'):
+      pm.setup_space()
 
    # Constants used in the code
    sqdx = math.sqrt(pm.sys.deltax)		
@@ -365,9 +367,12 @@ def main(parameters,approx):
    if pm.run.time_dependence == False:
       imax = 1
    # Initialise matrices
-   T = np.zeros((2,pm.sys.grid),dtype='complex')
-   T[0,:] = np.ones(pm.sys.grid,dtype='complex')/pm.sys.deltax**2		
-   T[1,:] = -0.5*np.ones(pm.sys.grid,dtype='float')/pm.sys.deltax**2
+   sd = pm.space.second_derivative_band
+   nbnd = len(sd)
+   T = np.zeros((nbnd,pm.sys.grid),dtype='complex')
+   for i in range(nbnd):
+      T[i,:] = -0.5 * sd[i]
+
    J_MB = np.zeros((imax,pm.sys.grid),dtype='float')
    cost_n = np.zeros(imax,dtype='float')	
    cost_J = np.zeros(imax,dtype='float')
@@ -400,13 +405,17 @@ def main(parameters,approx):
    V_xc[0,:] = V_Hxc[0,:]-V_h[0,:] # Calculate the exchange-correlation potential
 
    #Correct V_xc and V_ks etc.
+   #For some reason eigenvalues, eigv, and sum of eigenvalues, E_KS, are returned separately
+   #GroundState() could just return the array of eigenvalues
+   #This hasn't been changed yet to avoid breaking anything before RE.py is tidied up
    correct, correct_error = correction(np.real(V_xc[0,:]), 0.05, 0.15)
    print 'Approximate error in correction to asymptotic form of V_xc = ', correct_error
 
    V_KS[0,:] - V_KS[0,:]
    V_Hxc[0,:] = V_KS[0,:]-V_ext[:] # Calculate the Hartree exhange-correlation potential
    V_xc[0,:] = V_Hxc[0,:]-V_h[0,:] - correct # Calculate the exchange-correlation potential
-   E_KS = E_KS - pm.sys.NE*correct
+   E_KS = E_KS - pm.sys.NE*correct # Correct sum of eigenvalues
+   eigv[:] = eigv[:] - correct # Correct the actual eigenvalues
    E_xc = xcenergy(approx,n_KS,V_h,V_xc,E_KS) # Calculate the exchange-correlation energy
 
    # Store results

@@ -4,11 +4,59 @@ from __future__ import print_function
 import numpy as np
 import importlib
 import os
-import pprint
 import sys
-import collections
+import copy
 
 import results as rs
+
+
+class SpaceGrid():
+   """Stores basic real space arrays 
+
+   These arrays should be helpful in many types of iDEA calculations.
+   Storing them in the Input object avoids having to recompute them
+   and reduces code duplication.
+   """
+
+   def __init__(self, pm):
+       self.npt = pm.sys.grid
+       self.delta = pm.sys.deltax
+       self.grid = np.linspace(-pm.sys.xmax, pm.sys.xmax, pm.sys.grid)
+
+       self.v_ext = np.zeros(self.npt, dtype=np.float)
+       for i in range(self.npt):
+           self.v_ext[i] = pm.sys.v_ext(self.grid[i])
+
+       self.v_int = np.zeros((pm.sys.grid,pm.sys.grid),dtype='float')
+       for i in xrange(pm.sys.grid):
+          for k in xrange(pm.sys.grid):
+             self.v_int[i,k] = 1.0/(abs(self.grid[i]-self.grid[k])+pm.sys.acon)
+
+       stencil = pm.sys.stencil
+       if stencil == 3:
+           self.second_derivative = np.array([1,-2,1], dtype=np.float) / self.delta**2
+           self.second_derivative_indices = [-1,0,1]
+           self.second_derivative_band = np.array([-2,1], dtype=np.float) / self.delta**2
+       elif stencil == 5:
+           self.second_derivative = 1.0/12 * np.array([-1,16,-30,16,-1], dtype=np.float) / self.delta**2
+           self.second_derivative_indices = [-2,-1,0,1,2]
+           self.second_derivative_band = 1.0/12 * np.array([-30,16,-1], dtype=np.float) / self.delta**2
+       elif stencil == 7:
+           self.second_derivative = 1.0/180 * np.array([2,-27,270,-490,270,-27,2], dtype=np.float) / self.delta**2
+           self.second_derivative_indices = [-3,-2,-1,0,1,2,3]
+           self.second_derivative_band = 1.0/180 * np.array([-490,270,-27,2], dtype=np.float) / self.delta**2
+       else:
+           raise ValueError("sys.stencil = {} not implemented. Please select 3, 5 or 7.".format(stencil))
+
+
+
+   def __str__(self):
+       """Print variables of section and their values"""
+       s = ""
+       v = vars(self)
+       for key,value in v.iteritems():
+           s += input_string(key, value)
+       return s
 
 def input_string(key,value):
     """Prints a line of the input file"""
@@ -91,7 +139,7 @@ class Input(object):
         sys = self.sys
         sys.NE = 2                           #: Number of electrons
         sys.grid = 201                       #: Number of grid points (must be odd)
-        sys.stencil = 3                      #: Stencil for Hamiltonian matrix (must be 3, 5 or 7)
+        sys.stencil = 3                      #: discretisation of 2nd derivative (3 or 5 or 7). 
         sys.xmax = 10.0                      #: Size of the system
         sys.tmax = 1.0                       #: Total real time
         sys.imax = 1000                      #: Number of real time iterations
@@ -104,6 +152,7 @@ class Input(object):
             """
             return 0.5*(0.25**2)*(x**2)
         sys.v_ext = v_ext
+        #sys.v_ext = lambda x: 0.5*(0.25**2)*(x**2)
         
         def v_pert(x): 
             """Time-dependent perturbation potential
@@ -115,6 +164,7 @@ class Input(object):
                 return y + v_pert_im(x)
             return y
         sys.v_pert = v_pert
+        #sys.v_pert = lambda x: 0.5*(0.25**2)*(x**2)
         
         def v_pert_im(x):                                        
             """Imaginary perturbation potential
@@ -163,8 +213,14 @@ class Input(object):
         self.lda = InputSection()
         lda = self.lda
         lda.NE = 2                           #: Number of electrons used in construction of the LDA
-        lda.mix = 0.0                        #: Self consistent mixing parameter (default 0, only use if doesn't converge)
-        lda.tol = 1e-12                      #: Self-consistent convergence tolerance
+        lda.scf_type = 'linear'              #: None, 'linear', 'pulay' or 'cg'
+        lda.pulay_order = 20                 #: history of steps for pulay
+        lda.pulay_preconditioner = None      #: None, 'kerker' or 'rpa'
+        lda.mix = 1.0                        #: linear mixing parameter
+        lda.kerker_length = 2.1              #: Kerker screening length
+        lda.tol = 1e-12                      #: density tolerance of self consistent cycle
+        lda.etol = 1e-14                     #: total energy tolerance of self consistent cycle
+        lda.max_iter = 1000                  #: Maximum number of iterations in LDA self-consistency
         lda.save_eig = False                 #: save eigenfunctions and eigenvalues of Hamiltonian
         lda.OPT = False                      #: Calculate the external potential for the LDA density 
         
@@ -242,6 +298,12 @@ class Input(object):
                 self.sprint('MBPT: Warning - using {} orbitals for {} electrons'\
                         .format(pm.mbpt.norb, pm.sys.NE))
 
+        if pm.lda.scf_type not in [None, 'pulay', 'linear', 'cg', 'mixh']:
+            raise ValueError("lda.scf_type must be None, 'linear', 'pulay' or 'cg'")
+
+        if pm.lda.pulay_preconditioner not in [None, 'kerker', 'rpa']:
+            raise ValueError("lda.pulay_preconditioner must be None, 'kerker' or 'rpa'")
+
 
     def __str__(self):
         """Prints different sections in input file"""
@@ -285,7 +347,6 @@ class Input(object):
                 sys.stdout.write('\r' + string)
                 sys.stdout.flush()
 
-
     @classmethod
     def from_python_file(cls,filename):
         """Create Input from Python script."""
@@ -306,19 +367,22 @@ class Input(object):
         pm = importlib.import_module(module)
 
         # Replace default member variables with those from parameters file.
-        # We need to step into InputSection objects, as those may have varying
-        # numbers of parameters defined.
         # The following recursive approach is adapted from 
 	# See http://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
-	def update(d, u):
+	def update(d, u, l=1):
 	    for k, v in u.iteritems():
+                # We need to step into InputSection objects, as those may have varying
+                # numbers of parameters defined.
 		if isinstance(v, InputSection):
-		    r = update(d.get(k, {}).__dict__, v.__dict__)
+		    r = update(d.get(k, {}).__dict__, v.__dict__, l+1)
 		    d[k].__dict__ = r
 		    #d[k] = r
-		else:
+                # We only want to copy contents of the input sections
+                # No need to copy any of the builtin attributes added
+                elif l > 1:
 		    d[k] = u[k]
 	    return d 
+
 	self.__dict__ = update(self.__dict__, pm.__dict__)
 
         self.filename = filename
@@ -378,20 +442,31 @@ class Input(object):
             #pm.sprint(s,1)
         
 
+    def setup_space(self):
+        """Prepares for performing calculations
+        
+        precomputes quantities on grids, etc.
+        """
+	self.space = SpaceGrid(self)
+
+
     def execute(self):
         """Run this job"""
         pm = self
+
         pm.check()
-        pm.make_dirs()
+        pm.setup_space()
+
+        if pm.run.save:
+            pm.make_dirs()
+        self.results = rs.Results()
 
         # Draw splash to screen
         import splash
         splash.draw(pm)
         pm.sprint('run name: ' + str(pm.run.name),1)
 
-        self.results = rs.Results()
-        results = self.results
-
+        results = pm.results
         # Execute required jobs
         if(pm.sys.NE == 1):
            if(pm.run.EXT == True):
@@ -476,13 +551,28 @@ class Input(object):
               results.add(LAN.main(pm), name='lan')
 
         # All jobs done
-        # store log in file
-        f = open(pm.output_dir + '/iDEA.log', 'w')
-        f.write(pm.log)
-        f.close()
+        if pm.run.save:
+            # store log in file
+            f = open(pm.output_dir + '/iDEA.log', 'w')
+            f.write(pm.log)
+            f.close()
+
+            # need to get rid of nested functions as they can't be pickled
+            tmp = copy.deepcopy(pm)
+            del tmp.sys.v_ext
+            del tmp.sys.v_pert
+            del tmp.sys.v_pert_im
+
+            # store pickled version of parameters object
+            import pickle
+            f = open(pm.output_dir + '/parameters.p', 'wr')
+	    pickle.dump(tmp, f)
+            f.close()
+
+            del tmp
 
         results.log = pm.log
-        pm.log = ''
+        pm.log = ''  # avoid appending, when pm is run again
 
         string = 'all jobs done \n'
         pm.sprint(string,1)

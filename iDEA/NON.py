@@ -37,7 +37,9 @@ def constructK():
 
    returns sparse_matrix
    """
-   K = -0.5*sps.diags([1, -2, 1],[-1, 0, 1], shape=(pm.sys.grid,pm.sys.grid), format='csr')/(pm.sys.deltax**2)
+   sd = pm.space.second_derivative
+   sd_ind = pm.space.second_derivative_indices
+   K = -0.5*sps.diags(sd, sd_ind, shape=(pm.sys.grid,pm.sys.grid), format='csr')
    return K
 
 
@@ -185,6 +187,8 @@ def main(parameters):
    """
    global pm
    pm = parameters
+   if not hasattr(pm, 'space'):
+       pm.setup_space()
 
    # Construct the kinetic energy
    K = constructK()

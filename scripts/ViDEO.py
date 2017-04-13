@@ -8,9 +8,19 @@ import os
 import sys
 import pickle
 
-# import parameters file from current working directory
-sys.path.insert(0,os.getcwd())
-import parameters as pm
+# user must provide either pickled or unpickled parameters file
+pickle_file = "parameters.p"
+python_file = "parameters.py"
+if os.path.isfile(pickle_file):
+    f = open(pickle_file,'r')
+    pm = pickle.load(f)
+    f.close()
+elif os.path.isfile(python_file):
+    sys.path.insert(0,os.getcwd())
+    import parameters as pm
+else:
+    raise IOError("Neither {} nor {} found.".format(pickle_file, python_file))
+
 
 if __name__ == '__main__':
 

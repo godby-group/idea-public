@@ -100,6 +100,8 @@ def main(parameters):
 
    global pm
    pm = parameters
+   if not hasattr(pm, 'space'):
+      pm.setup_space()
 
    # Constants used in the code
    sqdx=np.sqrt(pm.sys.deltax)								
@@ -111,9 +113,12 @@ def main(parameters):
    frac2=1.0/24.0
    
    # Initalise matrices
-   T = np.zeros((2,pm.sys.grid),dtype='complex')
-   T[0,:] = np.ones(pm.sys.grid,dtype='complex')/pm.sys.deltax**2									
-   T[1,:] = -0.5*np.ones(pm.sys.grid,dtype='float')/pm.sys.deltax**2									
+   sd = pm.space.second_derivative_band
+   nbnd = len(sd)
+   T = np.zeros((nbnd,pm.sys.grid),dtype='complex')
+   for i in range(nbnd):
+       T[i,:] = -0.5 * sd[i]
+
    J_LAN = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')		
    CNRHS = np.zeros(pm.sys.grid, dtype='complex')					
    CNLHS = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')					

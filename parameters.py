@@ -65,9 +65,9 @@ sys.v_pert_im = v_pert_im
 ### Exact parameters
 ext = InputSection()
 ext.par = 0                          #: Use parallelised solver and multiplication (0: serial, 1: parallel) Note: Recommend using parallel for large runs
-ext.itol = 1e-12                     #: Tolerance of imaginary time propagation (Recommended: 1e-14)
-ext.itol_solver = 1e-12              #: Tolerance of linear solver in imaginary time propagation (Recommended: 1e-13)
-ext.rtol_solver = 1e-12              #: Tolerance of linear solver in real time propagation (Recommended: 1e-13)
+ext.itol = 1e-12                     #: Tolerance of imaginary time propagation (Recommended: 1e-12)
+ext.itol_solver = 1e-12              #: Tolerance of linear solver in imaginary time propagation (Recommended: 1e-12)
+ext.rtol_solver = 1e-12              #: Tolerance of linear solver in real time propagation (Recommended: 1e-12)
 ext.itmax = 2000.0                   #: Total imaginary time
 ext.iimax = 1e5                      #: Imaginary time iterations
 ext.ideltat = ext.itmax/ext.iimax    #: Imaginary time step (DERIVED)
@@ -91,10 +91,14 @@ non.OPT = False                      #: Calculate the external potential for the
 
 ### LDA parameters
 lda = InputSection()
-lda.NE = 2                           #: Number of electrons used in construction of the LDA
-lda.mix = 0.0                        #: Self-consistent mixing parameter (default 0, only use if doesn't converge)
-lda.tol = 1e-12                      #: Self-consistent convergence tolerance
-lda.max_iter = 10000                 #: Maximum number of iterations in LDA self-consistency
+lda.scf_type = 'pulay'               #: how to perform scf (None, 'linear', 'pulay', 'cg')
+lda.mix = 0.2                        #: Mixing parameter for linear & Pulay mixing (float in [0,1])
+lda.pulay_order = 20                 #: length of history for Pulay mixing (max: lda.max_iter)
+lda.pulay_preconditioner = None      #: preconditioner for pulay mixing (None, 'kerker', rpa')
+lda.kerker_length = 0.5              #: length over which density fluctuations are screened (Kerker only)
+lda.tol = 1e-12                      #: convergence tolerance in the density
+lda.etol = 1e-12                     #: convergence tolerance in the energy
+lda.max_iter = 10000                 #: Maximum number of self-consistency iterations
 lda.save_eig = False                 #: save eigenfunctions and eigenvalues of Hamiltonian
 lda.OPT = False                      #: Calculate the external potential for the LDA density 
 
