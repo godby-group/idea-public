@@ -4,11 +4,11 @@ from __future__ import print_function
 import numpy as np
 import importlib
 import os
-import pprint
 import sys
-import collections
+import copy
 
 import results as rs
+
 
 class SpaceGrid():
    """Stores basic real space arrays 
@@ -548,11 +548,19 @@ class Input(object):
             f.write(pm.log)
             f.close()
 
+            # need to get rid of nested functions as they can't be pickled
+            tmp = copy.deepcopy(pm)
+            del tmp.sys.v_ext
+            del tmp.sys.v_pert
+            del tmp.sys.v_pert_im
+
             # store pickled version of parameters object
             import pickle
             f = open(pm.output_dir + '/parameters.p', 'wr')
-	    pickle.dump(self, f)
+	    pickle.dump(tmp, f)
             f.close()
+
+            del tmp
 
         results.log = pm.log
         pm.log = ''  # avoid appending, when pm is run again
