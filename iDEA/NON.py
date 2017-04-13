@@ -257,7 +257,7 @@ def main(parameters):
             b = C*wavefunction   
 
             # Solve Ax=b
-            wavefunction, info = spsla.cg(A,b,x0=wavefunction,tol=pm.non.rtol)
+            wavefunction, info = spsla.cg(A,b,x0=wavefunction,tol=pm.non.rtol_solver)
 
             # Calculate the density
             density = calculateDensity(wavefunction)

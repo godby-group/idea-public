@@ -23,17 +23,18 @@ run.LAN = False                      #: Run Landauer approximation
 sys = SystemSection()
 sys.NE = 2                           #: Number of electrons
 sys.grid = 201                       #: Number of grid points (must be odd)
+sys.stencil = 3                      #: Stencil for Hamiltonian matrix (must be 3, 5 or 7)
 sys.xmax = 10.0                      #: Size of the system
 sys.tmax = 1.0                       #: Total real time
 sys.imax = 1000                      #: Number of real time iterations
 sys.acon = 1.0                       #: Smoothing of the Coloumb interaction
-sys.interaction_strength = 1         #: Scales the strength of the Coulomb interaction
-sys.im = 0                           #: Use imaginary potentials
+sys.interaction_strength = 1.0       #: Scales the strength of the Coulomb interaction
+sys.im = 0                           #: Use imaginary potentials (0: no, 1: yes)
 
 def v_ext(x):
     """Initial external potential
     """
-    return 0.5*(0.25**2)*(x**2)   
+    return 0.5*(0.25**2)*(x**2)
 sys.v_ext = v_ext
 
 def v_pert(x): 
@@ -64,20 +65,25 @@ sys.v_pert_im = v_pert_im
 ### Exact parameters
 ext = InputSection()
 ext.par = 0                          #: Use parallelised solver and multiplication (0: serial, 1: parallel) Note: Recommend using parallel for large runs
-ext.ctol = 1e-12                     #: Tolerance of complex time evolution (Recommended: 1e-14)
-ext.rtol = 1e-12                     #: Tolerance of real time evolution (Recommended: 1e-14)
-ext.ctmax = 1000.0                   #: Total complex time
-ext.cimax = 1e5                      #: Complex iterations
-ext.cdeltat = ext.ctmax/ext.cimax    #: Complex time grid spacing (DERIVED)
+ext.itol = 1e-12                     #: Tolerance of imaginary time propagation (Recommended: 1e-14)
+ext.itol_solver = 1e-12              #: Tolerance of linear solver in imaginary time propagation (Recommended: 1e-13)
+ext.rtol_solver = 1e-12              #: Tolerance of linear solver in real time propagation (Recommended: 1e-13)
+ext.itmax = 2000.0                   #: Total imaginary time
+ext.iimax = 1e5                      #: Imaginary time iterations
+ext.ideltat = ext.itmax/ext.iimax    #: Imaginary time step (DERIVED)
 ext.RE = False                       #: Reverse engineer many-body density
 ext.OPT = False                      #: Calculate the external potential for the exact density
-ext.ELF_GS = False                   #: Calculate ELF for the ground-state of the system
-ext.ELF_TD = False                   #: Calculate ELF for the time-dependent part of the system
+ext.excited_states = 0               #: Number of excited states to calculate (0: just calculate the ground-state)
+ext.elf_gs = False                   #: Calculate ELF for the ground-state of the system
+ext.elf_es = False                   #: Calculate ELF for the excited-states of the system
+ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
+ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
+ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
 
 
 ### Non-interacting approximation parameters
 non = InputSection()
-non.rtol = 1e-14                     #: Tolerance of real time evolution (Recommended: 1e-14)
+non.rtol_solver = 1e-14              #: Tolerance of linear solver in real time propagation (Recommended: 1e-13)
 non.save_eig = True                  #: save eigenfunctions and eigenvalues of Hamiltonian
 non.RE = False                       #: Reverse-engineer non-interacting density
 non.OPT = False                      #: Calculate the external potential for the non-interacting density
@@ -138,5 +144,5 @@ re.save_eig = True                   #: save Kohn-Sham eigenfunctions and eigenv
 ### OPT parameters
 opt = InputSection()
 opt.tol = 1e-3                       #: Tolerance of the error in the density  
-opt.mu = 5.0                         #: 1st convergence parameter
+opt.mu = 1.0                         #: 1st convergence parameter
 opt.p = 0.05                         #: 2nd convergence parameter

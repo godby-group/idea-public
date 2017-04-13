@@ -6,8 +6,15 @@
 import numpy as np
 
 
-def calculate_density(pm,wavefunction_ND):
+def calculate_density(pm, wavefunction_ND):
     r"""Calculates the electron density from the many-body wavefunction.
+
+    .. math:: 
+   
+        2e: n(x) = 2 \int_{-x_{max}}^{x_{max}} |\Psi(x,x_{2})|^2 dx_{2} \\
+
+        3e: n(x) = 3 \int_{-x_{max}}^{x_{max}} \int_{-x_{max}}^{x_{max}} 
+               |\Psi(x,x_{2},x_{3})|^2 dx_{2} dx_{3}
 
     parameters
     ----------
@@ -33,7 +40,7 @@ def calculate_density(pm,wavefunction_ND):
     return density
 
 
-def calculate_pair_density(pm,wavefunction_ND):
+def calculate_pair_density(pm, wavefunction_ND):
     r"""Calculates the electron pair density from the many-body wavefunction.
 
     parameters
@@ -60,7 +67,7 @@ def calculate_pair_density(pm,wavefunction_ND):
     return pair_density
 
 
-def calculate_d_sigma(pm,density,pair_density):
+def calculate_d_sigma(pm, density, pair_density):
     r"""Calculates D_sigma from the electron density and the electron pair 
     density.
 
@@ -86,7 +93,7 @@ def calculate_d_sigma(pm,density,pair_density):
     return d_sigma
 
 
-def elf_dobson(pm,density,d_sigma):
+def elf_dobson(pm, density, d_sigma):
     r"""Calculate the ELF from the electron density and the electron pair 
     density.
 
@@ -108,7 +115,7 @@ def elf_dobson(pm,density,d_sigma):
     return elf
 
 
-def main(parameters,wavefunction_ND):
+def main(parameters, wavefunction_ND, density=None):
     r"""Calculates the ELF from the many-body wavefunction.
 
     parameters
@@ -118,16 +125,19 @@ def main(parameters,wavefunction_ND):
     wavefunction_ND : array_like
         ND array of the N-particle wavefunction, indexed as 
         wavefunction_ND[{space_index_i}] 
+    density : array_like
+        1D array of the electron density, indexed as density[space_index]
 
     returns array_like
         1D array of the exact ELF, indexed as elf[space_index]
     """
     pm = parameters
 
-    density = calculate_density(pm,wavefunction_ND)
-    pair_density = calculate_pair_density(pm,wavefunction_ND)
-    d_sigma = calculate_d_sigma(pm,density,pair_density)
-    elf = elf_dobson(pm,density,d_sigma)
+    if(density == None):
+        density = calculate_density(pm, wavefunction_ND)
+    pair_density = calculate_pair_density(pm, wavefunction_ND)
+    d_sigma = calculate_d_sigma(pm, density, pair_density)
+    elf = elf_dobson(pm, density, d_sigma)
 
     return elf
 

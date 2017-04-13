@@ -12,8 +12,8 @@ authors = [
     'Thomas Durrant',
     'Jacob Chapman', 
     'Jack Wetherell', 
-    'Matthew Smith', 
-    'Mike Entwistle',
+    'Mike Entwistle', 
+    'Matthew Smith',
     'Aaron Long',
     'Leopold Talirz'
 ]

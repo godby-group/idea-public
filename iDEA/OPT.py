@@ -57,7 +57,8 @@ def calculate_density_error(pm, density, target_density):
         The difference between the exact density and the target density, 
         density_error
     """
-    density_error = np.linalg.norm(density-target_density)*pm.sys.deltax
+    density_difference = abs(density-target_density)
+    density_error = np.trapz(density_difference, dx=pm.sys.deltax)
 
     return density_error
 
@@ -118,9 +119,9 @@ def main(parameters, approx, target_density_array=None,
         raise IOError("Must be either 2 or 3 electrons in the system.")
  
     # Array initialisations 
-    wavefunction = np.zeros(pm.sys.grid**pm.sys.NE, dtype=np.cfloat)
+    wavefunction = np.zeros(pm.sys.grid**pm.sys.NE, dtype=np.float)
     x_points = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
-    v_ext = pm.sys.v_ext(x_points)
+    v_ext = pm.sys.v_ext(x_points) 
     target_density = construct_target_density(pm, approx, x_points, 
                      target_density_array, target_density_function)
     x_points_tmp = np.linspace(0.0,2.0*pm.sys.xmax,pm.sys.grid)
@@ -130,12 +131,12 @@ def main(parameters, approx, target_density_array=None,
     reduction_matrix, expansion_matrix = EXT.construct_antisymmetry_matrices(pm) 
 
     # Generate the initial wavefunction
-    wavefunction_reduced = np.zeros(reduction_matrix.shape[0], dtype=np.cfloat)
+    wavefunction_reduced = np.zeros(reduction_matrix.shape[0], dtype=np.float)
     wavefunction_reduced = EXT.initial_wavefunction(pm, wavefunction_reduced)
 
     # Initial value of parameters 
-    density_error = pm.opt.tol + 10000.0
-    density_error_old = np.copy(density_error) + 10000.0
+    density_error = pm.opt.tol + 1.0
+    density_error_old = np.copy(density_error) + 1.0
     run = 1
 
     # Calculate the external potential
@@ -151,20 +152,23 @@ def main(parameters, approx, target_density_array=None,
                  '------'
         pm.sprint(string, 1, newline=True)
 
-        # Construct the reduced form of the sparse Matrix A
-        A_reduced = EXT.construct_A_reduced(pm, reduction_matrix,
+        # Construct the reduced form of the sparse matrices A and C 
+        A_reduced = EXT.construct_A_reduced(pm, reduction_matrix, 
                     expansion_matrix, v_ext, v_coulomb, 0)
+        C_reduced = -A_reduced + 2.0*reduction_matrix*sps.identity(
+                    pm.sys.grid**2, dtype=np.float)*expansion_matrix
 
         # Propagate through imaginary time
         energy, wavefunction = EXT.solve_imaginary_time(pm, A_reduced, 
-                               wavefunction_reduced, reduction_matrix, 
-                               expansion_matrix)
+                               C_reduced, wavefunction_reduced, 
+                               reduction_matrix, expansion_matrix)
       
         # Dispose of the reduced matrix
         del A_reduced
+        del C_reduced
 
         # Calculate the electron density
-        wavefunction_ND = EXT.wavefunction_converter(pm, wavefunction)
+        wavefunction_ND = EXT.wavefunction_converter(pm, wavefunction, 0)
         density = EXT.calculate_density(pm, wavefunction_ND)
 
         # Calculate the error in the density
@@ -182,13 +186,16 @@ def main(parameters, approx, target_density_array=None,
         # Correct the external potential 
         deltav_ext = calculate_deltav_ext(pm, density, target_density)
         v_ext += deltav_ext
-
+ 
+        # Set the initial wavefunction equal to the current wavefunction
+        wavefunction_reduced = reduction_matrix*wavefunction
+ 
         # Iterate
         density_error_old = density_error
         run = run + 1
 
     v_ext -= deltav_ext
-
+ 
     # Save external potential, density, target density and energy 
     approxopt = approx + 'opt'
     results = rs.Results()

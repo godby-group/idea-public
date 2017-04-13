@@ -91,6 +91,7 @@ class Input(object):
         sys = self.sys
         sys.NE = 2                           #: Number of electrons
         sys.grid = 201                       #: Number of grid points (must be odd)
+        sys.stencil = 3                      #: Stencil for Hamiltonian matrix (must be 3, 5 or 7)
         sys.xmax = 10.0                      #: Size of the system
         sys.tmax = 1.0                       #: Total real time
         sys.imax = 1000                      #: Number of real time iterations
@@ -133,21 +134,26 @@ class Input(object):
         self.ext = InputSection()
         ext = self.ext
         ext.par = 0                       #: Use parallelised solver and multiplication (0: serial, 1: parallel) Note: Recommend using parallel for large runs
-        ext.ctol = 1e-14                                  #: Tolerance of complex time evolution (Recommended: 1e-14)
-        ext.rtol = 1e-14                                  #: Tolerance of real time evolution (Recommended: 1e-14)
-        ext.ctmax = 5000.0                                #: Total complex time
-        ext.cimax = 1e5                                   #: Complex iterations
-        ext.cdeltat = ext.ctmax/ext.cimax                 #: Complex time grid spacing (DERIVED)
-        ext.RE = False                                    #: Reverse engineer many-body density
-        ext.OPT = False                                   #: Calculate the external potential for the exact density
-        ext.ELF_GS = False                                #: Calculate ELF for the ground-state of the system     
-        ext.ELF_TD = False                                #: Calculate ELF for the time-dependent part of the system
+        ext.itol = 1e-12                     #: Tolerance of imaginary time propagation (Recommended: 1e-14)
+        ext.itol_solver = 1e-12              #: Tolerance of linear solver in imaginary time propagation (Recommended: 1e-13)
+        ext.rtol_solver = 1e-12              #: Tolerance of linear solver in real time propagation (Recommended: 1e-13)
+        ext.itmax = 2000.0                   #: Total imaginary time
+        ext.iimax = 1e5                      #: Imaginary time iterations
+        ext.ideltat = ext.itmax/ext.iimax    #: Imaginary time step (DERIVED)
+        ext.RE = False                       #: Reverse engineer many-body density
+        ext.OPT = False                      #: Calculate the external potential for the exact density
+        ext.excited_states = 0               #: Number of excited states to calculate (0: just calculate the ground-state)
+        ext.elf_gs = False                   #: Calculate ELF for the ground-state of the system
+        ext.elf_es = False                   #: Calculate ELF for the excited-states of the system
+        ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
+        ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
+        ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
         
 
         ### Non-interacting approximation parameters
         self.non = InputSection()
         non = self.non
-        non.rtol = 1e-14                     #: Tolerance of real time evolution (Recommended: 1e-14)
+        non.rtol_solver = 1e-14              #: Tolerance of linear solver in real time propagation (Recommended: 1e-13)
         non.save_eig = False                 #: save eigenfunctions and eigenvalues of Hamiltonian
         non.RE = False                       #: Reverse engineer non-interacting density
         non.OPT = False                      #: Calculate the external potential for the non-interacting density
@@ -389,8 +395,8 @@ class Input(object):
         # Execute required jobs
         if(pm.sys.NE == 1):
            if(pm.run.EXT == True):
-              import SPiDEA
-              results.add(SPiDEA.main(pm), name='ext')
+              import EXT1
+              results.add(EXT1.main(pm), name='ext')
            if(pm.ext.RE == True):
               import RE
               results.add(RE.main(pm,'ext'), name='extre')

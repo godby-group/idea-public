@@ -31,7 +31,7 @@ class TestHarmonicOscillator(unittest.TestCase):
             return 0.5*(0.25**2)*(x**2)
         pm.sys.v_ext = v_ext
         
-        pm.ext.ctol = 1e-5
+        pm.ext.itol = 1e-5
 
         self.pm = pm
 
