@@ -139,7 +139,7 @@ class Input(object):
         sys = self.sys
         sys.NE = 2                           #: Number of electrons
         sys.grid = 201                       #: Number of grid points (must be odd)
-        sys.stencil = 3                      #: discretisation of 2nd derivative (3 or 5 or 7). 
+        sys.stencil = 3                      #: Discretisation of 2nd derivative (3 or 5 or 7). 
         sys.xmax = 10.0                      #: Size of the system
         sys.tmax = 1.0                       #: Total real time
         sys.imax = 1000                      #: Number of real time iterations
