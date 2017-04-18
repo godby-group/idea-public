@@ -5,6 +5,8 @@ three interacting electrons with a specified electron density.
 
 import numpy as np
 import results as rs
+import scipy as sp
+import scipy.sparse as sps
 
 
 def construct_target_density(pm, approx, x_points, target_density_array=None, 
