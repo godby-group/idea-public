@@ -144,7 +144,7 @@ class Input(object):
         sys.tmax = 1.0                       #: Total real time
         sys.imax = 1000                      #: Number of real time iterations
         sys.acon = 1.0                       #: Smoothing of the Coloumb interaction
-        sys.interaction_strength = 1         #: Scales the strength of the Coulomb interaction
+        sys.interaction_strength = 1.0       #: Scales the strength of the Coulomb interaction
         sys.im = 0                           #: Use imaginary potentials
         
         def v_ext(x):
@@ -183,10 +183,9 @@ class Input(object):
         ### Exact parameters
         self.ext = InputSection()
         ext = self.ext
-        ext.par = 0                       #: Use parallelised solver and multiplication (0: serial, 1: parallel) Note: Recommend using parallel for large runs
-        ext.itol = 1e-12                     #: Tolerance of imaginary time propagation (Recommended: 1e-14)
-        ext.itol_solver = 1e-12              #: Tolerance of linear solver in imaginary time propagation (Recommended: 1e-13)
-        ext.rtol_solver = 1e-12              #: Tolerance of linear solver in real time propagation (Recommended: 1e-13)
+        ext.itol = 1e-12                     #: Tolerance of imaginary time propagation (Recommended: 1e-12)
+        ext.itol_solver = 1e-14              #: Tolerance of linear solver in imaginary time propagation (Recommended: 1e-14)
+        ext.rtol_solver = 1e-12              #: Tolerance of linear solver in real time propagation (Recommended: 1e-12)
         ext.itmax = 2000.0                   #: Total imaginary time
         ext.iimax = 1e5                      #: Imaginary time iterations
         ext.ideltat = ext.itmax/ext.iimax    #: Imaginary time step (DERIVED)
