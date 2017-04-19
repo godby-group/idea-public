@@ -587,17 +587,14 @@ def main(parameters):
    else:
        pm.sprint('LDA: reached convergence in {} iterations.'.format(iteration),0)
 
-   if pm.lda.scf_type in ['cg', 'hmix']:
-       # for minimisation techniques, we take the input density
-       # and the waves produced by the algorithm
-       n = n_inp
-       energies = energies_out # could compute <psi|H|psi> though...
-   else:
-       # for regular mixing, there are no energies/wave functions
-       # for the input density. so we take those of the output density
-       n = n_out
-       waves = waves_out
-       energies = energies_out
+   # note: for minimisation techniques (cg), we could also take the input
+   # density and wave functions here (for non-converged cg, the total energy of
+   # the output density + wave functions may be significantly worse).
+   # However, for consistency we always choose the output quantities
+   # (at self-consistency, n_inp = n_out anyway).
+   n = n_out
+   waves = waves_out
+   energies = energies_out
 
    v_h = hartree_potential(pm, n)
    v_xc = VXC(pm, n)
