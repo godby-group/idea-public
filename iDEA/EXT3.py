@@ -938,14 +938,12 @@ def main(parameters):
                     v_ext, v_coulomb, 1)
         C_reduced = -A_reduced + 2.0*reduction_matrix*sps.identity(
                     pm.sys.grid**3, dtype=np.cfloat)*expansion_matrix
-        start = time.time()
+
         # Propagate the ground-state wavefunction through real time
         density, current_density, elf = solve_real_time(pm, A_reduced, 
                                         C_reduced, wavefunction, 
                                         reduction_matrix, expansion_matrix)
-        finish=time.time()
-        string = 'time taken =' + str(finish-start) 
-        pm.sprint(string,1,newline=True)
+
         # Dispose of the reduced sparse matrices
         del A_reduced
         del C_reduced

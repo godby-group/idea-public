@@ -148,8 +148,8 @@ if __name__ == '__main__':
     approx = str(raw_input('enter which approximation to use (ext,non,lda,hf,hfre...): '))
     data = str(raw_input('enter which quantity to plot (den,cur,vxt,vks,vh,vxc,elf...): '))
     N = pm.sys.grid
-    L = pm.sys.xmax*2
-    dx = float(L/(N-1))
+    L = 2.0*pm.sys.xmax
+    dx = L/(float(N-1))
     #filename = str(run_name) + '_' + str(NE)
     filename = ''
     if(td):
