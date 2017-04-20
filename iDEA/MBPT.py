@@ -14,8 +14,23 @@ import copy
 import numpy as np
 import scipy as sp
 import results as rs
-import mklfftwrap
 import continuation
+
+try:
+    from mklfftwrap import fft_t as fft_1d
+    from mklfftwrap import ifft_t as ifft_1d
+    MKLWRAPPER_AVAILABLE = True
+except ImportError:
+    MKLWRAPPER_AVAILABLE = False
+    print("here")
+
+    # define alternatives via numpy fft
+    def fft_1d(F):
+        return np.fft.fft(F, axis=-1) / F.shape[-1]
+
+    def ifft_1d(F):
+        return np.fft.ifft(F, axis=-1) * F.shape[-1]
+
 
 class SpaceTimeGrid:
     """Stores spatial and frequency grids"""
@@ -650,29 +665,29 @@ def fft_t(F, st, dir, phase_shift=False):
 
     # Crazy - taking out the prefactors p really makes it faster    
     if dir == 't2f':
-        out = mklfftwrap.ifft_t(F) * st.tau_delta
+        out = ifft_1d(F) * st.tau_delta
         #out = np.fft.ifft(F, axis=-1) * n * st.tau_delta
         if phase_shift:
             out *= st.phase_backward
     elif dir == 'f2t':
         p = 1 / (n * st.tau_delta)
         if phase_shift:
-            out = mklfftwrap.fft_t(F * st.phase_forward) * p
+            out = fft_1d(F * st.phase_forward) * p
         else:
-            out = mklfftwrap.fft_t(F) * p
+            out = fft_1d(F) * p
             #out = np.fft.fft(F, axis=-1) / (n * st.tau_delta)
     elif dir == 'it2if':
         p = -1J * st.tau_delta
-        out = mklfftwrap.fft_t(F) * p
+        out = fft_1d(F) * p
         #out = -1J * np.fft.fft(F, axis=-1) * st.tau_delta
         if phase_shift:
             out *= st.phase_forward
     elif dir == 'if2it':
         p = 1J / (n * st.tau_delta)
         if phase_shift:
-            out = mklfftwrap.ifft_t(F * st.phase_backward) * p
+            out = ifft_1d(F * st.phase_backward) * p
         else:
-            out = mklfftwrap.ifft_t(F) * p
+            out = ifft_1d(F) * p
             #out = 1J * np.fft.ifft(F, axis=-1) / st.tau_delta
     else:
         raise IOError("FFT direction {} not recognized.".format(dir))
