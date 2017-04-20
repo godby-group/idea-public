@@ -272,7 +272,7 @@ def main(parameters):
 
             # Solve Ax=b
             wavefunction, info = spsla.cg(A,b,x0=wavefunction,
-                                 tol=pm.ext.rtol/100)
+                                 tol=pm.ext.rtol_solver)
 
             # Calculate the density
             density[i+1,:] = abs(wavefunction[:])**2

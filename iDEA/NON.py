@@ -1,312 +1,302 @@
-"""Computes non-interacting charge density for given system. For ground state calculations the code outputs the non-interacting orbitals 
-and energies of the system and the ground-state charge density. For time dependent calculation the code also outputs the time-dependent charge and current
-densities.
+"""Calculates the non-interacting  ground-state electron density and energy 
+for a system of N electrons through solving the Schrodinger equation. If the
+system is perturbed, the time-dependent electron density and current density 
+are calculated. 
 """
 
 
-import os
+import copy
+import pickle
 import numpy as np
 import scipy as sp
 import RE_Utilities
 import scipy.sparse as sps
+import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
 import results as rs
 
 
-def constructK():
-   r"""Constructs the kinetic energy operator K on the system grid
-    
-   This is constructed using a second-order stencil yielding a tri-diagonal NxN matrix (where 
-   N is the number of grid points). For example with N=6:
+def construct_K(pm):
+    r"""Stores the band elements of the kinetic energy matrix in lower form. 
+    The kinetic energy matrix is constructed using a three-point, five-point 
+    or seven-point stencil. This yields an NxN band matrix (where N is the 
+    number of grid points). For example with N=6 and a three-point stencil:
    
-   .. math::
+    .. math::
 
-       K = -\frac{1}{2} \frac{d^2}{dx^2}=
-       -\frac{1}{2} \begin{pmatrix}
-       -2 & 1 & 0 & 0 & 0 & 0 \\
-       1 & -2 & 1 & 0 & 0 & 0 \\
-       0 & 1 & -2 & 1 & 0 & 0 \\
-       0 & 0 & 1 & -2 & 1 & 0 \\
-       0 & 0 & 0 & 1 & -2 & 1 \\
-       0 & 0 & 0 & 0 & 1 & -2 
-       \end{pmatrix}
-       \frac{1}{\Delta x^2}
+        K = -\frac{1}{2} \frac{d^2}{dx^2}=
+        -\frac{1}{2} \begin{pmatrix}
+        -2 & 1 & 0 & 0 & 0 & 0 \\
+        1 & -2 & 1 & 0 & 0 & 0 \\
+        0 & 1 & -2 & 1 & 0 & 0 \\
+        0 & 0 & 1 & -2 & 1 & 0 \\
+        0 & 0 & 0 & 1 & -2 & 1 \\
+        0 & 0 & 0 & 0 & 1 & -2 
+        \end{pmatrix}
+        \frac{1}{\delta x^2}
+        = [1,-\frac{1}{2}]
 
-   parameters
-   ----------
+    parameters
+    ----------
+    pm : object
+        Parameters object
 
-   returns sparse_matrix
-   """
-   sd = pm.space.second_derivative
-   sd_ind = pm.space.second_derivative_indices
-   K = -0.5*sps.diags(sd, sd_ind, shape=(pm.sys.grid,pm.sys.grid), format='csr')
-   return K
+    returns sparse_matrix
+        Kinetic energy matrix
+    """
+    if(pm.sys.grid < pm.sys.stencil):
+        raise ValueError("Insufficient spatial grid points.")
+    if(pm.sys.stencil == 3):
+        K = np.zeros((2,pm.sys.grid), dtype=np.float)
+        K[0,:] = np.ones(pm.sys.grid)/(pm.sys.deltax**2) 							
+        K[1,:] = -0.5*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 
+    elif(pm.sys.stencil == 5):
+        K = np.zeros((3,pm.sys.grid), dtype=np.float)
+        K[0,:] = (5.0/4.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 							
+        K[1,:] = -(2.0/3.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 
+        K[2,:] = (1.0/24.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 
+    elif(pm.sys.stencil == 7):
+        K = np.zeros((4,pm.sys.grid), dtype=np.float)
+        K[0,:] = (49.0/36.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 							
+        K[1,:] = -(3.0/4.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 
+        K[2,:] = (3.0/40.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 
+        K[3,:] = -(1.0/180.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 
+    else:
+        raise ValueError("pm.sys.stencil must be either 3, 5 or 7.")    
 
-
-def constructV(td):
-   r"""Constructs the potential energy operator V on the system grid
-   
-   V will contain V(x) sampled on the system grid along the diagonal yielding a NxN diagonal matrix (where 
-   N is the number of grid points).
-
-   parameters
-   ----------
-   td : bool
-        - 'False': Construct external potential
-        - 'True': Construct peturbed potential
-
-   returns sparse_matrix
-   """
-   xgrid = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
-   Vdiagonal = np.empty(pm.sys.grid)
-   if(td == 0):
-      Vdiagonal[:] = pm.sys.v_ext(xgrid[:])
-   if(td == 1):
-      Vdiagonal[:] = (pm.sys.v_ext(xgrid[:]) + pm.sys.v_pert(xgrid[:]))
-   V = sps.spdiags(Vdiagonal, 0, pm.sys.grid, pm.sys.grid, format='csr')
-   return V
+    return K
 
 
-def constructA(H):
-   r"""Constructs the matrix A to be used in the crank-nicholson solution of Ax=b when evolving the wavefunction in time
+def construct_V(pm, td):
+    r"""Constructs the main diagonal of the potential energy matrix. The 
+    potential energy matrix is an NxN diagonal matrix (where N is the number
+    of grid points).
 
-   .. math::
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    td : bool
+         - 'False': Construct unperturbed external potential
+         - 'True': Construct perturbed external potential
 
-       A = I + i \frac{dt}{2} H
+    returns sparse_matrix
+        Potential energy matrix
+    """
+    xgrid = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
+    V = np.zeros(pm.sys.grid, dtype=np.float)
 
-   parameters
-   ----------
-   H: sparse_matrix
-        The Hamiltonian matrix
+    if(td == 0):
+        V[:] = pm.sys.v_ext(xgrid[:])
+    if(td == 1):
+        V[:] = (pm.sys.v_ext(xgrid[:]) + pm.sys.v_pert(xgrid[:]))
 
-   returns sparse_matrix
-   """
-   I = sps.identity(pm.sys.grid)
-   A = I + 1.0j*(pm.sys.deltat/2.0)*H
-   return A
+    return V
 
 
-def constructC(H):
-   r"""Constructs the matrix C to be used in the crank-nicholson solution of Ax_n=b (where b = C*x_(n-1) where x_(n-1) is 
-   the wavefunction from the last timestep) when evolving the wavefunction in time
+def construct_A(pm, H):
+    r"""Constructs the matrix A to be used when solving Ax=b in the
+    Crank-Nicholson propagation.
 
     .. math::
 
-       C = I - i \frac{dt}{2} H
+        A = I + i \frac{dt}{2} H
 
-   parameters
-   ----------
-   H : sparse_matrix
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    H : sparse_matrix
         The Hamiltonian matrix
+ 
+    returns sparse_matrix
+        Sparse matrix A
+    """
+    if(pm.sys.stencil == 3):
+        A = 1.0j*(pm.sys.deltat/2.0)*sps.diags([H[1,:], H[0,:], H[1,:]],
+        [-1, 0, 1], shape=(pm.sys.grid,pm.sys.grid), format='csc')
+    elif(pm.sys.stencil == 5):
+        A = 1.0j*(pm.sys.deltat/2.0)*sps.diags([H[2,:], H[1,:], H[0,:], 
+            H[1,:], H[2,:]], [-2, -1, 0, 1, 2], shape=(pm.sys.grid,
+            pm.sys.grid), format='csc')
+    elif(pm.sys.stencil == 7):
+        A = 1.0j*(pm.sys.deltat/2.0)*sps.diags([H[3,:], H[2,:], H[1,:], 
+            H[0,:], H[1,:], H[2,:], H[3,:]], [-3, -2, -1, 0, 1, 2, 3], 
+            shape=(pm.sys.grid,pm.sys.grid), format='csc')
 
-   returns sparse_matrix
-   """
-   I = sps.identity(pm.sys.grid)
-   C = I - 1.0j*(pm.sys.deltat/2.0)*H
-   return C
+    I = sps.identity(pm.sys.grid)
+    A += I
 
-
-def calculateDensity(wavefunction):
-   r"""Calculates the electron density from a given wavefunction
-
-   .. math::
-
-       n \left(x \right) = |\psi \left( x\right)|^2
-
-   parameters
-   ----------
-   wavefunction : array_like
-        The wavefunction
-
-   returns array_like
-   """
-   density = np.empty(pm.sys.grid)
-   density[:] = abs(wavefunction[:])**2
-   return density
+    return A
 
 
-def calculateCurrentDensity(total_td_density):
-   r"""Calculates the current density of a time evolving wavefunction by solving the continuity equation.
+def calculate_current_density(pm, density):
+    r"""Calculates the current density of a time evolving wavefunction by 
+    solving the continuity equation.
 
-   .. math::
+    .. math::
 
-       \frac{\partial n}{\partial t} + \nabla \cdot j = 0
+        \frac{\partial n}{\partial t} + \nabla \cdot j = 0
        
-   Note: This function requires RE_Utilities.so
+    Note: This function requires RE_Utilities.so
 
-   parameters
-   ----------
-   total_td_density : array_like
-      Time dependent density of the system indexed as total_td_density[time_index][space_index]
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    density : array_like
+        2D array of the time-dependent density, indexed as       
+        density[time_index,space_index]
 
-   returns array_like
-      Time dependent current density indexed as current_density[time_index][space_index]
-   """
-   current_density = []
-   for i in range(0,len(total_td_density)-1):
-      string = 'NON: computing time dependent current density t = ' + str(i*pm.sys.deltat)
-      pm.sprint(string,1,newline=False)
-      J = np.zeros(pm.sys.grid)
-      J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,total_td_density[i+1],total_td_density[i])
-      if pm.sys.im==1: # Here we take account of the decay of the density due to the imaginary boundary consitions (if present)
-         for j in range(pm.sys.grid):
-            for k in range(j+1):
-               x = k*pm.sys.deltax-pm.sys.xmax
-               J[j] -= abs(pm.sys.im_petrb(x))*total_td_density[i][k]*pm.sys.deltax
-      current_density.append(J)
-   return np.asarray(current_density)
+    returns array_like
+        2D array of the current density, indexed as 
+        current_density[time_index,space_index]
+    """
+    pm.sprint('',1,newline=True)
+    current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
+    string = 'NON: calculating current density'
+    pm.sprint(string,1,newline=True)
+    for i in range(pm.sys.imax):
+         string = 'NON: t = {:.5f}'.format((i+1)*pm.sys.deltat)
+         pm.sprint(string,1,newline=False)
+         J = np.zeros(pm.sys.grid)
+         J = RE_Utilities.continuity_eqn(pm.sys.grid, pm.sys.deltax,
+             pm.sys.deltat, density[i+1,:], density[i,:])
+         if(pm.sys.im == 1):
+             for j in range(pm.sys.grid):
+                 for k in range(j+1):
+                     x = k*pm.sys.deltax-pm.sys.xmax
+                     J[j] -= abs(pm.sys.im_petrb(x))*density[i,k]*(
+                             pm.sys.deltax)
+         current_density[i,:] = J[:]
+    pm.sprint('',1,newline=True)
 
-
-def addDensities(densities):
-   r"""Adds together all of the occupied densities to give the total system density
-
-   parameters
-   ----------
-   densities : array_like
-      Array of densities to be added indexed as densities[electron_index][space_index]
-
-   returns array_like
-      Total system density
-   """
-   density = np.zeros(pm.sys.grid)
-   for i in range(pm.sys.NE):
-      density[:] += densities[i][:]
-   return density
+    return current_density
 
 
 def main(parameters):
-   r"""Performs calculation of the non-interacting density
+    r"""Calculates the ground-state of the system. If the system is perturbed, 
+    the time evolution of the perturbed system is then calculated.
 
-   parameters
-   ----------
-   parameters : object
-      Parameters object
+    parameters
+    ----------
+    parameters : object
+        Parameters object
 
-   returns object
-      Results object
-   """
-   global pm
-   pm = parameters
-   if not hasattr(pm, 'space'):
-       pm.setup_space()
+    returns object
+        Results object
+    """
+    pm = parameters
 
-   # Construct the kinetic energy
-   K = constructK()
+    # Print to screen
+    string = 'NON: constructing arrays'
+    pm.sprint(string, 1, newline=True)
 
-   # Construct the potential
-   V = constructV(0)
-
-   # Constuct the Hamiltonian
-   H = K + V
-
-   # Compute wavefunctions
-   pm.sprint('NON: computing ground state density',1)
-   energies, wavefunctions = spsla.eigs(H, k=pm.sys.grid-2, which='SR', maxiter=1000000)
+    # Construct the kinetic energy matrix
+    K = construct_K(pm)
    
-   # Order by energy
-   indices = np.argsort(energies)
-   energies = energies[indices]
-   wavefunctions = ((wavefunctions.T)[indices]).T 
+    # Construct the potential energy matrix
+    V = construct_V(pm, 0)
 
-   # Normalise wavefunctions
-   wavefunctions /= pm.sys.deltax**0.5
+    # Construct the Hamiltonian matrix
+    H = copy.copy(K)
+    H[0,:] += V[:]
 
-   # Compute first N densities
-   densities = np.empty((pm.sys.NE,pm.sys.grid))
-   for i in range(0,pm.sys.NE):
-      densities[i,:] = calculateDensity(wavefunctions[:,i])
+    # Solve the Schrodinger equation
+    energies, wavefunctions = spla.eig_banded(H, lower=True, select='i', 
+                              select_range=(0,pm.sys.NE-1))
 
-   # Compute total density
-   density = addDensities(densities)
+    # Normalise the wavefunctions and calculate the density 
+    density = np.zeros(pm.sys.grid, dtype=np.float)
+    for j in range(pm.sys.NE):
+        normalisation = (np.linalg.norm(wavefunctions[:,j])*pm.sys.deltax**0.5)
+        wavefunctions[:,j] /= normalisation
+        density[:] += abs(wavefunctions[:,j])**2
 
-   # Compute ground state energy
-   energy = 0.0
-   for i in range(0,pm.sys.NE):
-      energy += energies[i]
-   pm.sprint('NON: ground state energy: ' + str(energy.real),1)
+    # Calculate the energy and print to screen
+    energy = np.sum(energies[0:pm.sys.NE])
+    string = 'NON: ground-state energy = {:.5f}'.format(energy)
+    pm.sprint(string, 1, newline=True)
 
-   # Save ground state density and energy 
-   results = rs.Results()
-   results.add(density,'gs_non_den')
-   results.add(energy.real,'gs_non_E')
+    # Save the ground-state density, energy and external potential
+    results = rs.Results()
+    results.add(V,'gs_non_vxt')
+    results.add(density,'gs_non_den')
+    results.add(energy,'gs_non_E')
 
-   if pm.non.save_eig:
-       results.add(wavefunctions.T,'gs_non_eigf')
-       results.add(energies,'gs_non_eigv')
+    # Save the eigenfunctions and eigenvalues
+    if pm.non.save_eig:
+        results.add(wavefunctions.T,'gs_non_eigf')
+        results.add(energies,'gs_non_eigv')
 
-   if(pm.run.save):
-      results.save(pm)
+    if (pm.run.save):
+        results.save(pm)
 
-   # Perform real time iterations
-   if(pm.run.time_dependence == True):
+    # Propagate through real time
+    if(pm.run.time_dependence == True):
 
-      # Construct evolution matrices
-      K = constructK()
-      V = constructV(1)
-      H = K + V
-      A = constructA(H)
-      C = constructC(H)
+        # Print to screen
+        string = 'NON: constructing arrays'
+        pm.sprint(string, 1, newline=True)
 
-      # Create densities
-      td_densities = []
-      total_density_gs = []
-      total_density_gs.append(density)
-      for n in range(0,pm.sys.NE):
-         wavefunction = wavefunctions[:,n]
-         densities = []
-         i = 0
-         while(i < pm.sys.imax):
+        # Construct the potential energy matrix
+        V = construct_V(pm, 1)
 
-            # Construct the vector b
-            b = C*wavefunction   
+        # Construct the Hamiltonian matrix
+        H = copy.copy(K)
+        H[0,:] += V[:]
 
-            # Solve Ax=b
-            wavefunction, info = spsla.cg(A,b,x0=wavefunction,tol=pm.non.rtol_solver)
+        # Construct the sparse matrices used in the Crank-Nicholson method
+        A = construct_A(pm, H)
+        C = 2.0*sps.identity(pm.sys.grid) - A
 
-            # Calculate the density
-            density = calculateDensity(wavefunction)
+        # Construct the time-dependent density array 
+        density = np.zeros((pm.sys.imax+1,pm.sys.grid), dtype=np.float)
 
-            # Add current potential and density to output arrays 
-            densities.append(density)
+        # Save the ground-state
+        for j in range(pm.sys.NE):
+            density[0,:] += abs(wavefunctions[:,j])**2
 
-            # Calculate the wavefunction normalisation
-            normalisation = (np.linalg.norm(wavefunction)*pm.sys.deltax**0.5)
-            string = 'NON real time: N = ' + str(n+1) + ', t = ' + str(i*pm.sys.deltat) + ', normalisation = ' + str(normalisation)
-      	    pm.sprint(string,1,newline=False)
+        # Print to screen
+        string = 'NON: real time propagation'
+        pm.sprint(string, 1, newline=True)
+        
+        # Loop over each electron 
+        for n in range(pm.sys.NE):
 
-            # iterate
-            i = i + 1
+            wavefunction = wavefunctions[:,n]
 
-         # Add to densities
-         td_densities.append(densities)
-         pm.sprint('',1)
-  
-      # Calculate total density
-      pm.sprint('NON: computing time dependent density',1)
-      total_density = []
-      i = 0
-      while(i < pm.sys.imax):
-         densities = []
-         for n in range(0,pm.sys.NE):
-            single_density = td_densities[n]
-            densities.append(single_density[i])
-         density = addDensities(densities)
-         total_density.append(density)
-         i = i + 1
-      total_density_gs = total_density_gs + total_density
+            # Perform real time iterations
+            for i in range(pm.sys.imax):
 
-      # Calculate current density
-      current_density = calculateCurrentDensity(total_density_gs)
-      pm.sprint('',1)
+                # Construct the vector b
+                b = C*wavefunction   
 
-      # Save time-dependent density and current
-      results.add(np.asarray(total_density),'td_non_den')
-      results.add(np.asarray(current_density),'td_non_cur')
- 
-      if(pm.run.save):
-         # no need to save previous results again
-         l = ['td_non_den', 'td_non_cur']
-         results.save(pm, list=l)
+                # Solve Ax=b
+                wavefunction, info = spsla.cg(A,b,x0=wavefunction,
+                                 tol=pm.non.rtol_solver)
 
-   return results
+                # Calculate the density
+                density[i+1,:] += abs(wavefunction[:])**2
+
+                # Calculate the norm of the wavefunction
+                normalisation = (np.linalg.norm(wavefunction)*pm.sys.deltax**0.5)
+                string = 'NON: N = ' + str(n+1) + \
+                         ', t = {:.5f}'.format((i+1)*pm.sys.deltat) + \
+                         ', normalisation = ' + str(normalisation)
+                pm.sprint(string, 1, newline=False)
+
+        # Calculate the current density
+        current_density = calculate_current_density(pm, density)
+
+        # Save the time-dependent density, current density and external 
+        # potential
+        if(pm.run.time_dependence == True):
+             results.add(density,'td_non_den')
+             results.add(current_density,'td_non_cur')
+             results.add(V,'td_non_vxt')     
+             if (pm.run.save):
+                 results.save(pm)
+
+    return results
 
