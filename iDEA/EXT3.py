@@ -7,7 +7,6 @@ calculated.
 """
 
 
-import mkl
 import time
 import copy
 import pickle
@@ -536,27 +535,6 @@ def calculate_current_density(pm, density):
     return current_density
 
 
-def construct_Af(A):
-    r"""Constructs the real matrix Af for parallel runs.
-
-    parameters
-    ----------
-    A : sparse_matrix
-        Sparse matrix in the equation Ax=b
-
-    returns sparse_matrix
-        Sparse matrix in the equation Ax=b for parallel runs
-    """
-    A1_dat, A2_dat = mkl.mkl_split(A.data,len(A.data))
-    A.data = A1_dat
-    A1 = copy.copy(A)
-    A.data = A2_dat
-    A2 = copy.copy(A)
-    Af = sps.bmat([[A1,-A2],[A2,A1]]).tocsr()
- 
-    return Af
-
-
 def gram_schmidt(pm, wavefunction_reduced, eigenstates_array, excited_state):
     r"""Applies the Gram-Schmidt orthogonalisation process to project out 
     the eigenstates, that have already been calculated, from the 
@@ -664,12 +642,7 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced,
         wavefunction_reduced_old[:] = wavefunction_reduced[:]
 
         # Construct the reduction vector of b
-        if(pm.ext.par == 0):
-            b_reduced = C_reduced*wavefunction_reduced
-        else:
-            b_reduced = mkl.mkl_mvmultiply_c(C_reduced.data,C_reduced.indptr+1,
-                        C_reduced.indices+1,1,wavefunction_reduced,
-                        C_reduced.shape[0],C_reduced.indices.size)
+        b_reduced = C_reduced*wavefunction_reduced
 
         # Solve Ax=b
         wavefunction_reduced, info = spsla.cg(A_reduced,b_reduced,
@@ -768,10 +741,6 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
         density[time_index,space_index]. 2D array of the current density, 
         indexed as current_density[time_index,space_index]
     """
-    # Construct the matrix Af for a parallel run
-    if(pm.ext.par == 1):
-        Af = ConstructAf(A_reduced)
-
     # Array initialisations
     density = np.zeros((pm.sys.imax+1,pm.sys.grid), dtype=np.float)
     if(pm.ext.elf_td == 1):
@@ -802,27 +771,12 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
         # Construct the vector b and its reduction vector
         if(pm.run.verbosity == 'high'): 
             b = C*wavefunction[:]
-        if(pm.ext.par == 0):
-            b_reduced = C_reduced*wavefunction_reduced
-        else:
-            b_reduced = mkl.mkl_mvmultiply_c(C_reduced.data,C_reduced.indptr+1,
-                        C_reduced.indices+1,1,wavefunction_reduced,
-                        C_reduced.shape[0],C_reduced.indices.size)
+        b_reduced = C_reduced*wavefunction_reduced
      
         # Solve Ax=b
-        if(pm.ext.par == 0):
-            wavefunction_reduced, info = spsla.cg(A_reduced,b_reduced,
-                                         x0=wavefunction_reduced,
-                                         tol=pm.ext.rtol_solver)
-        else:
-            b1, b2 = mkl.mkl_split(b_reduced,len(b_reduced))
-            bf = np.append(b1,b2)
-            if(i == 0):
-                xf = bf
-            xf = mkl.mkl_isolve(Af.data,Af.indptr+1,Af.indices+1,1,bf,xf,
-                 Af.shape[0],Af.indices.size)
-            x1, x2 = np.split(xf,2)
-            wavefunction_reduced = mkl.mkl_comb(x1,x2,len(x1))
+        wavefunction_reduced, info = spsla.cg(A_reduced,b_reduced,
+                                     x0=wavefunction_reduced,
+                                     tol=pm.ext.rtol_solver)
       
         # Expand the wavefunction
         wavefunction = expansion_matrix*wavefunction_reduced

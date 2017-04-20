@@ -5,6 +5,8 @@ three interacting electrons with a specified electron density.
 
 import numpy as np
 import results as rs
+import scipy as sp
+import scipy.sparse as sps
 
 
 def construct_target_density(pm, approx, x_points, target_density_array=None, 
@@ -156,7 +158,7 @@ def main(parameters, approx, target_density_array=None,
         A_reduced = EXT.construct_A_reduced(pm, reduction_matrix, 
                     expansion_matrix, v_ext, v_coulomb, 0)
         C_reduced = -A_reduced + 2.0*reduction_matrix*sps.identity(
-                    pm.sys.grid**2, dtype=np.float)*expansion_matrix
+                    pm.sys.grid**pm.sys.NE, dtype=np.float)*expansion_matrix
 
         # Propagate through imaginary time
         energy, wavefunction = EXT.solve_imaginary_time(pm, A_reduced, 

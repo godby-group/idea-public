@@ -10,9 +10,8 @@ run.time_dependence = False          #: whether to run time-dependent calculatio
 run.verbosity = 'default'            #: output verbosity ('low', 'default', 'high')
 run.save = True                      #: whether to save results to disk when they are generated
 run.module = 'iDEA'                  #: specify alternative folder (in this directory) containing modified iDEA module  
-
-run.EXT = True                       #: Run Exact Many-Body calculation
-run.NON = True                       #: Run Non-Interacting approximation
+run.EXT = False                      #: Run Exact Many-Body calculation
+run.NON = False                      #: Run Non-Interacting approximation
 run.LDA = False                      #: Run LDA approximation
 run.MLP = False                      #: Run MLP approximation
 run.HF = False                       #: Run Hartree-Fock approximation
@@ -23,7 +22,7 @@ run.LAN = False                      #: Run Landauer approximation
 sys = SystemSection()
 sys.NE = 2                           #: Number of electrons
 sys.grid = 201                       #: Number of grid points (must be odd)
-sys.stencil = 3                      #: Stencil for Hamiltonian matrix (must be 3, 5 or 7)
+sys.stencil = 3                      #: Discretisation of 2nd derivative (3 or 5 or 7). 
 sys.xmax = 10.0                      #: Size of the system
 sys.tmax = 1.0                       #: Total real time
 sys.imax = 1000                      #: Number of real time iterations
@@ -64,11 +63,10 @@ sys.v_pert_im = v_pert_im
 
 ### Exact parameters
 ext = InputSection()
-ext.par = 0                          #: Use parallelised solver and multiplication (0: serial, 1: parallel) Note: Recommend using parallel for large runs
 ext.itol = 1e-12                     #: Tolerance of imaginary time propagation (Recommended: 1e-12)
-ext.itol_solver = 1e-12              #: Tolerance of linear solver in imaginary time propagation (Recommended: 1e-12)
+ext.itol_solver = 1e-14              #: Tolerance of linear solver in imaginary time propagation (Recommended: 1e-14)
 ext.rtol_solver = 1e-12              #: Tolerance of linear solver in real time propagation (Recommended: 1e-12)
-ext.itmax = 2000.0                   #: Total imaginary time
+ext.itmax = 2000                     #: Total imaginary time
 ext.iimax = 1e5                      #: Imaginary time iterations
 ext.ideltat = ext.itmax/ext.iimax    #: Imaginary time step (DERIVED)
 ext.RE = False                       #: Reverse engineer many-body density
