@@ -264,8 +264,8 @@ def main(parameters):
         # Loop over each electron 
         for n in range(pm.sys.NE):
 
-            wavefunction = wavefunctions[:,n]
-
+            wavefunction = wavefunctions[:,n].astype(np.cfloat)
+  
             # Perform real time iterations
             for i in range(pm.sys.imax):
 

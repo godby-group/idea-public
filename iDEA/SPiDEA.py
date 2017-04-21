@@ -357,6 +357,9 @@ def main(parameters):
         densities = np.zeros((pm.sys.imax+1,pm.sys.grid), dtype=np.float)
         densities[0,:] = density
 
+        # Convert wavefunction array to complex
+        wavefunction = wavefunction.astype(np.cfloat)
+
         # Perform real time iterations
         for i in range(pm.sys.imax):
 

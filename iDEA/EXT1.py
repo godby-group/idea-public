@@ -257,9 +257,9 @@ def main(parameters):
         density = np.zeros((pm.sys.imax+1,pm.sys.grid), dtype=np.float)
 
         # Save the ground-state
-        wavefunction = wavefunctions[:,0]
+        wavefunction = wavefunctions[:,0].astype(np.cfloat)
         density[0,:] = abs(wavefunction[:])**2
-
+    
         # Print to screen
         string = 'EXT: real time propagation'
         pm.sprint(string, 1, newline=True)
