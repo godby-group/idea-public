@@ -21,7 +21,7 @@ import scipy.sparse.linalg as spsla
 import construct_hamiltonian_coo3 as hamiltonian_coo
 import construct_antisymmetry_coo3 as antisymmetry_coo
 import construct_wavefunction3 as wavefunction3
-import EXT1
+import NON	
 import ELF 
 import results as rs
 
@@ -347,8 +347,8 @@ def initial_wavefunction(pm, wavefunction_reduced, ground_state=True):
 
     # Find the three lowest eigenstates of the non-interacting system
     if(ground_state == True):
-        K = EXT1.construct_K(pm)
-        V = EXT1.construct_V(pm, 0)
+        K = NON.construct_K(pm)
+        V = NON.construct_V(pm, 0)
         H = copy.copy(K)
         H[0,:] += V[:]
         eigenvalues, eigenfunctions = spla.eig_banded(H, lower=True, 
