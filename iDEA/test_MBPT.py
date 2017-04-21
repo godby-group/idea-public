@@ -297,3 +297,33 @@ class TestExtrapolation(unittest.TestCase):
         #    print("{} points,  {} order: {:.3e} diff".format(points,order,dmax))
 
         nt.assert_allclose(G0_pzero, G0_pzero_extr, rtol=1e-3, atol=1e-6)
+
+    def test_extr_2(self):
+        """Tests extrapolation of Green function
+        
+        Compare simple loop-based code
+        against much faster loop-free code in MBPT.extrapolate_to_zero.
+        """
+        pm = self.pm
+        st = MBPT.SpaceTimeGrid(pm)
+
+        order = 6
+        points = 7
+
+        # only imaginary part is extrapolated
+        G0 = 1J * np.random.random((st.x_npt,st.x_npt,st.tau_npt))
+        G0_pzero_extr = MBPT.extrapolate_to_zero(G0,st,dir='from_above', order=order, points=points)
+
+	istart = 1
+        iend = 1 + points
+
+	out = np.zeros((st.x_npt,st.x_npt), dtype=np.float)
+	for i in range(st.x_npt):
+	    for j in range(st.x_npt):
+	       x = st.tau_grid[istart:iend]
+	       y = G0[i,j, istart:iend].imag
+	       z = np.poly1d(np.polyfit(x, y, order))
+	       out[i,j] = z(0) 
+	G0_pzero_extr_2 = 1J * out
+
+        nt.assert_allclose(G0_pzero_extr, G0_pzero_extr_2, rtol=1e-3, atol=1e-6)

@@ -4,8 +4,14 @@
 import unittest
 import numpy as np
 import numpy.testing as nt
-import mklfftwrap
 import copy
+
+try:
+    import mklfftwrap
+    MKLWRAPPER_AVAILABLE = True
+except ImportError:
+    MKLWRAPPER_AVAILABLE = False
+msg = "MKL not found."
 
 class TestNumerics(unittest.TestCase):
     """ Testing against numpy.fft package
@@ -21,6 +27,7 @@ class TestNumerics(unittest.TestCase):
           +1J* np.random.random_sample( (R,R,T))
         self.b = copy.deepcopy(self.a)
 
+    @unittest.skipIf(not MKLWRAPPER_AVAILABLE, msg)
     def test_fft_1(self):
         """Testing fft_t against numpy's fft.fft"""
         a = mklfftwrap.fft_t(self.a)
@@ -28,6 +35,7 @@ class TestNumerics(unittest.TestCase):
 
         nt.assert_array_almost_equal(a,b, decimal=10)
 
+    @unittest.skipIf(not MKLWRAPPER_AVAILABLE, msg)
     def test_ifft_1(self):
         """Testing ifft_t against numpy's fft.ifft"""
         a = mklfftwrap.ifft_t(self.a)

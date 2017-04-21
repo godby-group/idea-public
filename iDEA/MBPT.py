@@ -14,8 +14,23 @@ import copy
 import numpy as np
 import scipy as sp
 import results as rs
-import mklfftwrap
 import continuation
+
+try:
+    from mklfftwrap import fft_t as fft_1d
+    from mklfftwrap import ifft_t as ifft_1d
+    MKLWRAPPER_AVAILABLE = True
+except ImportError:
+    MKLWRAPPER_AVAILABLE = False
+    print("here")
+
+    # define alternatives via numpy fft
+    def fft_1d(F):
+        return np.fft.fft(F, axis=-1) / F.shape[-1]
+
+    def ifft_1d(F):
+        return np.fft.ifft(F, axis=-1) * F.shape[-1]
+
 
 class SpaceTimeGrid:
     """Stores spatial and frequency grids"""
@@ -650,29 +665,29 @@ def fft_t(F, st, dir, phase_shift=False):
 
     # Crazy - taking out the prefactors p really makes it faster    
     if dir == 't2f':
-        out = mklfftwrap.ifft_t(F) * st.tau_delta
+        out = ifft_1d(F) * st.tau_delta
         #out = np.fft.ifft(F, axis=-1) * n * st.tau_delta
         if phase_shift:
             out *= st.phase_backward
     elif dir == 'f2t':
         p = 1 / (n * st.tau_delta)
         if phase_shift:
-            out = mklfftwrap.fft_t(F * st.phase_forward) * p
+            out = fft_1d(F * st.phase_forward) * p
         else:
-            out = mklfftwrap.fft_t(F) * p
+            out = fft_1d(F) * p
             #out = np.fft.fft(F, axis=-1) / (n * st.tau_delta)
     elif dir == 'it2if':
         p = -1J * st.tau_delta
-        out = mklfftwrap.fft_t(F) * p
+        out = fft_1d(F) * p
         #out = -1J * np.fft.fft(F, axis=-1) * st.tau_delta
         if phase_shift:
             out *= st.phase_forward
     elif dir == 'if2it':
         p = 1J / (n * st.tau_delta)
         if phase_shift:
-            out = mklfftwrap.ifft_t(F * st.phase_backward) * p
+            out = ifft_1d(F * st.phase_backward) * p
         else:
-            out = mklfftwrap.ifft_t(F) * p
+            out = ifft_1d(F) * p
             #out = 1J * np.fft.ifft(F, axis=-1) / st.tau_delta
     else:
         raise IOError("FFT direction {} not recognized.".format(dir))
@@ -892,7 +907,7 @@ def solve_dyson_equation(G0, S, st):
     for k in range(st.tau_npt):
         G[:,:,k] = np.linalg.solve(A[:,:,k], G0[:,:,k])
 
-    # for information, using explicit matix inversion, significantly slower but equivalent to the above code
+    # using explicit matix inversion: significantly slower but equivalent to the above code
     #A = inverse_r(A, st)
     #for k in range(st.tau_npt):
     #    G[:,:,k] = np.dot(A[:,:,k], G0[:,:,k]) * st.x_delta
@@ -922,22 +937,28 @@ def extrapolate_to_zero(F, st, dir='from_below', order=6, points=7):
         extrapolated value F(r,r';it=0)
     """
     if dir == 'from_below':
-        istart = st.tau_npt - points - 1
+        istart = st.tau_npt - points
         iend = st.tau_npt
     elif dir == 'from_above':
         istart = 1
-        iend = 1 + points + 1
+        iend = 1 + points
 
-    #TODO: optimise for performance
-    out = np.zeros((st.x_npt,st.x_npt), dtype=np.float)
-    for i in range(st.x_npt):
-        for j in range(st.x_npt):
-           x = st.tau_grid[istart:iend]
-           y = F[i,j, istart:iend].imag
-           z = np.poly1d(np.polyfit(x, y, order))  
-           out[i,j] = z(0)
+    ##Loop-based: much much slower
+    #out = np.zeros((st.x_npt,st.x_npt), dtype=np.float)
+    #for i in range(st.x_npt):
+    #    for j in range(st.x_npt):
+    #       x = st.tau_grid[istart:iend]
+    #       y = F[i,j, istart:iend].imag
+    #       z = np.poly1d(np.polyfit(x, y, order))  
+    #       out[i,j] = z(0)
 
-    return 1J * out
+    x = st.tau_grid[istart:iend]
+    y = F[:,:, istart:iend].imag.reshape((st.x_npt*st.x_npt,points))
+    coefs = np.polynomial.polynomial.polyfit(x,y.T, order)
+    vals = np.polynomial.polynomial.polyval(0,coefs)
+    vals = vals.reshape((st.x_npt, st.x_npt)) * 1J
+
+    return vals
 
 
 def analytic_continuation(S, st, pm, n_poles=3, fit_range=None):

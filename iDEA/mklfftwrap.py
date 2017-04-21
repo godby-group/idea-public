@@ -32,7 +32,7 @@ else:
     try:
         mkl = ctypes.CDLL('libmkl_rt.so')
     except:
-        raise RuntimeError("Library libmkl_rt not found in path")
+        raise ImportError("Library libmkl_rt not found in path")
 
 #mkl.MKL_Set_Num_Threads(ctypes.c_int(1))
 
