@@ -907,7 +907,7 @@ def solve_dyson_equation(G0, S, st):
     for k in range(st.tau_npt):
         G[:,:,k] = np.linalg.solve(A[:,:,k], G0[:,:,k])
 
-    # for information, using explicit matix inversion, significantly slower but equivalent to the above code
+    # using explicit matix inversion: significantly slower but equivalent to the above code
     #A = inverse_r(A, st)
     #for k in range(st.tau_npt):
     #    G[:,:,k] = np.dot(A[:,:,k], G0[:,:,k]) * st.x_delta
@@ -937,22 +937,28 @@ def extrapolate_to_zero(F, st, dir='from_below', order=6, points=7):
         extrapolated value F(r,r';it=0)
     """
     if dir == 'from_below':
-        istart = st.tau_npt - points - 1
+        istart = st.tau_npt - points
         iend = st.tau_npt
     elif dir == 'from_above':
         istart = 1
-        iend = 1 + points + 1
+        iend = 1 + points
 
-    #TODO: optimise for performance
-    out = np.zeros((st.x_npt,st.x_npt), dtype=np.float)
-    for i in range(st.x_npt):
-        for j in range(st.x_npt):
-           x = st.tau_grid[istart:iend]
-           y = F[i,j, istart:iend].imag
-           z = np.poly1d(np.polyfit(x, y, order))  
-           out[i,j] = z(0)
+    ##Loop-based: much much slower
+    #out = np.zeros((st.x_npt,st.x_npt), dtype=np.float)
+    #for i in range(st.x_npt):
+    #    for j in range(st.x_npt):
+    #       x = st.tau_grid[istart:iend]
+    #       y = F[i,j, istart:iend].imag
+    #       z = np.poly1d(np.polyfit(x, y, order))  
+    #       out[i,j] = z(0)
 
-    return 1J * out
+    x = st.tau_grid[istart:iend]
+    y = F[:,:, istart:iend].imag.reshape((st.x_npt*st.x_npt,points))
+    coefs = np.polynomial.polynomial.polyfit(x,y.T, order)
+    vals = np.polynomial.polynomial.polyval(0,coefs)
+    vals = vals.reshape((st.x_npt, st.x_npt)) * 1J
+
+    return vals
 
 
 def analytic_continuation(S, st, pm, n_poles=3, fit_range=None):
