@@ -1,16 +1,20 @@
 """Computes time-dependent charge density of a system using the Landauer-Buttiker approximation. The code outputs the time-dependent charge and current density 
 of the system. 
 """
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 
 import pickle
 import numpy as np
-import RE_Utilities
-import results as rs
 import scipy.linalg as spla
 import scipy.sparse as sps
 import scipy.special as spec
 import scipy.sparse.linalg as spsla
+
+from . import RE_Utilities
+from . import results as rs
 
 # Function to read input
 def ReadInput(approx):
@@ -100,8 +104,7 @@ def main(parameters):
 
    global pm
    pm = parameters
-   if not hasattr(pm, 'space'):
-      pm.setup_space()
+   pm.setup_space()
 
    # Constants used in the code
    sqdx=np.sqrt(pm.sys.deltax)								
@@ -140,7 +143,7 @@ def main(parameters):
          petrb[i]=pm.sys.v_pert((i*pm.sys.deltax-pm.sys.xmax))
       V_lan[:,:]=V_lan[0,:]+petrb[:]                      # Add the perturbing field to the external potential and the KS potential
       for j in range(1,pm.sys.imax):                          # Propagate from the ground-state
-         string = 'LAN: computing density and current density, time = ' + str(j*pm.sys.deltat)
+         string = 'LAN: computing density and current density, time = {}'.format(j*pm.sys.deltat)
 	 pm.sprint(string,1,newline=False)
          Psi,z=SolveKSE(V_lan,Psi,j,frac1,frac2,z)
          n_LAN[j,:]=0
@@ -148,7 +151,7 @@ def main(parameters):
          for i in range(pm.sys.NE):
             n_LAN[j,:]+=abs(Psi[i,z,:])**2                 # Calculate the density from the single-particle wavefunctions
          J_LAN[j,:]=CalculateCurrentDensity(n_LAN,upper_bound,j)
-      print
+      print()
       results.add(n_LAN.real,'td_lan_den')
       results.add(J_LAN.real,'td_lan_cur')
       if pm.run.save:

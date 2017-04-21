@@ -3,17 +3,18 @@ for a system of N electrons through solving the Schrodinger equation. If the
 system is perturbed, the time-dependent electron density and current density 
 are calculated. 
 """
-
+from __future__ import division
+from __future__ import absolute_import
 
 import copy
 import pickle
 import numpy as np
 import scipy as sp
-import RE_Utilities
 import scipy.sparse as sps
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
-import results as rs
+from . import RE_Utilities
+from . import results as rs
 
 
 def construct_K(pm):
@@ -44,27 +45,15 @@ def construct_K(pm):
     returns sparse_matrix
         Kinetic energy matrix
     """
-    if(pm.sys.grid < pm.sys.stencil):
-        raise ValueError("Insufficient spatial grid points.")
-    if(pm.sys.stencil == 3):
-        K = np.zeros((2,pm.sys.grid), dtype=np.float)
-        K[0,:] = np.ones(pm.sys.grid)/(pm.sys.deltax**2) 							
-        K[1,:] = -0.5*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 
-    elif(pm.sys.stencil == 5):
-        K = np.zeros((3,pm.sys.grid), dtype=np.float)
-        K[0,:] = (5.0/4.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 							
-        K[1,:] = -(2.0/3.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 
-        K[2,:] = (1.0/24.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 
-    elif(pm.sys.stencil == 7):
-        K = np.zeros((4,pm.sys.grid), dtype=np.float)
-        K[0,:] = (49.0/36.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 							
-        K[1,:] = -(3.0/4.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 
-        K[2,:] = (3.0/40.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 
-        K[3,:] = -(1.0/180.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 
-    else:
-        raise ValueError("pm.sys.stencil must be either 3, 5 or 7.")    
+    sd = pm.space.second_derivative_band
+    nbnd = len(sd)
+    K = np.zeros((nbnd, pm.sys.grid), dtype=np.float)
+
+    for i in range(nbnd):
+        K[i,:] = -0.5 * sd[i]
 
     return K
+
 
 
 def construct_V(pm, td):
@@ -187,6 +176,7 @@ def main(parameters):
         Results object
     """
     pm = parameters
+    pm.setup_space()
 
     # Print to screen
     string = 'NON: constructing arrays'
@@ -203,15 +193,16 @@ def main(parameters):
     H[0,:] += V[:]
 
     # Solve the Schrodinger equation
-    energies, wavefunctions = spla.eig_banded(H, lower=True, select='i', 
-                              select_range=(0,pm.sys.NE-1))
+    pm.sprint('NON: computing ground state density',1)
+    #energies, wavefunctions = spla.eig_banded(H, lower=True, select='i', 
+    #                          select_range=(0,pm.sys.NE-1))
+    energies, wavefunctions = spla.eig_banded(H, lower=True)
+
+    # Normalise wavefunctions
+    wavefunctions /= pm.sys.deltax**0.5
 
     # Normalise the wavefunctions and calculate the density 
-    density = np.zeros(pm.sys.grid, dtype=np.float)
-    for j in range(pm.sys.NE):
-        normalisation = (np.linalg.norm(wavefunctions[:,j])*pm.sys.deltax**0.5)
-        wavefunctions[:,j] /= normalisation
-        density[:] += abs(wavefunctions[:,j])**2
+    density = np.sum(wavefunctions[:,:pm.sys.NE]**2)
 
     # Calculate the energy and print to screen
     energy = np.sum(energies[0:pm.sys.NE])
@@ -281,9 +272,8 @@ def main(parameters):
 
                 # Calculate the norm of the wavefunction
                 normalisation = (np.linalg.norm(wavefunction)*pm.sys.deltax**0.5)
-                string = 'NON: N = ' + str(n+1) + \
-                         ', t = {:.5f}'.format((i+1)*pm.sys.deltat) + \
-                         ', normalisation = ' + str(normalisation)
+                string = "NON: N = {}, t = {:.5f}, normalisation = {}" \
+                        .format(n+1, (i+1)*pm.sys.deltat, normalisation)
                 pm.sprint(string, 1, newline=False)
 
         # Calculate the current density

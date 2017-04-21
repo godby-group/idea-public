@@ -23,17 +23,21 @@
 # removed from the KS vector potential.                                              #
 ######################################################################################
 
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+
 # Import library
 import copy
 import math
 import pickle
 import numpy as np
-import RE_Utilities
 import scipy.sparse as sps
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
 from scipy.optimize import curve_fit as spocf
-import results as rs
+from . import RE_Utilities
+from . import results as rs
 
 # Function to read inputs -- needs some work!
 def ReadInput(approx,GS,imax):
@@ -80,12 +84,12 @@ def CalculateGroundState(V,n_T,mu,sqdx,T_s,n):
 def GroundState(n_T,mu,sqdx,T_s,n,approx):
 	V_KS = np.zeros((imax,pm.sys.grid),dtype='complex')
 	V_ext = np.zeros(pm.sys.grid,dtype='complex')
-	pm.sprint('REV: calculating ground-state Kohn-Sham potential for the ' + str(approx) + ' density',1)
+	pm.sprint('REV: calculating ground-state Kohn-Sham potential for the {} density'.format(approx),1)
 	try:
-		pm.sprint('REV: trying to find the exact kohn-sham potential to start from...',1)
 		V_KS[0,:] = rs.Results.read('gs_extre_vks', pm)
+		pm.sprint('REV: Found exact kohn-sham potential to start from...',1)
 	except:
-		pm.sprint('REV: failed, starting from external potential...',1)
+		pm.sprint('REV: Starting from external potential...',1)
 		for i in range(pm.sys.grid):
 			V_KS[0,i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # Initial guess for KS potential
 	for i in range(pm.sys.grid):
@@ -94,7 +98,7 @@ def GroundState(n_T,mu,sqdx,T_s,n,approx):
 	pm.sprint('REV: initial guess electron density error = %s' % cost_n_GS,1)
 	while cost_n_GS>1e-13:
 		cost_old = cost_n_GS
-		string = 'REV: electron density error = ' + str(cost_old)
+		string = 'REV: electron density error = {}'.format(cost_old)
 		pm.sprint(string,1,newline=False)
 		V_KS,n,cost_n_GS,Psi,E_KS,K,U = CalculateGroundState(V_KS,n_T,mu,sqdx,T_s,n)
 		if abs(cost_n_GS-cost_old)<1e-15 or cost_n_GS>cost_old:
@@ -139,7 +143,7 @@ def coulomb():
       xi = i*pm.sys.deltax-pm.sys.xmax                         
       for j in range(pm.sys.grid):                     
          xj = j*pm.sys.deltax-pm.sys.xmax                      
-         V_coulomb[i,j] = 1.0/(abs(xi-xj) + pm.sys.acon)  
+         V_coulomb[i,j] = 1.0/(abs(xi-xj) + pm.sys.acon)
    return V_coulomb       
 
 # Function to calculate the exchange-correlation energy
@@ -248,8 +252,8 @@ def SolveKSE(V,A,Wavefunction,j,frac1,frac2,z):
 def CalculateCurrentDensity(n,n_MB,upper_bound,j):
    J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,n[j,:],n[j-1,:])
    if pm.sys.im == 1:
-      for j in xrange(pm.sys.grid):
-         for k in xrange(j+1):
+      for j in range(pm.sys.grid):
+         for k in range(j+1):
             x = k*pm.sys.deltax-pm.sys.xmax
             J[j] -= abs(pm.sys.v_pert_imb(x))*n[j,k]*pm.sys.deltax
    else:
@@ -324,7 +328,8 @@ def CalculateKS(V_KS,A_KS,J,Psi,j,upper_bound,frac1,frac2,z,tol,n_T,J_T,cost_n,c
           A_KS[j,:]=A_min[:] # Go with the best answer
           z = z*(-1)+1 # Only save two times at any point
           break
-   string='REV: t = ' + str(j*pm.sys.deltat) + ', tol = ' + str(tol) + ', current error = ' + str(cost_J[j]) + ', density error = ' + str(cost_n[j])
+   string='REV: t = {}, tol = {}, current error = {}, density error = {}'\
+           .format(j*pm.sys.deltat, tol, cost_J[j], cost_n[j])
    pm.sprint(string,1,newline=False)
    Apot[:]=0 # Change guage so only have scalar potential
    for i in range(pm.sys.grid): # Calculate full KS scalar potential
@@ -357,8 +362,7 @@ def main(parameters,approx):
    global pm
 
    pm = parameters
-   if not hasattr(pm, 'space'):
-      pm.setup_space()
+   pm.setup_space()
 
    # Constants used in the code
    sqdx = math.sqrt(pm.sys.deltax)		
@@ -409,7 +413,7 @@ def main(parameters,approx):
    #GroundState() could just return the array of eigenvalues
    #This hasn't been changed yet to avoid breaking anything before RE.py is tidied up
    correct, correct_error = correction(np.real(V_xc[0,:]), 0.05, 0.15)
-   print 'Approximate error in correction to asymptotic form of V_xc = ', correct_error
+   print('Approximate error in correction to asymptotic form of V_xc = ', correct_error)
 
    V_KS[0,:] - V_KS[0,:]
    V_Hxc[0,:] = V_KS[0,:]-V_ext[:] # Calculate the Hartree exhange-correlation potential
@@ -459,7 +463,7 @@ def main(parameters,approx):
             counter += 1
       except:
          pm.sprint('',1)
-         pm.sprint('REV: Stopped at timestep ' + str(counter) + '! Outputing all quantities',1)
+         pm.sprint('REV: Stopped at timestep {}! Outputing all quantities'.format(counter),1)
 
       results.add(n_MB[:,:],'td_{}_den'.format(approxre))
       results.add( V_KS[:,:].real, 'td_{}_vks'.format(approxre)) 

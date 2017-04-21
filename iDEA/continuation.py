@@ -1,6 +1,7 @@
 """Analytic continuation of the self-energy
 """
 from __future__ import division
+from __future__ import print_function
 import numpy as np
 import scipy.optimize as so
 import copy as cp

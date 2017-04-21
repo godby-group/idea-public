@@ -1,12 +1,13 @@
 """Mixing schemes for self-consistent calculations
 """
+from __future__ import division
+from __future__ import absolute_import
+
 import numpy as np
 import scipy.special as scsp
-import LDA
 
 
-
-class PulayMixer:
+class PulayMixer(object):
     """Performs Pulay mixing
 
     Performs Pulay mixing with Kerker preconditioner,
@@ -166,7 +167,7 @@ class PulayMixer:
         return self.mixp * self.preconditioner.precondition(f, eigv, eigf)
 
 
-class StubPreconditioner:
+class StubPreconditioner(object):
     """Performs no preconditioning
 
     """
@@ -186,7 +187,7 @@ class StubPreconditioner:
 
 
 
-class KerkerPreconditioner:
+class KerkerPreconditioner(object):
     """Performs Kerker preconditioning
 
     Performs Kerker preconditioning,
@@ -213,7 +214,7 @@ class KerkerPreconditioner:
 
         self.q0 = 2*np.pi / pm.lda.kerker_length
         dq = 2*np.pi / (2 * pm.sys.xmax)
-        q0_scaled = self.q0 / dq
+        q0_scaled = self.q0/ dq
         self.G_q = np.zeros((self.x_npt//2+1), dtype=np.float)
         for q in range(len(self.G_q)):
             self.G_q[q] = self.A * q**2 / (q**2 + q0_scaled**2)
@@ -221,7 +222,7 @@ class KerkerPreconditioner:
 
         # one-dimensional Kerker mixing
         a = pm.sys.acon
-        q = dq* np.array(range(self.x_npt//2+1))
+        q = dq* np.array(list(range(self.x_npt//2+1)))
         aq = np.abs(a*q)
         Si, Ci = scsp.sici(aq)
         # verified that this agrees with Mathematica...
@@ -243,7 +244,7 @@ class KerkerPreconditioner:
 
 
 
-class RPAPreconditioner:
+class RPAPreconditioner(object):
     """Performs preconditioning using RPA dielectric function
 
     The static dielectric function as a function of x and x'
@@ -297,7 +298,10 @@ class RPAPreconditioner:
         n = np.sum(np.abs(eigf[:self.NE])**2, axis=0)
 
         M = np.zeros((nx,nx))
-        #print LDA.DXC(self.pm, n)/dx
+        # note: this circular dependency only works in python 2.x
+        # for python 3 let the constructur take the DXC function 
+        # as a parameter (see e.g. mix.py for examples of this)
+        from . import LDA
         np.fill_diagonal(M, LDA.DXC(self.pm, n)/dx)
         M += v
 
@@ -307,7 +311,7 @@ class RPAPreconditioner:
         # for *potential* mixing use
         #eps = np.eye(nx)/dx - np.dot(M,chi)*dx
 
-        epsinv = np.linalg.inv(eps)/dx**2 
+        epsinv = np.linalg.inv(eps)/dx**2
         r = np.dot(epsinv, r.T) * dx
         return r.T
 

@@ -3,17 +3,19 @@ of one electron through solving the Schrodinger equation. If the system is
 perturbed, the time-dependent electron density and current density are 
 calculated. Excited states of the unperturbed system can also be calculated.
 """
+from __future__ import division
+from __future__ import absolute_import
 
 
 import copy
 import pickle
 import numpy as np
 import scipy as sp
-import RE_Utilities
 import scipy.sparse as sps
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
-import results as rs
+from . import RE_Utilities
+from . import results as rs
 
 
 def construct_K(pm):
@@ -48,7 +50,7 @@ def construct_K(pm):
         raise ValueError("Insufficient spatial grid points.")
     if(pm.sys.stencil == 3):
         K = np.zeros((2,pm.sys.grid), dtype=np.float)
-        K[0,:] = np.ones(pm.sys.grid)/(pm.sys.deltax**2) 							
+        K[0,:] = np.ones(pm.sys.grid)/(pm.sys.deltax**2)
         K[1,:] = -0.5*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 
     elif(pm.sys.stencil == 5):
         K = np.zeros((3,pm.sys.grid), dtype=np.float)
@@ -187,6 +189,7 @@ def main(parameters):
         Results object
     """
     pm = parameters
+    pm.setup_space()
 
     # Print to screen
     string = 'EXT: constructing arrays'
@@ -279,8 +282,8 @@ def main(parameters):
 
             # Calculate the norm of the wavefunction
             normalisation = (np.linalg.norm(wavefunction)*pm.sys.deltax**0.5)
-            string = 'EXT: ' + 't = {:.5f}'.format((i+1)*pm.sys.deltat) + \
-                     ', normalisation = ' + str(normalisation)
+            string = 'EXT: t = {:.5f}, normalisation = {}'\
+                    .format((i+1)*pm.sys.deltat, normalisation)
             pm.sprint(string, 1, newline=False)
 
         # Calculate the current density

@@ -7,6 +7,7 @@ to treat exchange and correlation throughout the system and provides additional
 flexibility in bridging the gap between model systems and ab initio
 descriptions.
 """
+from __future__ import print_function
 make_fortran = True
 
 if make_fortran:

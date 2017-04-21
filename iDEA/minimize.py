@@ -1,14 +1,17 @@
 """Direct minimisation of the Hamiltonian
 """
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+
 import numpy as np
 #import scipy.optimize as sopt
 import scipy.linalg as spla
-import LDA
 
 machine_epsilon = np.finfo(float).eps
 
 
-class CGMinimizer:
+class CGMinimizer(object):
     """Performs conjugate gradient minimization
 
     Performs Pulay mixing with Kerker preconditioner,
@@ -155,7 +158,7 @@ class CGMinimizer:
             new_wfs = lambda s: wfs + dirs * s
 
             b = lambda s: dE_ds_0 * s
-            a = lambda E_1, s: (E_1 - E_0 - b(s)) / s**2
+            a = lambda E_1, s: (E_1 - E_0 - b(s))/ s**2
             s_min = lambda E_1, s: -0.5 * b(s) / (a(E_1,s) * s)
 
             wfs_1 = new_wfs(s_1)
@@ -223,8 +226,8 @@ class CGMinimizer:
 
             # eqns (5.28-5.29)
             B_1 = 0.5 * dE_ds_0
-            A_1 = (E_0 - E_1 + B_1) / (1 - np.cos(2*s_1))
-            s_opt = 0.5 * np.arctan(B_1 / A_1)
+            A_1 = (E_0 - E_1 + B_1)/ (1 - np.cos(2*s_1))
+            s_opt = 0.5 * np.arctan(B_1/ A_1)
 
             # we don't want the step to get too large
             s_opt = np.minimum(1.5,s_opt) 
@@ -337,7 +340,7 @@ class CGMinimizer:
         """
 
         steepest_prods = np.linalg.norm(steepest_dirs)**2
-        gamma = np.sum(steepest_prods) / np.sum(self.steepest_prods)
+        gamma = np.sum(steepest_prods)/ np.sum(self.steepest_prods)
         #gamma = steepest_prods / self.steepest_prods
         self.steepest_prods = steepest_prods
 
@@ -434,7 +437,7 @@ def orthonormalize(v):
 
 
 
-class DiagMinimizer:
+class DiagMinimizer(object):
     """Performs minimization using exact diagonalisation
 
     This would be too slow for ab initio codes but is something we can afford
@@ -514,7 +517,7 @@ class DiagMinimizer:
 
         p = np.polyfit(lambdas, energies,2)
         a,b,c = p
-        l = -b / (2*a)
+        l = -b/ (2*a)
 
         # don't want step to get too large
         l = np.minimum(1,l)

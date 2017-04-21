@@ -5,25 +5,26 @@ current density are calculated. The ground-state and time-dependent ELF can
 also be calculated. Excited states of the unperturbed system can also be 
 calculated.
 """
-
+from __future__ import division
+from __future__ import absolute_import
 
 import time
 import copy
 import pickle
 import numpy as np
 import scipy as sp
-import RE_Utilities
 import scipy.sparse as sps
 import scipy.misc as spmisc
 import scipy.special as spec
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
-import construct_hamiltonian_coo3 as hamiltonian_coo
-import construct_antisymmetry_coo3 as antisymmetry_coo
-import construct_wavefunction3 as wavefunction3
-import NON	
-import ELF 
-import results as rs
+from . import NON	
+from . import ELF 
+from . import results as rs
+from . import RE_Utilities
+from . import construct_hamiltonian_coo3 as hamiltonian_coo
+from . import construct_antisymmetry_coo3 as antisymmetry_coo
+from . import construct_wavefunction3 as wavefunction3
 
 
 def single_index(pm, j, k, l):
@@ -76,7 +77,7 @@ def inverse_single_index(pm, jkl):
         1st electron index, j. 2nd electron index, k. 3rd electron index, l.
     """
     l = jkl % pm.sys.grid
-    k = ((jkl - l)%(pm.sys.grid**2))/pm.sys.grid
+    k = ((jkl - l)%(pm.sys.grid**2)) // pm.sys.grid
     j = (jkl - l - k*pm.sys.grid)/pm.sys.grid**2
 
     return j, k, l
@@ -97,8 +98,8 @@ def construct_antisymmetry_matrices(pm):
         (insert indistinct elements) to get back the full wavefunction.
     """
     # Number of elements in the reduced wavefunction
-    coo_size = int(np.prod(range(pm.sys.grid,pm.sys.grid+3))/spmisc.factorial(
-               3))
+    coo_size = int(np.prod(list(range(pm.sys.grid,pm.sys.grid+3)))\
+            /spmisc.factorial(3)))
 
     # COOrdinate holding arrays for the reduction matrix
     coo_1 = np.zeros((coo_size), dtype=int)
@@ -166,7 +167,7 @@ def construct_A_reduced(pm, reduction_matrix, expansion_matrix, v_ext,
     """
     # Define parameter r
     if(td == 0):
-        r = pm.ext.ideltat/(4.0*pm.sys.deltax**2) 
+        r = pm.ext.ideltat/(4.0*pm.sys.deltax**2)
     elif(td == 1):
         r = pm.sys.deltat/(4.0*pm.sys.deltax**2)
 
@@ -248,7 +249,7 @@ def construct_band_elements(pm, r, td):
         1D array of the band_elements elements, indexed as band_elements[band] 
     """   
     # Number of single-particle bands 
-    bandwidth = (pm.sys.stencil+1)/2
+    bandwidth = (pm.sys.stencil+1) // 2
 
     # Array to store the band elements  
     band_elements = np.zeros(bandwidth, dtype=np.float, order='F')
@@ -391,7 +392,7 @@ def energy_eigenstate(pm, n):
     # Constants
     factorial = np.arange(0,n+1,1)
     fact = np.product(factorial[1:])
-    norm = (np.sqrt(1.0/((2.0**n)*fact)))*((1.0/np.pi)**0.25)
+    norm = np.sqrt(1.0/((2.0**n)*fact)) / np.pi**0.25
     scale_factor = 7.0/pm.sys.xmax
 
     # Assign elements
@@ -462,7 +463,7 @@ def calculate_energy(pm, wavefunction_reduced, wavefunction_reduced_old):
     """
     a = np.linalg.norm(wavefunction_reduced_old)
     b = np.linalg.norm(wavefunction_reduced)
-    energy = -(np.log(b/a))/pm.ext.ideltat
+    energy = -np.log(b/a)/pm.ext.ideltat
 
     return energy
 
@@ -666,11 +667,11 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced,
         # Calculate the convergence of the wavefunction
         wavefunction_convergence = np.linalg.norm(wavefunction_reduced_old - 
                                    wavefunction_reduced)
-        string = 'wavefunction convergence: ' + str(wavefunction_convergence)
+        string = 'wavefunction convergence: {}'.format(wavefunction_convergence)
         pm.sprint(string, 0, newline=True) 
         if(pm.run.verbosity=='default'):
-            string = 'EXT: ' + 't = {:.5f}'.format(i*pm.ext.ideltat) + \
-                     ', convergence = ' + str(wavefunction_convergence)
+            string = 'EXT: t = {:.5f}, convergence = {}' \
+                    .format(i*pm.ext.ideltat, wavefunction_convergence)
             pm.sprint(string, 1, newline=False)
         if(wavefunction_convergence < pm.ext.itol*10.0):
             i = pm.ext.iimax
@@ -829,6 +830,7 @@ def main(parameters):
         Results object
     """       
     pm = parameters
+    pm.setup_space()
     
     # Array initialisations 
     string = 'EXT: constructing arrays'

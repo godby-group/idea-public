@@ -1,16 +1,21 @@
 """ Stores input parameters for iDEA calculations.
 """
 from __future__ import print_function
+from __future__ import division
+from __future__ import absolute_import
+
+from six import string_types
+
 import numpy as np
 import importlib
 import os
 import sys
 import copy
 
-import results as rs
+from . import results as rs
 
 
-class SpaceGrid():
+class SpaceGrid(object):
    """Stores basic real space arrays 
 
    These arrays should be helpful in many types of iDEA calculations.
@@ -28,13 +33,13 @@ class SpaceGrid():
            self.v_ext[i] = pm.sys.v_ext(self.grid[i])
 
        self.v_int = np.zeros((pm.sys.grid,pm.sys.grid),dtype='float')
-       for i in xrange(pm.sys.grid):
-          for k in xrange(pm.sys.grid):
+       for i in range(pm.sys.grid):
+          for k in range(pm.sys.grid):
              self.v_int[i,k] = 1.0/(abs(self.grid[i]-self.grid[k])+pm.sys.acon)
 
        stencil = pm.sys.stencil
        if stencil == 3:
-           self.second_derivative = np.array([1,-2,1], dtype=np.float) / self.delta**2
+           self.second_derivative = np.array([1,-2,1], dtype=np.float) / self.delta**2 
            self.second_derivative_indices = [-1,0,1]
            self.second_derivative_band = np.array([-2,1], dtype=np.float) / self.delta**2
        elif stencil == 5:
@@ -54,27 +59,27 @@ class SpaceGrid():
        """Print variables of section and their values"""
        s = ""
        v = vars(self)
-       for key,value in v.iteritems():
+       for key,value in v.items():
            s += input_string(key, value)
        return s
 
 def input_string(key,value):
     """Prints a line of the input file"""
-    if isinstance(value, basestring):
+    if isinstance(value, string_types):
         s = "{} = '{}'\n".format(key, value)
     else:
         s = "{} = {}\n".format(key, value)
     return s
 
 
-class InputSection():
+class InputSection(object):
    """Generic section of input file"""
 
    def __str__(self):
        """Print variables of section and their values"""
        s = ""
        v = vars(self)
-       for key,value in v.iteritems():
+       for key,value in v.items():
            s += input_string(key, value)
        return s
 
@@ -308,11 +313,10 @@ class Input(object):
         """Prints different sections in input file"""
         s = ""
         v = vars(self)
-        for key, value in v.iteritems():
+        for key, value in v.items():
             if isinstance(value, InputSection):
                 s += "### {} section\n".format(key)
-                s += str(value)
-                s += "\n"
+                s += "{}\n".format(value)
             else:
                 s += input_string(key,value)
         return s
@@ -369,7 +373,7 @@ class Input(object):
         # The following recursive approach is adapted from 
 	# See http://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
 	def update(d, u, l=1):
-	    for k, v in u.iteritems():
+	    for k, v in u.items():
                 # We need to step into InputSection objects, as those may have varying
                 # numbers of parameters defined.
 		if isinstance(v, InputSection):
@@ -416,8 +420,6 @@ class Input(object):
                     pass
                 else: raise
 
-        #version = 'ver' + str(pm.run.code_version)
-
         output_dirs = ['data', 'raw', 'plots', 'animations']
         for d in output_dirs:
             path = '{}/{}'.format(pm.output_dir,d)
@@ -461,92 +463,92 @@ class Input(object):
         self.results = rs.Results()
 
         # Draw splash to screen
-        import splash
+        from . import splash
         splash.draw(pm)
-        pm.sprint('run name: ' + str(pm.run.name),1)
+        pm.sprint('run name: {}'.format(pm.run.name),1)
 
         results = pm.results
         # Execute required jobs
         if(pm.sys.NE == 1):
            if(pm.run.EXT == True):
-              import EXT1
+              from . import EXT1
               results.add(EXT1.main(pm), name='ext')
            if(pm.ext.RE == True):
-              import RE
+              from . import RE
               results.add(RE.main(pm,'ext'), name='extre')
            if(pm.ext.OPT == True):
-              import OPT
+              from . import OPT
               results.add(OPT.main(pm,'ext'), name='extopt')
         elif(pm.sys.NE == 2):
            if(pm.run.EXT == True):
-              import EXT2
+              from . import EXT2
               results.add(EXT2.main(pm), name='ext')
            if(pm.ext.RE == True):
-              import RE
+              from . import RE
               results.add(RE.main(pm,'ext'), name='extre')
            if(pm.ext.OPT == True):
-              import OPT
+              from . import OPT
               results.add(OPT.main(pm,'ext'), name='extopt')
         elif(pm.sys.NE == 3):
            if(pm.run.EXT == True):
-              import EXT3
+              from . import EXT3
               results.add(EXT3.main(pm), name='ext')
            if(pm.ext.RE == True):
-              import RE
+              from . import RE
               results.add(RE.main(pm,'ext'), name='extre')
            if(pm.ext.OPT == True):
-              import OPT
+              from . import OPT
               results.add(OPT.main(pm,'ext'), name='extopt')
         elif(pm.sys.NE >= 4):
            if(pm.run.EXT == True):
               print('EXT: cannot run exact with more than 3 electrons')
 
         if(pm.run.NON == True):
-              import NON
+              from . import NON
               results.add(NON.main(pm), name='non')
         if(pm.non.RE == True):
-              import RE
+              from . import RE
               results.add(RE.main(pm,'non'), name='nonre')
         if(pm.non.OPT == True):
-              import OPT
+              from . import OPT
               results.add(OPT.main(pm,'non'), name='nonopt')
 
         if(pm.run.LDA == True):
-              import LDA
+              from . import LDA
               results.add(LDA.main(pm), name='lda')
         if(pm.lda.OPT == True):
-              import OPT
+              from . import OPT
               results.add(OPT.main(pm,'lda'), name='ldaopt')
 
         if(pm.run.MLP == True):
-              import MLP
+              from . import MLP
               MLP.main(pm)
         if(pm.mlp.OPT == True):
-              import OPT
+              from . import OPT
               results.add(OPT.main(pm,'mlp'), name='mlpopt')
 
         if(pm.run.HF == True):
-              import HF
+              from . import HF
               results.add(HF.main(pm), name='hf')
         if(pm.hf.RE == True):
-              import RE
+              from . import RE
               results.add(RE.main(pm,'hf'), name='hfre')
         if(pm.hf.OPT == True):
-              import OPT
+              from . import OPT
               results.add(OPT.main(pm,'hf'), name='hfopt')
 
         if(pm.run.MBPT == True):
-              import MBPT
+              from . import MBPT
               results.add(MBPT.main(pm), name='mbpt')
         if(pm.mbpt.RE == True):
-              import RE
+              from . import RE
               results.add(RE.main(pm,'mbpt'), name='mbptre')
         if(pm.mbpt.OPT == True):
-              import OPT
+              from . import OPT
               results.add(OPT.main(pm,'mbpt'), name='mbptopt')
 
         if(pm.run.LAN == True):
-              import LAN
+              from . import LAN
               results.add(LAN.main(pm), name='lan')
 
         # All jobs done

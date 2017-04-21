@@ -1,13 +1,15 @@
 """Tests for mixing schemes
 """ 
+from __future__ import division
+from __future__ import absolute_import
 
 import numpy as np
 import numpy.testing as nt
-import input
 import unittest
 
-import mix
-import NON
+from . import input
+from . import mix
+from . import NON
 
 class TestPulay(unittest.TestCase):
     """Tests for the Pulay mixer

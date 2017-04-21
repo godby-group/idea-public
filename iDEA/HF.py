@@ -1,6 +1,9 @@
 """Computes ground-state charge density of a system using the Hartree-Fock approximation. The code outputs the ground-state charge density, the 
 energy of the system and the Hartree-Fock orbitals. 
 """
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 
 import copy
@@ -9,7 +12,7 @@ import numpy as np
 import scipy as sp
 import scipy.linalg as spla
 import scipy.sparse as sps
-import results as rs
+from . import results as rs
 
 
 def hartree(pm, U, density):
@@ -119,7 +122,7 @@ def groundstate(pm, v_ext, v_H, F):
       
    # solve eigen equation
    eigv, eigf = spla.eigh(H)
-   eigf = eigf.T / np.sqrt(pm.sys.deltax)
+   eigf = eigf.T/ np.sqrt(pm.sys.deltax)
    
    # calculate density
    density = np.zeros(pm.sys.grid)
@@ -173,8 +176,7 @@ def main(parameters):
       Results object
    """
    pm = parameters
-   if not hasattr(pm, 'space'):
-      pm.setup_space()
+   pm.setup_space()
    
    # Construct external potential and initial orbitals
    V_H = np.zeros(pm.sys.grid)
@@ -205,9 +207,9 @@ def main(parameters):
       density, eigf, eigv = groundstate(pm, V_ext, V_H, F)
       
       con = sum(abs(density-density_old))
-      string = 'HF: computing ground-state density, convergence = ' + str(con)
+      string = 'HF: computing ground-state density, convergence = {}'.format(con)
       pm.sprint(string, 1, newline=False)
-   print
+   print()
    
    # Calculate ground state energy
    E_HF = energy(pm, density, eigf, eigv, V_H, F)

@@ -1,10 +1,11 @@
 """Tests for 2-electron exact calculations in iDEA
 """ 
+from __future__ import absolute_import
 
 import numpy as np
 import numpy.testing as nt
-import EXT2
-import input
+from . import EXT2
+from . import input
 import unittest
 
 class TestHarmonicOscillator(unittest.TestCase):

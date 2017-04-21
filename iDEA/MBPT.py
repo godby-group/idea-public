@@ -10,15 +10,18 @@ energies and, if desired, the Green function of the system.
 """
 
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+
 import copy
 import numpy as np
 import scipy as sp
-import results as rs
-import continuation
+from . import results as rs
+from . import continuation
 
 try:
-    from mklfftwrap import fft_t as fft_1d
-    from mklfftwrap import ifft_t as ifft_1d
+    from .mklfftwrap import fft_t as fft_1d
+    from .mklfftwrap import ifft_t as ifft_1d
     MKLWRAPPER_AVAILABLE = True
 except ImportError:
     MKLWRAPPER_AVAILABLE = False
@@ -32,7 +35,7 @@ except ImportError:
         return np.fft.ifft(F, axis=-1) * F.shape[-1]
 
 
-class SpaceTimeGrid:
+class SpaceTimeGrid(object):
     """Stores spatial and frequency grids"""
 
     def __init__(self,pm):
@@ -90,7 +93,7 @@ class SpaceTimeGrid:
         return s
 
 
-class Container:
+class Container(object):
     """Stores quantities for GW cycle"""
     pass
 

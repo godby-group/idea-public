@@ -1,8 +1,9 @@
 """ Tests for non-interacting systems
 
 """ 
-import NON
-import input
+from __future__ import absolute_import
+from . import NON
+from . import input
 import unittest
 
 # decimal places for comparison of results
