@@ -91,6 +91,7 @@ class TestKerker(unittest.TestCase):
         
         pm.ext.ctol = 1e-5
 
+        pm.setup_space()
         self.pm = pm
 
 

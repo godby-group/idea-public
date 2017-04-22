@@ -202,7 +202,7 @@ def main(parameters):
     wavefunctions /= pm.sys.deltax**0.5
 
     # Normalise the wavefunctions and calculate the density 
-    density = np.sum(wavefunctions[:,:pm.sys.NE]**2)
+    density = np.sum(wavefunctions[:,:pm.sys.NE]**2, axis=1)
 
     # Calculate the energy and print to screen
     energy = np.sum(energies[0:pm.sys.NE])
