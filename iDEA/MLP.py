@@ -76,7 +76,7 @@ def Hartree(n,U):
 def Coulomb():
    U = np.zeros((pm.sys.grid,pm.sys.grid),dtype='float')
    for i in range(pm.sys.grid):
-      for k in range(pm.sys.grid):	
+      for k in range(pm.sys.grid):
          U[i,k] = 1.0/(abs(i*pm.sys.deltax-k*pm.sys.deltax)+pm.sys.acon)
    return U
 
@@ -146,7 +146,7 @@ def LHS(v,j,A):
       CNLHS[i,i+1] = -0.5j*pm.sys.deltat*(0.5/pm.sys.deltax-(frac1)*1.0j*A[j,i+1]-(frac1)*1.0j*A[j,i])/pm.sys.deltax
    for i in range(1,pm.sys.grid):
       CNLHS[i,i-1] = -0.5j*pm.sys.deltat*(0.5/pm.sys.deltax+(frac1)*1.0j*A[j,i-1]+(frac1)*1.0j*A[j,i])/pm.sys.deltax
-   for i in range(pm.sys.grid-2):	
+   for i in range(pm.sys.grid-2):
       CNLHS[i,i+2] = -0.5j*pm.sys.deltat*(1.0j*A[j,i+2]+1.0j*A[j,i])*(frac2)/pm.sys.deltax
    for i in range(2,pm.sys.grid):
       CNLHS[i,i-2] = 0.5j*pm.sys.deltat*(1.0j*A[j,i-2]+1.0j*A[j,i])*(frac2)/pm.sys.deltax
@@ -180,12 +180,12 @@ def momentumspace(func):
 def ExtrapolateCD(J,j,n,upper_bound):
    imaxl = 0 # Start from the edge of the system
    nmaxl = 0.0
-   imaxr = 0									
+   imaxr = 0
    nmaxr = 0.0
    for l in range(upper_bound+1):
       if n[j,l]>nmaxl: # Find the first peak in the density from the left
          nmaxl = n[j,l]
-	 imaxl = l
+         imaxl = l
       i = upper_bound+l-1
       if n[j,i]>nmaxr: # Find the first peak in the density from the right
           nmaxr = n[j,i]
@@ -204,7 +204,7 @@ def ExtrapolateCD(J,j,n,upper_bound):
       if n[j,l]<1e-6:
          dUdx[:] = np.gradient(U[:],pm.sys.deltax)
          U[l] = 8*U[l-1]-8*U[l-3]+U[l-4]-dUdx[l-2]*12.0*pm.sys.deltax
-   J[:] = n[j,:]*U[:]							
+   J[:] = n[j,:]*U[:]
    return J
 
 # Main function
@@ -247,8 +247,8 @@ def main(parameters):
          v_ref[:] = v_ext[:]+Hartree(n,U)+LDA.XC(n) # Up-date refernce potential (if needed)
       if str(pm.mlp.f)=='e':
          elf = Elf(n[:],waves)
-	 average_elf = np.sum(n[:]*elf[:]*pm.sys.deltax)/pm.sys.NE
-	 f_e = 2.2e-4*math.exp(8.5*average_elf) # Self-consistent f
+         average_elf = np.sum(n[:]*elf[:]*pm.sys.deltax)/pm.sys.NE
+         f_e = 2.2e-4*math.exp(8.5*average_elf) # Self-consistent f
          v_s[:] = f_e*soa[:]+(1-f_e)*v_ref[:] # Calculate MLP
       else:
          v_s[:] = pm.mlp.f*soa[:]+(1-pm.mlp.f)*v_ref[:] # Calculate MLP

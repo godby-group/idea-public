@@ -32,7 +32,7 @@ class PulayMixer(object):
         self.x_npt = pm.sys.grid
         self.x_delta = pm.sys.deltax
         self.NE = pm.sys.NE
-	self.mixp = pm.lda.mix
+        self.mixp = pm.lda.mix
 
         dtype = np.float
         self.res = np.zeros((order,self.x_npt), dtype=dtype)
@@ -355,17 +355,17 @@ class RPAPreconditioner(object):
 
         for j in range(0,self.NE):
             for k in range(self.NE,N):
-		p1 = eigf[j] * np.conj(eigf[k])
-		p2 = np.conj(p1)
+                p1 = eigf[j] * np.conj(eigf[k])
+                p2 = np.conj(p1)
                 tmp = np.outer(p1,p2)
-		chi += tmp.real * 2.0/(eigv[j] - eigv[k])
-		#if j==self.NE-1 and k==self.NE:
+                chi += tmp.real * 2.0/(eigv[j] - eigv[k])
+                #if j==self.NE-1 and k==self.NE:
                 #    print("")
                 #    print('{:.3e}'.format(eigv[j] - eigv[k]))
 
         #eps = np.dot(self.coulomb_repulsion,eps)*self.x_delta
         #eps = np.eye(nx)/self.x_delta - eps
-	
+        
         return chi
 
 

@@ -48,7 +48,7 @@ def groundstate(pm, H):
      normalised orbitals, index as eigf[space_index,orbital_number]
    e: array_like
      orbital energies
-   """	
+   """
    
    #e,eigf = spsla.eigsh(H, k=pm.sys.grid/2, which='SA') 
    #e,eigf = spla.eigh(H)
@@ -102,9 +102,9 @@ def banded_to_full(H):
 
     H_full = np.zeros((npt,npt),dtype=np.float)
     for ioff in range(nbnd):
-	d = np.arange(npt-ioff)
-	H_full[d,d+ioff] = H[ioff,d]
-	H_full[d+ioff,d] = H[ioff,d]
+        d = np.arange(npt-ioff)
+        H_full[d,d+ioff] = H[ioff,d]
+        H_full[d+ioff,d] = H[ioff,d]
 
     return H_full
 
@@ -331,7 +331,7 @@ def total_energy_eigv(pm, eigv, eigf=None, n=None, V_H=None, V_xc=None):
         exchange-correlation potential
 
    returns float
-   """		
+   """
 
    if n is None:
        if eigf is None:
@@ -373,7 +373,7 @@ def total_energy_eigf(pm, eigf, n=None, V_H=None):
         Hartree potential
 
    returns float
-   """		
+   """
 
    if n is None:
        n = electron_density(pm, eigf)
@@ -456,10 +456,10 @@ def CrankNicolson(pm, v, Psi, n, j):
    return n,Psi
 
 
-def LHS(pm, v, j):	
+def LHS(pm, v, j):
    r"""Constructs the matrix A to be used in the crank-nicholson solution of Ax=b when evolving the wavefunction in time (Ax=b)
    """
-   CNLHS = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex') # Matrix for the left hand side of the Crank Nicholson method										
+   CNLHS = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex') # Matrix for the left hand side of the Crank Nicholson method
    for i in range(pm.sys.grid):
       CNLHS[i,i] = 1.0+0.5j*pm.sys.deltat*(1.0/pm.sys.deltax**2+v[j,i])
       if i < pm.sys.grid-1:

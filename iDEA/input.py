@@ -371,22 +371,22 @@ class Input(object):
 
         # Replace default member variables with those from parameters file.
         # The following recursive approach is adapted from 
-	# See http://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
-	def update(d, u, l=1):
-	    for k, v in u.items():
+        # See http://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
+        def update(d, u, l=1):
+            for k, v in u.items():
                 # We need to step into InputSection objects, as those may have varying
                 # numbers of parameters defined.
-		if isinstance(v, InputSection):
-		    r = update(d.get(k, {}).__dict__, v.__dict__, l+1)
-		    d[k].__dict__ = r
-		    #d[k] = r
+                if isinstance(v, InputSection):
+                    r = update(d.get(k, {}).__dict__, v.__dict__, l+1)
+                    d[k].__dict__ = r
+                    #d[k] = r
                 # We only want to copy contents of the input sections
                 # No need to copy any of the builtin attributes added
                 elif l > 1:
-		    d[k] = u[k]
-	    return d 
+                    d[k] = u[k]
+            return d 
 
-	self.__dict__ = update(self.__dict__, pm.__dict__)
+        self.__dict__ = update(self.__dict__, pm.__dict__)
 
         self.filename = filename
 
@@ -433,7 +433,7 @@ class Input(object):
         # Copy ViDEO file to output folder
         vfile = 'scripts/ViDEO.py'
         if os.path.isfile(vfile):
-			   # Note: this doesn't work, when using iDEA as a system module
+            # Note: this doesn't work, when using iDEA as a system module
             shutil.copy2('scripts/ViDEO.py',pm.output_dir)
         else:
             pass
@@ -448,7 +448,7 @@ class Input(object):
         
         precomputes quantities on grids, etc.
         """
-	self.space = SpaceGrid(self)
+        self.space = SpaceGrid(self)
 
 
     def execute(self):
@@ -566,8 +566,8 @@ class Input(object):
 
             # store pickled version of parameters object
             import pickle
-            f = open(pm.output_dir + '/parameters.p', 'wr')
-	    pickle.dump(tmp, f)
+            f = open(pm.output_dir + '/parameters.p', 'wb')
+            pickle.dump(tmp, f)
             f.close()
 
             del tmp
