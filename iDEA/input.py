@@ -197,7 +197,9 @@ class Input(object):
         ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
         ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
         ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
-        
+        ext.initial_psi = 'non'              #: Initial wavefunction ('non', 'hf', 'lda' or 'ext'. If using an ext wavefunction  
+                                             #  from another directory, specify that directories name e.g. 'run_name')
+         
 
         ### Non-interacting approximation parameters
         self.non = InputSection()
@@ -212,14 +214,14 @@ class Input(object):
         self.lda = InputSection()
         lda = self.lda
         lda.NE = 2                           #: Number of electrons used in construction of the LDA
-        lda.scf_type = 'linear'              #: None, 'linear', 'pulay' or 'cg'
-        lda.pulay_order = 20                 #: history of steps for pulay
-        lda.pulay_preconditioner = None      #: None, 'kerker' or 'rpa'
-        lda.mix = 1.0                        #: linear mixing parameter
-        lda.kerker_length = 2.1              #: Kerker screening length
-        lda.tol = 1e-12                      #: density tolerance of self consistent cycle
-        lda.etol = 1e-14                     #: total energy tolerance of self consistent cycle
-        lda.max_iter = 1000                  #: Maximum number of iterations in LDA self-consistency
+        lda.scf_type = 'pulay'               #: how to perform scf (None, 'linear', 'pulay', 'cg')
+        lda.mix = 0.2                        #: Mixing parameter for linear & Pulay mixing (float in [0,1])
+        lda.pulay_order = 20                 #: length of history for Pulay mixing (max: lda.max_iter)
+        lda.pulay_preconditioner = None      #: preconditioner for pulay mixing (None, 'kerker', rpa')
+        lda.kerker_length = 0.5              #: length over which density fluctuations are screened (Kerker only)
+        lda.tol = 1e-12                      #: convergence tolerance in the density
+        lda.etol = 1e-12                     #: convergence tolerance in the energy
+        lda.max_iter = 10000                 #: Maximum number of self-consistency iterations
         lda.save_eig = False                 #: save eigenfunctions and eigenvalues of Hamiltonian
         lda.OPT = False                      #: Calculate the external potential for the LDA density 
         

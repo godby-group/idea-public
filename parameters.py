@@ -66,7 +66,7 @@ ext = InputSection()
 ext.itol = 1e-12                     #: Tolerance of imaginary time propagation (Recommended: 1e-12)
 ext.itol_solver = 1e-14              #: Tolerance of linear solver in imaginary time propagation (Recommended: 1e-14)
 ext.rtol_solver = 1e-12              #: Tolerance of linear solver in real time propagation (Recommended: 1e-12)
-ext.itmax = 2000                     #: Total imaginary time
+ext.itmax = 2000.0                   #: Total imaginary time
 ext.iimax = 1e5                      #: Imaginary time iterations
 ext.ideltat = ext.itmax/ext.iimax    #: Imaginary time step (DERIVED)
 ext.RE = False                       #: Reverse engineer many-body density
@@ -77,18 +77,21 @@ ext.elf_es = False                   #: Calculate ELF for the excited-states of 
 ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
 ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
 ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
+ext.initial_psi = 'non'              #: Initial wavefunction ('non', 'hf', 'lda' or 'ext'. If using an ext wavefunction  
+                                     #  from another directory, specify that directories name e.g. 'run_name')
 
 
 ### Non-interacting approximation parameters
 non = InputSection()
 non.rtol_solver = 1e-14              #: Tolerance of linear solver in real time propagation (Recommended: 1e-13)
-non.save_eig = True                  #: save eigenfunctions and eigenvalues of Hamiltonian
+non.save_eig = False                 #: save eigenfunctions and eigenvalues of Hamiltonian
 non.RE = False                       #: Reverse-engineer non-interacting density
 non.OPT = False                      #: Calculate the external potential for the non-interacting density
 
 
 ### LDA parameters
 lda = InputSection()
+lda.NE = 2                           #: Number of electrons used in construction of the LDA
 lda.scf_type = 'pulay'               #: how to perform scf (None, 'linear', 'pulay', 'cg')
 lda.mix = 0.2                        #: Mixing parameter for linear & Pulay mixing (float in [0,1])
 lda.pulay_order = 20                 #: length of history for Pulay mixing (max: lda.max_iter)
@@ -100,6 +103,7 @@ lda.max_iter = 10000                 #: Maximum number of self-consistency itera
 lda.save_eig = False                 #: save eigenfunctions and eigenvalues of Hamiltonian
 lda.OPT = False                      #: Calculate the external potential for the LDA density 
 
+
 ### MLP parameters
 mlp = InputSection()
 mlp.f = 'e'                          #: f mixing parameter (if f='e' the weight is optimzed with the elf)
@@ -107,6 +111,7 @@ mlp.tol = 1e-12                      #: Self-consistent convergence tollerance
 mlp.mix = 0.0                        #: Self-consistent mixing parameter (default 0, only use if doesn't converge)
 mlp.reference_potential = 'non'      #: Choice of reference potential for mixing with the SOA
 mlp.OPT = False                      #: Calculate the external potential for the MLP density
+
 
 ### HF parameters
 hf = InputSection()
@@ -116,6 +121,7 @@ hf.nu = 0.9                          #: Mixing term
 hf.save_eig = False                  #: save eigenfunctions and eigenvalues of Hamiltonian
 hf.RE = False                        #: Reverse-engineer hf density
 hf.OPT = False                       #: Calculate the external potential for the HF density
+
 
 ### MBPT parameters
 mbpt = InputSection()
@@ -132,6 +138,7 @@ mbpt.w = 'dynamical'                 #: compute 'full' W or 'dynamical' W-v
 mbpt.hedin_shift = True              #: perform Hedin shift
 mbpt.RE = False                      #: Reverse-engineer mbpt density
 mbpt.OPT = False                     #: Calculate the external potential for the MBPT density
+
 
 ### LAN parameters
 lan = InputSection()

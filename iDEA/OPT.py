@@ -134,7 +134,8 @@ def main(parameters, approx, target_density_array=None,
 
     # Generate the initial wavefunction
     wavefunction_reduced = np.zeros(reduction_matrix.shape[0], dtype=np.float)
-    wavefunction_reduced = EXT.initial_wavefunction(pm, wavefunction_reduced)
+    wavefunction_reduced = EXT.initial_wavefunction(pm, wavefunction_reduced, 
+                           v_ext)
 
     # Initial value of parameters 
     density_error = pm.opt.tol + 1.0

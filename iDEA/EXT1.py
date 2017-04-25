@@ -227,11 +227,21 @@ def main(parameters):
     results.add(densities[0,:],'gs_ext_den')
     results.add(energies[0],'gs_ext_E')
 
-    # Save excited-state densities and energies if necessary
+    # Save the ground-state wavefunction
+    if (pm.ext.psi_gs == True):
+        results.add(wavefunctions[:,0].T,'gs_ext_psi')
+
+    # Save the excited-state densities and energies 
     if(pm.ext.excited_states != 0):
         for j in range(pm.ext.excited_states):
-            results.add(densities[j+1,:],'gs_ext_den{}'.format(j+1))
-            results.add(energies[j+1],'gs_ext_E{}'.format(j+1))
+            results.add(densities[j+1,:],'es_ext_den{}'.format(j+1))
+            results.add(energies[j+1],'es_ext_E{}'.format(j+1))
+  
+            # Save the excited-state wavefunctions
+            if (pm.ext.psi_es == True):
+                results.add(wavefunctions[:,j+1].T,'es_ext_psi{}'.format(j+1))
+
+    # Save results
     if (pm.run.save):
         results.save(pm)
 

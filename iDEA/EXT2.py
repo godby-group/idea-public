@@ -306,7 +306,7 @@ def hamiltonian_max_size(pm):
     return max_size
 
 
-def initial_wavefunction(pm, wavefunction_reduced, ground_state=True):
+def initial_wavefunction(pm, wavefunction_reduced, v_ext, ground_state=True):
     r"""Generates the initial condition for the Crank-Nicholson imaginary 
     time propagation.
 
@@ -322,9 +322,15 @@ def initial_wavefunction(pm, wavefunction_reduced, ground_state=True):
     wavefunction_reduced : array_like
         1D array of the reduced wavefunction, indexed as 
         wavefunction_reduced[space_index_1_2]
+    v_ext : array_like
+        1D array of the external potential, indexed as v_ext[space_index]
     ground_state : bool
-        - True: Construct a Slater determinant of the two lowest eigenstates of 
-                the non-interacting system to use as the initial wavefunction
+        - True: Construct a Slater determinant of either the two lowest 
+                non-interacting eigenstates of the system, the two lowest
+                Hartree-Fock eigenstates of the system or the two lowest
+                LDA eigenstates of the system to use as the initial 
+                wavefunction. Alternatively, read in a many-body wavefunction
+                to use as the initial wavefunction.
         - False: Construct a Slater determinant of the two lowest eigenstates 
                  of the harmonic oscillator to use as the initial wavefunction
 
@@ -336,30 +342,116 @@ def initial_wavefunction(pm, wavefunction_reduced, ground_state=True):
     eigenstate_1 = np.zeros(pm.sys.grid, dtype=np.float, order='F')
     eigenstate_2 = np.copy(eigenstate_1)
 
-    # Find the two lowest eigenstates of the non-interacting system
+    # If calculating the ground-state wavefunction
     if(ground_state == True):
-        K = NON.construct_K(pm)
-        V = NON.construct_V(pm, 0)
-        H = copy.copy(K)
-        H[0,:] += V[:]
-        eigenvalues, eigenfunctions = spla.eig_banded(H, lower=True, 
-                                      select='i', select_range=(0,1))
-        eigenstate_1 = eigenfunctions[:,0]
-        eigenstate_2 = eigenfunctions[:,1]
 
-    # Find the two lowest eigenstates of the harmonic oscillator
-    else: 
-        eigenstate_1 = energy_eigenstate(pm,0)
-        eigenstate_2 = energy_eigenstate(pm,1)
+        # Read the two lowest Hartree-Fock eigenstates of the system
+        if(pm.ext.initial_psi == 'hf'):
+            try:
+                eigenstates = rs.Results.read('gs_hf_eigf', pm) 
+                eigenstate_1 = eigenstates[0].real
+                eigenstate_2 = eigenstates[1].real
 
-    # Construct Slater determinant
-    wavefunction_reduced = wavefunction2.construct_wavefunction(eigenstate_1,
-                           eigenstate_2, wavefunction_reduced, pm.sys.grid)
+            # File does not exist
+            except:
+                raise IOError("Cannot find file containing HF orbitals.")
+
+        # Read the two lowest LDA eigenstates of the system
+        elif(pm.ext.initial_psi == 'lda'):
+            try:
+                eigenstates = rs.Results.read('gs_lda_eigf', pm)
+                eigenstate_1 = eigenstates[0].real
+                eigenstate_2 = eigenstates[1].real
+
+            # File does not exist 
+            except:
+                raise IOError("Cannot find file containing LDA orbitals.")
+
+        # Read the two lowest non-interacting eigenstates of the system
+        elif(pm.ext.initial_psi == 'non'):
+            try:
+                eigenstates = rs.Results.read('gs_non_eigf', pm)
+                eigenstate_1 = eigenstates[0].real
+                eigenstate_2 = eigenstates[1].real
+
+            # If the file does not exist, calculate the two lowest eigenstates
+            except:
+                eigenstate_1, eigenstate_2 = non_approx(pm)
+
+        # Read an exact many-body wavefunction from this directory 
+        elif(pm.ext.initial_psi == 'ext'):
+            try:
+                wavefunction_reduced = rs.Results.read('gs_ext_psi', pm)
+            
+            # File does not exist
+            except:
+                raise IOError("Cannot find file containting many-body" + \
+                " wavefunction.")
+
+        # Read an exact many-body wavefunction from a different directory
+        else:
+            try:
+                pm2 = copy.deepcopy(pm)
+                pm2.run.name = pm.ext.initial_psi
+                wavefunction_reduced = rs.Results.read('gs_ext_psi', pm2)
+ 
+            # File does not exist
+            except:
+                raise IOError("Cannot find file containing many-body" + \
+                " wavefunction.")
+
+    # If calculating excited-state wavefunctions
+    elif(ground_state == False): 
+
+        # Calculate the two lowest eigenstates of the harmonic oscillator
+        eigenstate_1 = qho_approx(pm, 0)
+        eigenstate_2 = qho_approx(pm, 1)
+
+    # Construct a Slater determinant from the single-particle eigenstates if a
+    # many-body wavefunction has not been read 
+    nonzero_1 = np.count_nonzero(eigenstate_1)
+    nonzero_2 = np.count_nonzero(eigenstate_2)
+    if(nonzero_1 != 0 and nonzero_2 != 0):
+        wavefunction_reduced = wavefunction2.construct_wavefunction(
+                               eigenstate_1, eigenstate_2, 
+                               wavefunction_reduced, pm.sys.grid)
 
     return wavefunction_reduced
 
 
-def energy_eigenstate(pm, n):
+def non_approx(pm):
+    r"""Calculates the two lowest non-interacting eigenstates of the system.  
+    These can then be expressed in Slater determinant form as an approximation  
+    to the exact many-body wavefunction.
+
+    parameters
+    ----------
+    pm : object
+        Parameters object
+
+    returns array_like and array_like
+        1D array of the 1st non-interacting eigenstate, indexed as 
+        eigenstate_1[space_index]. 1D array of the 2nd non-interacting  
+        eigenstate, indexed as eigenstate_2[space_index].
+    """
+    # Construct the single-particle Hamiltonian
+    K = NON.construct_K(pm)
+    V = NON.construct_V(pm, 0)
+    H = copy.copy(K)
+    H[0,:] += V[:]
+
+    # Solve the single-particle TISE
+    eigenvalues, eigenfunctions = spla.eig_banded(H, lower=True, 
+                                  select='i', select_range=(0,1))
+
+    # Take the two lowest eigenstates
+    eigenstate_1 = eigenfunctions[:,0]
+    eigenstate_2 = eigenfunctions[:,1]
+
+    return eigenstate_1, eigenstate_2
+
+
+def qho_approx(pm, n):
     r"""Calculates the nth energy eigenstate of the quantum harmonic 
     oscillator, and shifts to ensure it is neither an odd nor an even 
     function (necessary for the Gram-Schmidt algorithm). 
@@ -516,13 +608,13 @@ def calculate_current_density(pm, density):
         2D array of the current density, indexed as 
         current_density[time_index,space_index]
     """
-    pm.sprint('',1,newline=True)
+    pm.sprint('', 1, newline=True)
     current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
     string = 'EXT: calculating current density'
-    pm.sprint(string,1,newline=True)
+    pm.sprint(string, 1, newline=True)
     for i in range(pm.sys.imax):
          string = 'EXT: t = {:.5f}'.format((i+1)*pm.sys.deltat)
-         pm.sprint(string,1,newline=False)
+         pm.sprint(string, 1, newline=False)
          J = np.zeros(pm.sys.grid)
          J = RE_Utilities.continuity_eqn(pm.sys.grid, pm.sys.deltax,
              pm.sys.deltat, density[i+1,:], density[i,:])
@@ -533,7 +625,7 @@ def calculate_current_density(pm, density):
                      J[j] -= abs(pm.sys.im_petrb(x))*density[i,k]*(
                              pm.sys.deltax)
          current_density[i,:] = J[:]
-    pm.sprint('',1,newline=True)
+    pm.sprint('', 1, newline=True)
 
     return current_density
  
@@ -853,7 +945,8 @@ def main(parameters):
 
     # Generate the initial wavefunction
     wavefunction_reduced = np.zeros(reduction_matrix.shape[0], dtype=np.float)
-    wavefunction_reduced = initial_wavefunction(pm, wavefunction_reduced)
+    wavefunction_reduced = initial_wavefunction(pm, wavefunction_reduced, 
+                           v_ext)
 
     # Propagate through imaginary time
     energy, wavefunction = solve_imaginary_time(pm, A_reduced, C_reduced,
@@ -895,7 +988,8 @@ def main(parameters):
 
             # Generate the initial wavefunction
             wavefunction_reduced = initial_wavefunction(pm, 
-                                   wavefunction_reduced, ground_state=False)
+                                   wavefunction_reduced, v_ext, 
+                                   ground_state=False)
 
             # Propagate through imaginary time
             energy, wavefunction = solve_imaginary_time(pm, A_reduced,
@@ -929,7 +1023,7 @@ def main(parameters):
 
         # Array initialisations
         string = 'EXT: constructing arrays'
-        pm.sprint(string,1,newline=True)
+        pm.sprint(string, 1, newline=True)
         wavefunction = wavefunction.astype(np.cfloat)
         if(pm.sys.im == 1):
             v_ext = v_ext.astype(np.cfloat)
