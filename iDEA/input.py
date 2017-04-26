@@ -134,6 +134,7 @@ class Input(object):
         run.MBPT = False                     #: Run Many-body pertubation theory
         run.LAN = False                      #: Run Landauer approximation 
 
+
         ### System parameters
         self.sys = SystemSection()
         sys = self.sys
@@ -147,6 +148,7 @@ class Input(object):
         sys.interaction_strength = 1.0       #: Scales the strength of the Coulomb interaction
         sys.im = 0                           #: Use imaginary potentials
         
+
         def v_ext(x):
             """Initial external potential
             """
@@ -197,8 +199,9 @@ class Input(object):
         ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
         ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
         ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
-        ext.initial_psi = 'non'              #: Initial wavefunction ('non', 'hf', 'lda' or 'ext'. If using an ext wavefunction  
-                                             #  from another directory, specify that directories name e.g. 'run_name')
+        ext.initial_psi = 'non'              #: Initial wavefunction ('non' by default. 'hf', 'lda' or 'ext' can be selected if  
+                                             #  the files are saved within the current directory. An ext wavefunction from another   
+                                             #  directory can be used, but specify that directories name instead e.g. 'run_name')
          
 
         ### Non-interacting approximation parameters

@@ -3,6 +3,7 @@ from __future__ import division
 from iDEA.input import InputSection, SystemSection
 import numpy as np
 
+
 ### Run parameters
 run = InputSection()
 run.name = 'run_name'                #: Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
@@ -18,6 +19,7 @@ run.HF = False                       #: Run Hartree-Fock approximation
 run.MBPT = False                     #: Run Many-body pertubation theory
 run.LAN = False                      #: Run Landauer approximation
 
+
 ### System parameters
 sys = SystemSection()
 sys.NE = 2                           #: Number of electrons
@@ -29,6 +31,7 @@ sys.imax = 1000                      #: Number of real time iterations
 sys.acon = 1.0                       #: Smoothing of the Coloumb interaction
 sys.interaction_strength = 1.0       #: Scales the strength of the Coulomb interaction
 sys.im = 0                           #: Use imaginary potentials (0: no, 1: yes)
+
 
 def v_ext(x):
     """Initial external potential
@@ -77,8 +80,9 @@ ext.elf_es = False                   #: Calculate ELF for the excited-states of 
 ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
 ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
 ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
-ext.initial_psi = 'non'              #: Initial wavefunction ('non', 'hf', 'lda' or 'ext'. If using an ext wavefunction  
-                                     #  from another directory, specify that directories name e.g. 'run_name')
+ext.initial_psi = 'non'              #: Initial wavefunction ('non' by default. 'hf', 'lda' or 'ext' can be selected if  
+                                     #  the files are saved within the current directory. An ext wavefunction from another   
+                                     #  directory can be used, but specify that directories name instead e.g. 'run_name')
 
 
 ### Non-interacting approximation parameters
