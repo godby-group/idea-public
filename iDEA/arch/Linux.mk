@@ -9,5 +9,6 @@ LFLAGS =  -L$(MKLROOT)/lib/intel64/ -lmkl_rt
 CLEAN = rm -rf *.so
 
 F2PY = f2py
+# build for python2 or python3
 PYTHON = python2
 PY3CONFIG = python3-config

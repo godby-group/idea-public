@@ -8,5 +8,6 @@ LFLAGS  = -L$(MKLROOT)/lib -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -liomp
 CLEAN = rm -rf *.so
 
 F2PY = /projects/anaconda3/bin/f2py
+# build for python2 or python3
 PYTHON = python3
 PY3CONFIG = /projects/anaconda3/bin/python3-config
