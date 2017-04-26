@@ -8,4 +8,5 @@ LFLAGS  = -L$(MKLROOT)/lib -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -liomp
 CLEAN = rm -rf *.so *.dSYM
 
 F2PY = f2py
-PYTHON = python
+PYTHON = python2
+PY3CONFIG = python3-config

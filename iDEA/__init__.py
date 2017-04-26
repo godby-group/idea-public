@@ -24,7 +24,7 @@ if make_fortran:
     p = subprocess.Popen(["make","--just-print"], cwd=dir_path, 
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
-    if out.find("Nothing to be done") != -1:
+    if out.find(b"Nothing to be done") != -1:
         pass
     else:
         print("Compiling Fortran libraries...")
