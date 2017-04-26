@@ -7,3 +7,6 @@ FCFLAGS = -fast
 OPTFLAGS = -fast
 LFLAGS =  -L$(MKLROOT)/lib/intel64/ -lmkl_rt
 CLEAN = rm -rf *.so
+
+F2PY = f2py3
+PYTHON = python3
