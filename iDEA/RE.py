@@ -23,17 +23,21 @@
 # removed from the KS vector potential.                                              #
 ######################################################################################
 
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+
 # Import library
 import copy
 import math
 import pickle
 import numpy as np
-import RE_Utilities
 import scipy.sparse as sps
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
 from scipy.optimize import curve_fit as spocf
-import results as rs
+from . import RE_Utilities
+from . import results as rs
 
 # Function to read inputs -- needs some work!
 def ReadInput(approx,GS,imax):
@@ -78,31 +82,31 @@ def CalculateGroundState(V,n_T,mu,sqdx,T_s,n):
 
 # Function to load or force calculation of the ground-state potential
 def GroundState(n_T,mu,sqdx,T_s,n,approx):
-	V_KS = np.zeros((imax,pm.sys.grid),dtype='complex')
-	V_ext = np.zeros(pm.sys.grid,dtype='complex')
-	pm.sprint('REV: calculating ground-state Kohn-Sham potential for the ' + str(approx) + ' density',1)
-	try:
-		pm.sprint('REV: trying to find the exact kohn-sham potential to start from...',1)
-		V_KS[0,:] = rs.Results.read('gs_extre_vks', pm)
-	except:
-		pm.sprint('REV: failed, starting from external potential...',1)
-		for i in range(pm.sys.grid):
-			V_KS[0,i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # Initial guess for KS potential
-	for i in range(pm.sys.grid):
-		V_ext[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax))
-	V_KS,n,cost_n_GS,Psi,E_KS,K,U = CalculateGroundState(V_KS,n_T,0,sqdx,T_s,n)
-	pm.sprint('REV: initial guess electron density error = %s' % cost_n_GS,1)
-	while cost_n_GS>1e-13:
-		cost_old = cost_n_GS
-		string = 'REV: electron density error = ' + str(cost_old)
-		pm.sprint(string,1,newline=False)
-		V_KS,n,cost_n_GS,Psi,E_KS,K,U = CalculateGroundState(V_KS,n_T,mu,sqdx,T_s,n)
-		if abs(cost_n_GS-cost_old)<1e-15 or cost_n_GS>cost_old:
-			mu *= 0.5
-		if mu < 1e-15:
-			break
-	pm.sprint('',1)
-	return V_KS,n,Psi,V_ext,E_KS,K,U
+        V_KS = np.zeros((imax,pm.sys.grid),dtype='complex')
+        V_ext = np.zeros(pm.sys.grid,dtype='complex')
+        pm.sprint('REV: calculating ground-state Kohn-Sham potential for the {} density'.format(approx),1)
+        try:
+                V_KS[0,:] = rs.Results.read('gs_extre_vks', pm)
+                pm.sprint('REV: Found exact kohn-sham potential to start from...',1)
+        except:
+                pm.sprint('REV: Starting from external potential...',1)
+                for i in range(pm.sys.grid):
+                        V_KS[0,i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # Initial guess for KS potential
+        for i in range(pm.sys.grid):
+                V_ext[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax))
+        V_KS,n,cost_n_GS,Psi,E_KS,K,U = CalculateGroundState(V_KS,n_T,0,sqdx,T_s,n)
+        pm.sprint('REV: initial guess electron density error = %s' % cost_n_GS,1)
+        while cost_n_GS>1e-13:
+                cost_old = cost_n_GS
+                string = 'REV: electron density error = {}'.format(cost_old)
+                pm.sprint(string,1,newline=False)
+                V_KS,n,cost_n_GS,Psi,E_KS,K,U = CalculateGroundState(V_KS,n_T,mu,sqdx,T_s,n)
+                if abs(cost_n_GS-cost_old)<1e-15 or cost_n_GS>cost_old:
+                        mu *= 0.5
+                if mu < 1e-15:
+                        break
+        pm.sprint('',1)
+        return V_KS,n,Psi,V_ext,E_KS,K,U
 
 # Function used in calculation of the Hatree potential
 def realspace(vector):
@@ -139,7 +143,7 @@ def coulomb():
       xi = i*pm.sys.deltax-pm.sys.xmax                         
       for j in range(pm.sys.grid):                     
          xj = j*pm.sys.deltax-pm.sys.xmax                      
-         V_coulomb[i,j] = 1.0/(abs(xi-xj) + pm.sys.acon)  
+         V_coulomb[i,j] = 1.0/(abs(xi-xj) + pm.sys.acon)
    return V_coulomb       
 
 # Function to calculate the exchange-correlation energy
@@ -157,12 +161,12 @@ def xcenergy(approx,n,V_h,V_xc,E_KS):
 def ExtrapolateCD(J,j,n,n_T,upper_bound):
    imaxl = 0 # Start from the edge of the system
    nmaxl = 0.0
-   imaxr = 0									
+   imaxr = 0
    nmaxr = 0.0
    for l in range(upper_bound+1):
       if n_T[j,l]>nmaxl: # Find the first peak in the density from the left
          nmaxl = n_T[j,l]
-	 imaxl = l
+         imaxl = l
       i = upper_bound+l-1
       if n_T[j,i]>nmaxr: # Find the first peak in the density from the right
           nmaxr = n_T[j,i]
@@ -181,14 +185,14 @@ def ExtrapolateCD(J,j,n,n_T,upper_bound):
       if n_T[j,l]<1e-8:
          dUdx[:] = np.gradient(U[:],pm.sys.deltax)
          U[l] = 8*U[l-1]-8*U[l-3]+U[l-4]-dUdx[l-2]*12.0*pm.sys.deltax
-   J[:] = n[j,:]*U[:]							
+   J[:] = n[j,:]*U[:]
    return J
 
 # Function to extrapolate the KS vector potential from regions of low density to the system's edges
 def ExtrapolateVectorPotential(A,n_T,j,upper_bound):
    imaxl = 0
    nmaxl = 0.0
-   imaxr = 0									
+   imaxr = 0
    nmaxr = 0.0
    for i in range(upper_bound+1):
       if n_T[j,i]>nmaxl:
@@ -230,7 +234,7 @@ def SolveKSE(V,A,Wavefunction,j,frac1,frac2,z):
       Mat[i,i+1] = -0.5j*pm.sys.deltat*(0.5/pm.sys.deltax-(frac1)*1.0j*A[j,i+1]-(frac1)*1.0j*A[j,i])/pm.sys.deltax
    for i in range(1,pm.sys.grid):
       Mat[i,i-1] = -0.5j*pm.sys.deltat*(0.5/pm.sys.deltax+(frac1)*1.0j*A[j,i-1]+(frac1)*1.0j*A[j,i])/pm.sys.deltax
-   for i in range(pm.sys.grid-2):	
+   for i in range(pm.sys.grid-2):
       Mat[i,i+2] = -0.5j*pm.sys.deltat*(1.0j*A[j,i+2]+1.0j*A[j,i])*(frac2)/pm.sys.deltax
    for i in range(2,pm.sys.grid):
       Mat[i,i-2] = 0.5j*pm.sys.deltat*(1.0j*A[j,i-2]+1.0j*A[j,i])*(frac2)/pm.sys.deltax
@@ -241,15 +245,15 @@ def SolveKSE(V,A,Wavefunction,j,frac1,frac2,z):
       B = Matin*Wavefunction[i,z,:]
       z = z*(-1)+1 # Only save two times at any point
       Wavefunction[i,z,:]=spsla.spsolve(Mat,B)
-      z = z*(-1)+1	
+      z = z*(-1)+1
    return Wavefunction,z
 
 # Function to calculate the current density
 def CalculateCurrentDensity(n,n_MB,upper_bound,j):
    J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,n[j,:],n[j-1,:])
    if pm.sys.im == 1:
-      for j in xrange(pm.sys.grid):
-         for k in xrange(j+1):
+      for j in range(pm.sys.grid):
+         for k in range(j+1):
             x = k*pm.sys.deltax-pm.sys.xmax
             J[j] -= abs(pm.sys.v_pert_imb(x))*n[j,k]*pm.sys.deltax
    else:
@@ -324,7 +328,8 @@ def CalculateKS(V_KS,A_KS,J,Psi,j,upper_bound,frac1,frac2,z,tol,n_T,J_T,cost_n,c
           A_KS[j,:]=A_min[:] # Go with the best answer
           z = z*(-1)+1 # Only save two times at any point
           break
-   string='REV: t = ' + str(j*pm.sys.deltat) + ', tol = ' + str(tol) + ', current error = ' + str(cost_J[j]) + ', density error = ' + str(cost_n[j])
+   string='REV: t = {}, tol = {}, current error = {}, density error = {}'\
+           .format(j*pm.sys.deltat, tol, cost_J[j], cost_n[j])
    pm.sprint(string,1,newline=False)
    Apot[:]=0 # Change guage so only have scalar potential
    for i in range(pm.sys.grid): # Calculate full KS scalar potential
@@ -357,11 +362,10 @@ def main(parameters,approx):
    global pm
 
    pm = parameters
-   if not hasattr(pm, 'space'):
-      pm.setup_space()
+   pm.setup_space()
 
    # Constants used in the code
-   sqdx = math.sqrt(pm.sys.deltax)		
+   sqdx = math.sqrt(pm.sys.deltax)
    upper_bound = int((pm.sys.grid-1)/2.0)
    imax = pm.sys.imax+1
    if pm.run.time_dependence == False:
@@ -374,7 +378,7 @@ def main(parameters,approx):
       T[i,:] = -0.5 * sd[i]
 
    J_MB = np.zeros((imax,pm.sys.grid),dtype='float')
-   cost_n = np.zeros(imax,dtype='float')	
+   cost_n = np.zeros(imax,dtype='float')
    cost_J = np.zeros(imax,dtype='float')
    exp = np.zeros(pm.sys.grid,dtype='float')
    CNRHS = np.zeros(pm.sys.grid, dtype='complex')
@@ -409,7 +413,7 @@ def main(parameters,approx):
    #GroundState() could just return the array of eigenvalues
    #This hasn't been changed yet to avoid breaking anything before RE.py is tidied up
    correct, correct_error = correction(np.real(V_xc[0,:]), 0.05, 0.15)
-   print 'Approximate error in correction to asymptotic form of V_xc = ', correct_error
+   print('Approximate error in correction to asymptotic form of V_xc = ', correct_error)
 
    V_KS[0,:] - V_KS[0,:]
    V_Hxc[0,:] = V_KS[0,:]-V_ext[:] # Calculate the Hartree exhange-correlation potential
@@ -459,7 +463,7 @@ def main(parameters,approx):
             counter += 1
       except:
          pm.sprint('',1)
-         pm.sprint('REV: Stopped at timestep ' + str(counter) + '! Outputing all quantities',1)
+         pm.sprint('REV: Stopped at timestep {}! Outputing all quantities'.format(counter),1)
 
       results.add(n_MB[:,:],'td_{}_den'.format(approxre))
       results.add( V_KS[:,:].real, 'td_{}_vks'.format(approxre)) 

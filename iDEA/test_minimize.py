@@ -1,15 +1,17 @@
 """Tests for direct minimizers
 """ 
+from __future__ import division
+from __future__ import absolute_import
 
 import numpy as np
 import numpy.testing as nt
-import input
 import unittest
-
-import minimize
 import scipy.sparse as sps
 import scipy.linalg as spla
-import LDA
+
+from . import input
+from . import minimize
+from . import LDA
 
 machine_epsilon = np.finfo(float).eps
 
@@ -215,12 +217,12 @@ class TestCGLDA(unittest.TestCase):
         E_1 = minimizer.total_energy(wfs)
         wfs_new = minimize.orthonormalize(wfs + delta * conjugate)
         E_2 = minimizer.total_energy(wfs_new)
-        dE_dL_finite = (E_2 - E_1) / delta
+        dE_dL_finite = (E_2 - E_1)/ delta
         wfs_new = minimize.orthonormalize(wfs + delta * conjugate)
         
         # this can be quite close to machine epsilon
         # for the energy difference
         atol = np.abs(E_1) * 100 * machine_epsilon / delta
-        rtol = atol / np.abs(dE_dL_finite)
+        rtol = atol/ np.abs(dE_dL_finite)
 
         nt.assert_allclose(dE_dL, dE_dL_finite, rtol=rtol)

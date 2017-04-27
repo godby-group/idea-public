@@ -1,30 +1,45 @@
-# Set up environment variables for proper architecture
+# Select architecture (autodetect, if empty)
+ARCH=
+
+# Detect operating system
 ifeq ($(OS),Windows_NT)
-    OS_detected := Windows
+  OS_detected := Windows
 else
-    OS_detected := $(shell uname -s)
+  OS_detected := $(shell uname -s)
 endif
 
-ifeq ($(OS_detected),Windows)
+# Set up environment variables for proper architecture
+ifeq ($(ARCH),)
+  ifeq ($(OS_detected),Windows)
     $(warning Warning: Windows currently untested!)
-else ifeq ($(OS_detected),Darwin)
+  else ifeq ($(OS_detected),Darwin)
     include arch/Darwin.mk 
-else ifeq ($(OS_detected),Linux)
+  else ifeq ($(OS_detected),Linux)
     include arch/Linux.mk
+  endif
+else
+  include arch/$(ARCH).mk
 endif
+
+# Handle versioned .so suffixes in python3
+ifeq ($(PYTHON),python3)
+    SO_EXT:=$(shell $(PY3CONFIG) --extension-suffix)
+else
+    SO_EXT:=.so
+endif
+
 
 ###### Targets
 default: parallel
 
-parallel: RE_Utilities.so construct_hamiltonian_coo2.so construct_hamiltonian_coo3.so construct_antisymmetry_coo2.so construct_antisymmetry_coo3.so construct_wavefunction2.so construct_wavefunction3.so 
-serial: RE_Utilities
+parallel: RE_Utilities$(SO_EXT) construct_hamiltonian_coo2$(SO_EXT) construct_hamiltonian_coo3$(SO_EXT) construct_antisymmetry_coo2$(SO_EXT) construct_antisymmetry_coo3$(SO_EXT) construct_wavefunction2$(SO_EXT) construct_wavefunction3$(SO_EXT) 
 
-%.so::  %.f90
-	f2py -c --fcompiler=$(FC) $(LFLAGS) -m $* $< --f90flags='$(FCFLAGS)' -lgomp --opt='$(OPTFLAGS)'
 
-%.so::  %.f
-	f2py -c --fcompiler=$(FC) $(LFLAGS) -m $* $< --f77flags='$(FCFLAGS)' -lgomp --opt='$(OPTFLAGS)'
-#f2py -c --fcompiler=intelem -L${MKLROOT}/lib/intel64/ -lmkl_rt -m mkl mkl.f --f90flags='-openmp' -lgomp --opt='-fast'
+%$(SO_EXT)::  %.f90
+	$(F2PY) -c --fcompiler=$(FC) $(LFLAGS) -m $* $< --f90flags='$(FCFLAGS)' -lgomp --opt='$(OPTFLAGS)'
+
+#%$(SO_EXT)::  %.f
+#	$(F2PY) -c --fcompiler=$(FC) $(LFLAGS) -m $* $< --f77flags='$(FCFLAGS)' -lgomp --opt='$(OPTFLAGS)'
 
 .PHONY: clean
 clean:

@@ -126,7 +126,7 @@ class Results(object):
         if dir is None:
             dir = pm.output_dir + '/raw'
 
-        for key,val in self.__dict__.iteritems():
+        for key,val in self.__dict__.items():
             if list is None or key in list:
                 if isinstance(val,Results):
                     val.save(pm, dir)
@@ -171,7 +171,7 @@ class Results(object):
             f = h5py.File(outname, "a")
             openfile = True
 
-        for key,val in self.__dict__.iteritems():
+        for key,val in self.__dict__.items():
             if list is None or key in list:
                 if isinstance(val, Results):
                     try:
@@ -187,7 +187,7 @@ class Results(object):
                     else:
                         compression = None
 
-                    if key not in f.keys():
+                    if key not in list(f.keys()):
                         pm.sprint("Saving {} to {}".format(key,outname),0)
                         f.create_dataset(key, data=val, compression=compression)
                     else:

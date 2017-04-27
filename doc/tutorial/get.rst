@@ -33,6 +33,11 @@ Installing iDEA
    echo "export PATH=\$PATH:`pwd`/../scripts" >> ~/.bashrc
    source ~/.bashrc
 
+iDEA includes some Fortran extensions, which are built automatically the first
+time you run it. If the default options for the compiler, libraries etc.  do
+not work for your platform, you will need to adapt the options for one of the
+available architectures in the :code:`iDEA/arch` folder. Then set the
+:code:`ARCH` variable in the :code:`iDEA/Makfile` to your desired architecture.
 
 Generating documentation
 ------------------------

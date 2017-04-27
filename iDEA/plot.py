@@ -1,5 +1,6 @@
 """Plotting output quantities of iDEA
 """
+from __future__ import print_function
 ffmpeg_path = '/rwgdisks/home/lt934/packages/ffmpeg-3.2/ffmpeg'
 
 import numpy as np
@@ -37,7 +38,7 @@ def plot3d(O, name, pm, space='it', format='png', step=1, final=None):
 
     """
     import matplotlib.animation as animation
-    import MBPT
+    from . import MBPT
 
     st = MBPT.SpaceTimeGrid(pm)
     grid = st.x_npt

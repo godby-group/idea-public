@@ -1,16 +1,20 @@
 """Computes time-dependent charge density of a system using the Landauer-Buttiker approximation. The code outputs the time-dependent charge and current density 
 of the system. 
 """
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 
 import pickle
 import numpy as np
-import RE_Utilities
-import results as rs
 import scipy.linalg as spla
 import scipy.sparse as sps
 import scipy.special as spec
 import scipy.sparse.linalg as spsla
+
+from . import RE_Utilities
+from . import results as rs
 
 # Function to read input
 def ReadInput(approx):
@@ -37,12 +41,12 @@ def CalculateGroundstate(V,sqdx,T):
 def ExtrapolateCD(J,j,n,upper_bound):
    imaxl=0                                               # Start from the edge of the system
    nmaxl=0.0
-   imaxr=0									
+   imaxr=0
    nmaxr=0.0
    for l in range(upper_bound+1):
       if n[j,l]>nmaxl:                                   # Find the first peak in the density from the left
          nmaxl=n[j,l]
-	 imaxl=l
+         imaxl=l
       i=upper_bound+l-1
       if n[j,i]>nmaxr:                                   # Find the first peak in the density from the right
           nmaxr=n[j,i]
@@ -60,12 +64,12 @@ def ExtrapolateCD(J,j,n,upper_bound):
       if n[j,l]<1e-8:
          dUdx[:]=np.gradient(U[:],pm.sys.deltax)
          U[l]=8*U[l-1]-8*U[l-3]+U[l-4]-dUdx[l-2]*12.0*pm.sys.deltax
-   J[:]=n[j,:]*U[:]							
+   J[:]=n[j,:]*U[:]
    return J
 
 # Function to solve TDKSEs using the Crank-Nicolson method
 def SolveKSE(V,Psi,j,frac1,frac2,z_change):
-   Mat=sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')					 						
+   Mat=sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')
    for i in range(pm.sys.grid):
       Mat[i,i]=1.0+0.5j*pm.sys.deltat*(1.0/pm.sys.deltax**2+V[j,i])
    for i in range(pm.sys.grid-1):
@@ -77,7 +81,7 @@ def SolveKSE(V,Psi,j,frac1,frac2,z_change):
    for i in range(pm.sys.NE):
       B=Matin*Psi[i,z_change,:]
       z_change=z_change*(-1)+1                            # Only save two times at any point
-      Psi[i,z_change,:]=spsla.spsolve(Mat,B)	
+      Psi[i,z_change,:]=spsla.spsolve(Mat,B)
       z_change=z_change*(-1)+1
    return Psi,z_change
 
@@ -100,12 +104,11 @@ def main(parameters):
 
    global pm
    pm = parameters
-   if not hasattr(pm, 'space'):
-      pm.setup_space()
+   pm.setup_space()
 
    # Constants used in the code
-   sqdx=np.sqrt(pm.sys.deltax)								
-   upper_bound = int((pm.sys.grid-1)/2.0)						
+   sqdx=np.sqrt(pm.sys.deltax)
+   upper_bound = int((pm.sys.grid-1)/2.0)
    mu=1.0                                                 # Mixing for the ground-state KS algorithm
    z=0
    alpha=1                                                # Strength of noise control
@@ -119,11 +122,11 @@ def main(parameters):
    for i in range(nbnd):
        T[i,:] = -0.5 * sd[i]
 
-   J_LAN = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')		
-   CNRHS = np.zeros(pm.sys.grid, dtype='complex')					
-   CNLHS = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')					
-   Mat = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')					
-   Matin = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')				
+   J_LAN = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
+   CNRHS = np.zeros(pm.sys.grid, dtype='complex')
+   CNLHS = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')
+   Mat = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')
+   Matin = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')
    V_ext = np.zeros(pm.sys.grid,dtype='complex')
    petrb = np.zeros(pm.sys.grid,dtype='complex')
 
@@ -140,15 +143,15 @@ def main(parameters):
          petrb[i]=pm.sys.v_pert((i*pm.sys.deltax-pm.sys.xmax))
       V_lan[:,:]=V_lan[0,:]+petrb[:]                      # Add the perturbing field to the external potential and the KS potential
       for j in range(1,pm.sys.imax):                          # Propagate from the ground-state
-         string = 'LAN: computing density and current density, time = ' + str(j*pm.sys.deltat)
-	 pm.sprint(string,1,newline=False)
+         string = 'LAN: computing density and current density, time = {}'.format(j*pm.sys.deltat)
+         pm.sprint(string,1,newline=False)
          Psi,z=SolveKSE(V_lan,Psi,j,frac1,frac2,z)
          n_LAN[j,:]=0
          z=z*(-1)+1
          for i in range(pm.sys.NE):
             n_LAN[j,:]+=abs(Psi[i,z,:])**2                 # Calculate the density from the single-particle wavefunctions
          J_LAN[j,:]=CalculateCurrentDensity(n_LAN,upper_bound,j)
-      print
+      print()
       results.add(n_LAN.real,'td_lan_den')
       results.add(J_LAN.real,'td_lan_cur')
       if pm.run.save:

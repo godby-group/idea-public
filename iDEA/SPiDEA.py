@@ -3,7 +3,8 @@ of one electron through solving the Schrodinger equation. If the system is
 perturbed, the time-dependent electron density and current density are 
 calculated. 
 """
-
+from __future__ import division
+from __future__ import print_function
 
 import os
 import sys
@@ -12,9 +13,9 @@ import copy
 import pickle
 import numpy as np
 import scipy as sp
-import RE_Utilities
 import scipy.sparse as sps
 import scipy.sparse.linalg as spsla
+import RE_Utilities
 import results as rs
 
 
@@ -262,7 +263,7 @@ def initial_wavefunction(pm, x):
     returns array_like
        Initial guess for wavefunction
     """
-    return (1.0/math.sqrt(2.0*math.pi))*(math.e**(-0.5*x**2))
+    return 1.0 / math.sqrt(2.0*math.pi) * math.e**(-0.5*x**2)
 
 
 def main(parameters):
@@ -310,13 +311,12 @@ def main(parameters):
         wavefunction, info = spsla.cg(A,b,x0=wavefunction,tol=pm.ext.itol_solver)
 
         # Normalise the wavefunction
-        wavefunction = wavefunction/(np.linalg.norm(wavefunction)*
-                       pm.sys.deltax**0.5)
+        wavefunction = wavefunction/(np.linalg.norm(wavefunction)*pm.sys.deltax**0.5)
 
         # Calculate the convergence of the wavefunction
         wavefunction_convergence = np.linalg.norm(wavefunction_old-wavefunction)
-        string = 'EXT: imaginary time, t = ' + str(i*pm.ext.ideltat) + \
-                 ', convergence = ' + str(wavefunction_convergence)
+        string = 'EXT: imaginary time, t = {}, convergence = {}'\
+                    .format(i*pm.ext.ideltat, wavefunction_convergence)
         pm.sprint(string, 1, newline=False)
         if(wavefunction_convergence < pm.ext.itol*10.0):
             i = pm.ext.iimax
@@ -331,7 +331,7 @@ def main(parameters):
 
     # Calculate the ground-state energy
     energy = calculate_energy(pm, H, wavefunction)
-    print 'EXT: ground-state energy =', energy
+    print('EXT: ground-state energy =', energy)
 
     # Save the ground-state density, energy and external potential
     results = rs.Results()
@@ -375,8 +375,8 @@ def main(parameters):
 
             # Calculate the norm of the wavefunction
             normalisation = (np.linalg.norm(wavefunction)*pm.sys.deltax**0.5)
-            string = 'EXT: real time, t = ' + str((i+1)*pm.sys.deltat) + \
-                     ', normalisation = ' + str(normalisation)
+            string = 'EXT: real time, t = {}, normalisation = {}'\
+                      .format((i+1)*pm.sys.deltat, normalisation)
             pm.sprint(string, 1, newline=False)
 
         # Calculate the current density

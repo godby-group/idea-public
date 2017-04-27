@@ -1,13 +1,15 @@
 """Tests for the mklfftwrap module
 
 """
+from __future__ import division
+from __future__ import absolute_import
 import unittest
 import numpy as np
 import numpy.testing as nt
 import copy
 
 try:
-    import mklfftwrap
+    from . import mklfftwrap
     MKLWRAPPER_AVAILABLE = True
 except ImportError:
     MKLWRAPPER_AVAILABLE = False

@@ -1,8 +1,7 @@
 """Calculates the exact (Dobson) electron localisation function (ELF) for a two
  or three electron system using the many-body wavefunction. 
 """
-
-
+from __future__ import division
 import numpy as np
 
 

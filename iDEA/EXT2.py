@@ -5,25 +5,27 @@ current density are calculated. The ground-state and time-dependent ELF can
 also be calculated. Excited states of the unperturbed system can also be 
 calculated.
 """
-
+from __future__ import division
+from __future__ import absolute_import
 
 import time
 import copy
 import pickle
 import numpy as np
 import scipy as sp
-import RE_Utilities
 import scipy.sparse as sps
 import scipy.misc as spmisc
 import scipy.special as spec
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
-import construct_hamiltonian_coo2 as hamiltonian_coo
-import construct_antisymmetry_coo2 as antisymmetry_coo
-import construct_wavefunction2 as wavefunction2
-import NON
-import ELF 
-import results as rs
+
+from . import RE_Utilities
+from . import construct_hamiltonian_coo2 as hamiltonian_coo
+from . import construct_antisymmetry_coo2 as antisymmetry_coo
+from . import construct_wavefunction2 as wavefunction2
+from . import NON
+from . import ELF 
+from . import results as rs
 
 
 def single_index(pm, j, k):
@@ -73,7 +75,7 @@ def inverse_single_index(pm, jk):
         1st electron index, j. 2nd electron index, k.
     """
     k = jk % pm.sys.grid
-    j = (jk - k)/pm.sys.grid
+    j = (jk - k)//pm.sys.grid
 
     return j, k
 
@@ -93,8 +95,8 @@ def construct_antisymmetry_matrices(pm):
         (insert indistinct elements) to get back the full wavefunction.
     """
     # Number of elements in the reduced wavefunction
-    coo_size = int(np.prod(range(pm.sys.grid,pm.sys.grid+2))/spmisc.factorial(
-               2))
+    coo_size = int(np.prod(list(range(pm.sys.grid,pm.sys.grid+2))) \
+               /spmisc.factorial(2))
 
     # COOrdinate holding arrays for the reduction matrix
     coo_1 = np.zeros((coo_size), dtype=int)
@@ -245,7 +247,7 @@ def construct_band_elements(pm, r, td):
         1D array of the band_elements elements, indexed as band_elements[band] 
     """
     # Number of single-particle bands 
-    bandwidth = (pm.sys.stencil+1)/2
+    bandwidth = (pm.sys.stencil+1) // 2
 
     # Array to store the band elements  
     band_elements = np.zeros(bandwidth, dtype=np.float, order='F')
@@ -472,7 +474,7 @@ def qho_approx(pm, n):
     # Constants
     factorial = np.arange(0,n+1,1)
     fact = np.product(factorial[1:])
-    norm = (np.sqrt(1.0/((2.0**n)*fact)))*((1.0/np.pi)**0.25)
+    norm = np.sqrt(1.0/((2.0**n)*fact)) / np.pi**0.25
     scale_factor = 7.0/pm.sys.xmax
 
     # Assign elements
@@ -760,11 +762,11 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced,
         # Calculate the convergence of the wavefunction
         wavefunction_convergence = np.linalg.norm(wavefunction_reduced_old 
                                    - wavefunction_reduced)
-        string = 'wavefunction convergence: ' + str(wavefunction_convergence)
+        string = 'wavefunction convergence: {}'.format(wavefunction_convergence)
         pm.sprint(string, 0, newline=True) 
         if(pm.run.verbosity == 'default'):
-            string = 'EXT: ' + 't = {:.5f}'.format(i*pm.ext.ideltat) + \
-                     ', convergence = ' + str(wavefunction_convergence)
+            string = 'EXT: t = {:.5f}, convergence = {}' \
+                    .format(i*pm.ext.ideltat, wavefunction_convergence)
             pm.sprint(string, 1, newline=False)
         if(wavefunction_convergence < pm.ext.itol*10.0):
             i = pm.ext.iimax
@@ -796,7 +798,7 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced,
     # Expand the wavefunction and normalise
     wavefunction = expansion_matrix*wavefunction_reduced
     norm = np.linalg.norm(wavefunction)*pm.sys.deltax
-    wavefunction[:] = wavefunction[:]/norm 
+    wavefunction[:] = wavefunction[:]/norm
 
     return energy, wavefunction
 
@@ -923,6 +925,7 @@ def main(parameters):
         Results object
     """       
     pm = parameters
+    pm.setup_space()
 
     # Array initialisations 
     string = 'EXT: constructing arrays'

@@ -1,11 +1,12 @@
 """Tests for MBPT
 """ 
 from __future__ import division
+from __future__ import absolute_import
 import numpy as np
 import numpy.testing as nt
-import MBPT
-import NON
-import input
+from . import MBPT
+from . import NON
+from . import input
 import unittest
 
 # decimal places for comparison of results

@@ -13,18 +13,21 @@ Note: Uses the LDAs developed in [Entwistle2016]_ for finite slab systems
 in one dimension.
 
 """
+from __future__ import division
+from __future__ import absolute_import
 
 import pickle
 import numpy as np
 import scipy as sp
 import copy as copy
-import RE_Utilities
 import scipy.sparse as sps
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
-import results as rs
-import mix
-import minimize
+
+from . import RE_Utilities
+from . import results as rs
+from . import mix
+from . import minimize
 
 
 def groundstate(pm, H):
@@ -45,7 +48,7 @@ def groundstate(pm, H):
      normalised orbitals, index as eigf[space_index,orbital_number]
    e: array_like
      orbital energies
-   """	
+   """
    
    #e,eigf = spsla.eigsh(H, k=pm.sys.grid/2, which='SA') 
    #e,eigf = spla.eigh(H)
@@ -99,9 +102,9 @@ def banded_to_full(H):
 
     H_full = np.zeros((npt,npt),dtype=np.float)
     for ioff in range(nbnd):
-	d = np.arange(npt-ioff)
-	H_full[d,d+ioff] = H[ioff,d]
-	H_full[d+ioff,d] = H[ioff,d]
+        d = np.arange(npt-ioff)
+        H_full[d,d+ioff] = H[ioff,d]
+        H_full[d+ioff,d] = H[ioff,d]
 
     return H_full
 
@@ -328,7 +331,7 @@ def total_energy_eigv(pm, eigv, eigf=None, n=None, V_H=None, V_xc=None):
         exchange-correlation potential
 
    returns float
-   """		
+   """
 
    if n is None:
        if eigf is None:
@@ -370,7 +373,7 @@ def total_energy_eigf(pm, eigf, n=None, V_H=None):
         Hartree potential
 
    returns float
-   """		
+   """
 
    if n is None:
        n = electron_density(pm, eigf)
@@ -431,8 +434,8 @@ def CalculateCurrentDensity(pm, n, j):
    """
    J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,n[j,:],n[j-1,:])
    if pm.sys.im == 1:
-      for j in xrange(pm.sys.grid):
-         for k in xrange(j+1):
+      for j in range(pm.sys.grid):
+         for k in range(j+1):
             x = k*pm.sys.deltax-pm.sys.xmax
             J[j] -= abs(pm.sys.v_pert_im(x))*n[j,k]*pm.sys.deltax
    return J
@@ -453,11 +456,11 @@ def CrankNicolson(pm, v, Psi, n, j):
    return n,Psi
 
 
-def LHS(pm, v, j):	
+def LHS(pm, v, j):
    r"""Constructs the matrix A to be used in the crank-nicholson solution of Ax=b when evolving the wavefunction in time (Ax=b)
    """
-   CNLHS = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex') # Matrix for the left hand side of the Crank Nicholson method										
-   for i in xrange(pm.sys.grid):
+   CNLHS = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex') # Matrix for the left hand side of the Crank Nicholson method
+   for i in range(pm.sys.grid):
       CNLHS[i,i] = 1.0+0.5j*pm.sys.deltat*(1.0/pm.sys.deltax**2+v[j,i])
       if i < pm.sys.grid-1:
          CNLHS[i,i+1] = -0.5j*pm.sys.deltat*(0.5/pm.sys.deltax**2)
@@ -480,8 +483,7 @@ def main(parameters):
       Results object
    """
    pm = parameters
-   if not hasattr(pm, 'space'):
-       pm.setup_space()
+   pm.setup_space()
    
    v_ext = pm.space.v_ext
 
@@ -626,11 +628,11 @@ def main(parameters):
       n_t = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
       v_ks_t[0,:] = v_ks[:]
       n_t[0,:] = n[:]
-      for i in xrange(pm.sys.grid): 
+      for i in range(pm.sys.grid): 
          v_ks_t[1,i] = v_ks[i]+pm.sys.v_pert((i*pm.sys.deltax-pm.sys.xmax))  
          v_ext[i] += pm.sys.v_pert((i*pm.sys.deltax-pm.sys.xmax)) 
       for j in range(1,pm.sys.imax): 
-         string = 'LDA: evolving through real time: t = ' + str(j*pm.sys.deltat) 
+         string = 'LDA: evolving through real time: t = {}'.format(j*pm.sys.deltat) 
          pm.sprint(string,1,newline=False)
          n_t,Psi = CrankNicolson(pm, v_ks_t,Psi,n_t,j)
          if j != pm.sys.imax-1:

@@ -6,3 +6,8 @@ FCFLAGS = -m64 -I$(MKLROOT)/include -Wtabs
 OPTFLAGS = -O3
 LFLAGS  = -L$(MKLROOT)/lib -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -liomp5 -ldl -lpthread -lm
 CLEAN = rm -rf *.so *.dSYM
+
+F2PY = f2py
+# build for python2 or python3
+PYTHON = python2
+PY3CONFIG = python3-config

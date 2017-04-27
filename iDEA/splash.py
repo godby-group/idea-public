@@ -1,8 +1,8 @@
 """Prints iDEA logo as splash
 """
+from __future__ import absolute_import
 
-
-import info
+from . import info
 import textwrap
 
 

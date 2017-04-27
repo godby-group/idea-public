@@ -7,6 +7,7 @@ to treat exchange and correlation throughout the system and provides additional
 flexibility in bridging the gap between model systems and ab initio
 descriptions.
 """
+from __future__ import print_function
 make_fortran = True
 
 if make_fortran:
@@ -23,7 +24,7 @@ if make_fortran:
     p = subprocess.Popen(["make","--just-print"], cwd=dir_path, 
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
-    if out.find("Nothing to be done") != -1:
+    if out.find(b"Nothing to be done") != -1:
         pass
     else:
         print("Compiling Fortran libraries...")

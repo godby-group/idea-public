@@ -1,12 +1,13 @@
 """Calculates the exact external potential and energy for a system of two or
 three interacting electrons with a specified electron density.
 """
-
+from __future__ import division
+from __future__ import absolute_import
 
 import numpy as np
-import results as rs
 import scipy as sp
 import scipy.sparse as sps
+from . import results as rs
 
 
 def construct_target_density(pm, approx, x_points, target_density_array=None, 
@@ -114,9 +115,9 @@ def main(parameters, approx, target_density_array=None,
 
     # Import EXT2 or EXT3
     if(pm.sys.NE == 2):
-        import EXT2 as EXT
+        from . import EXT2 as EXT
     elif(pm.sys.NE == 3):
-        import EXT3 as EXT
+        from . import EXT3 as EXT
     else: 
         raise IOError("Must be either 2 or 3 electrons in the system.")
  
@@ -127,7 +128,7 @@ def main(parameters, approx, target_density_array=None,
     target_density = construct_target_density(pm, approx, x_points, 
                      target_density_array, target_density_function)
     x_points_tmp = np.linspace(0.0,2.0*pm.sys.xmax,pm.sys.grid)
-    v_coulomb = 1.0/(pm.sys.acon + x_points_tmp)     
+    v_coulomb = 1.0/(pm.sys.acon + x_points_tmp)
 
     # Construct the reduction and expansion matrices
     reduction_matrix, expansion_matrix = EXT.construct_antisymmetry_matrices(pm) 
