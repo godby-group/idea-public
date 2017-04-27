@@ -99,7 +99,7 @@ def construct_antisymmetry_matrices(pm):
     """
     # Number of elements in the reduced wavefunction
     coo_size = int(np.prod(list(range(pm.sys.grid,pm.sys.grid+3)))\
-            /spmisc.factorial(3)))
+            /spmisc.factorial(3))
 
     # COOrdinate holding arrays for the reduction matrix
     coo_1 = np.zeros((coo_size), dtype=int)
