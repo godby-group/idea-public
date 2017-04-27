@@ -78,7 +78,7 @@ def inverse_single_index(pm, jkl):
     """
     l = jkl % pm.sys.grid
     k = ((jkl - l)%(pm.sys.grid**2)) // pm.sys.grid
-    j = (jkl - l - k*pm.sys.grid)/pm.sys.grid**2
+    j = (jkl - l - k*pm.sys.grid) // pm.sys.grid**2
 
     return j, k, l
 
