@@ -172,7 +172,7 @@ def construct_A_reduced(pm, reduction_matrix, expansion_matrix, v_ext,
         r = pm.sys.deltat/(4.0*pm.sys.deltax**2)
 
     # Constant that appears in the main diagonal of the Hamiltonian
-    const = 2.0*(pm.sys.deltax**2)*r
+    constant = 2.0*(pm.sys.deltax**2)*r
 
     # Construct array of the band elements of the single-particle kinetic
     # energy matrix that will be passed to construct_hamiltonian_coo()
@@ -189,9 +189,9 @@ def construct_A_reduced(pm, reduction_matrix, expansion_matrix, v_ext,
     # Pass the holding arrays and band elements to the Hamiltonian constructor, 
     # and populate the holding arrays with the coordinates and data
     coo_1, coo_2, coo_data = hamiltonian_coo.construct_hamiltonian_coo(coo_1, 
-                             coo_2, coo_data, const, v_ext, 
-                             v_coulomb, pm.sys.interaction_strength, 
-                             band_elements, pm.sys.grid)
+                             coo_2, coo_data, constant, v_ext, v_coulomb,
+                             pm.sys.interaction_strength, band_elements, 
+                             pm.sys.grid)
 
     # Convert the holding arrays into a COOrdinate sparse matrix
     if(td== 0):

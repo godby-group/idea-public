@@ -37,7 +37,7 @@
 !        coo_1,coo_2 (int, shape=max_size): Coordinate holding arrays.
 !        coo_data (real, shape=max_size): Data for a given matrix element.
 !        grid (int): Spatial grid points for the system.
-!        const (real): Constant that appears in the main diagonal elements.
+!        constant (real): Constant that appears in the main diagonal elements.
 !        v_ext (real, shape=grid): External potential
 !        v_coulomb (real, shape=grid): Coulomb potential
 !        interaction_strength (real): Strength of the Coulomb interaction.
@@ -51,7 +51,7 @@
 !        coo_data (real, shape=max_size): Populated data array.
 !
 !========================================================================================!
-subroutine construct_hamiltonian_coo(coo_1, coo_2, coo_data, grid, const, v_ext,&
+subroutine construct_hamiltonian_coo(coo_1, coo_2, coo_data, grid, constant, v_ext,&
                                      & v_coulomb, interaction_strength, band_elements,& 
                                      & bandwidth, max_size) 
 
@@ -79,8 +79,8 @@ subroutine construct_hamiltonian_coo(coo_1, coo_2, coo_data, grid, const, v_ext,
   !f2py intent(in) :: v_ext, v_coulomb  
   real (kind=dp) :: v_ext(0:grid-1), v_coulomb(0:grid-1)
 
-  !f2py intent(in) :: const
-  real (kind=dp) :: const
+  !f2py intent(in) :: constant
+  real (kind=dp) :: constant
 
   !f2py intent(in, out) :: coo_data
   real (kind=dp) :: coo_data(0:max_size-1)
@@ -115,7 +115,7 @@ subroutine construct_hamiltonian_coo(coo_1, coo_2, coo_data, grid, const, v_ext,
            jkl = single_index(j, k, l, grid)
            coo_1(i) = jkl
            coo_2(i) = jkl
-           coo_data(i) = band_elements(0) + const*potential(j, k, l, interaction_strength, v_ext, v_coulomb, grid)
+           coo_data(i) = band_elements(0) + constant*potential(j, k, l, interaction_strength, v_ext, v_coulomb, grid)
            i = i+1
            !_______________________________________________________!
 
@@ -170,7 +170,7 @@ subroutine construct_hamiltonian_coo(coo_1, coo_2, coo_data, grid, const, v_ext,
            jkl = single_index(j, k, l, grid)
            coo_1(i) = jkl
            coo_2(i) = jkl
-           coo_data(i) = band_elements(0) + const*potential(j, k, l, interaction_strength, v_ext, v_coulomb, grid)
+           coo_data(i) = band_elements(0) + constant*potential(j, k, l, interaction_strength, v_ext, v_coulomb, grid)
            i = i+1
            !_______________________________________________________!
 
@@ -237,7 +237,7 @@ subroutine construct_hamiltonian_coo(coo_1, coo_2, coo_data, grid, const, v_ext,
            jkl = single_index(j, k, l, grid)
            coo_1(i) = jkl
            coo_2(i) = jkl
-           coo_data(i) = band_elements(0) + const*potential(j, k, l, interaction_strength, v_ext, v_coulomb, grid)
+           coo_data(i) = band_elements(0) + constant*potential(j, k, l, interaction_strength, v_ext, v_coulomb, grid)
            i = i+1
            !_______________________________________________________!
 
@@ -304,7 +304,7 @@ subroutine construct_hamiltonian_coo(coo_1, coo_2, coo_data, grid, const, v_ext,
            jkl = single_index(j, k, l, grid)
            coo_1(i) = jkl
            coo_2(i) = jkl
-           coo_data(i) = band_elements(0) + const*potential(j, k, l, interaction_strength, v_ext, v_coulomb, grid)
+           coo_data(i) = band_elements(0) + constant*potential(j, k, l, interaction_strength, v_ext, v_coulomb, grid)
            i = i+1
            !_______________________________________________________!
 
@@ -371,7 +371,7 @@ subroutine construct_hamiltonian_coo(coo_1, coo_2, coo_data, grid, const, v_ext,
            jkl = single_index(j, k, l, grid)
            coo_1(i) = jkl
            coo_2(i) = jkl
-           coo_data(i) = band_elements(0) + const*potential(j, k, l, interaction_strength, v_ext, v_coulomb, grid)
+           coo_data(i) = band_elements(0) + constant*potential(j, k, l, interaction_strength, v_ext, v_coulomb, grid)
            i = i+1
            !_______________________________________________________!
 
@@ -438,7 +438,7 @@ subroutine construct_hamiltonian_coo(coo_1, coo_2, coo_data, grid, const, v_ext,
            jkl = single_index(j, k, l, grid)
            coo_1(i) = jkl
            coo_2(i) = jkl
-           coo_data(i) = band_elements(0) + const*potential(j, k, l, interaction_strength, v_ext, v_coulomb, grid)
+           coo_data(i) = band_elements(0) + constant*potential(j, k, l, interaction_strength, v_ext, v_coulomb, grid)
            i = i+1
            !_______________________________________________________!
 
@@ -505,7 +505,7 @@ subroutine construct_hamiltonian_coo(coo_1, coo_2, coo_data, grid, const, v_ext,
            jkl = single_index(j, k, l, grid)
            coo_1(i) = jkl
            coo_2(i) = jkl
-           coo_data(i) = band_elements(0) + const*potential(j, k, l, interaction_strength, v_ext, v_coulomb, grid)
+           coo_data(i) = band_elements(0) + constant*potential(j, k, l, interaction_strength, v_ext, v_coulomb, grid)
            i = i+1
            !_______________________________________________________!
 
