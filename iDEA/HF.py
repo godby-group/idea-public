@@ -2,6 +2,7 @@
 
 The code outputs the ground-state charge density, the energy of the system and
 the Hartree-Fock orbitals. 
+Can perform adiabatic time-dependent Hartree-Fock calculations.
 """
 from __future__ import division
 from __future__ import print_function
@@ -15,6 +16,7 @@ import scipy as sp
 import scipy.linalg as spla
 import scipy.sparse as sps
 from . import results as rs
+from . import RE_Utilities
 
 
 def hartree(pm, density):
@@ -80,18 +82,20 @@ def electron_density(pm, orbitals):
     """
     occupied = orbitals[:, :pm.sys.NE]
     n = np.sum(occupied*occupied.conj(), axis=1)
-    return n
+    return n.real
 
 
-def hamiltonian(pm, wfs):
+def hamiltonian(pm, wfs, perturb=False):
     r"""Compute HF Hamiltonian
 
     Computes HF Hamiltonian from a given set of single-particle states
 
     parameters
     ----------
-    wfs : array_like
-         single-particle states
+    wfs  array_like
+      single-particle states
+    perturb: bool
+      If True, add perturbation to external potential (for time-dep. runs)
 
     returns array_like
          Hamiltonian matrix
@@ -104,7 +108,10 @@ def hamiltonian(pm, wfs):
 
     # construct external and hartree potential
     n = electron_density(pm, wfs)
-    V = sps.diags(pm.space.v_ext + hartree(pm,n), 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex)
+    V = pm.space.v_ext + hartree(pm,n)
+    if perturb:
+      V += pm.space.v_pert
+    V = sps.diags(V, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex)
     
     # construct H
     H = (K+V).toarray()
@@ -190,38 +197,58 @@ def CalculateCurrentDensity(pm, n, j):
 
    parameters
    ----------
+   n: array_like
+      Time dependent density of the system indexed as n[time_index][space_index]
+   j: int
+      time index of current iteration
+
+   returns
+   -------
+   J: array_like
+      Time dependent current density indexed as J[time_index][space_index]
+   """
+   J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,n[j,:],n[j-1,:])
+
+   if pm.sys.im == 1:
+      #TODO: Indices are messed up hear. Fix!
+      for i in range(pm.sys.grid):
+         for k in range(j+1):
+            x = i*pm.sys.deltax-pm.sys.xmax
+            J[j] -= abs(pm.sys.v_pert_im(x))*n[j,k]*pm.sys.deltax
+   return J
+
+
+def crank_nicolson_step(pm, waves, H):
+   r"""Solves Crank Nicolson Equation
+ 
+   .. math::
+
+        \left(\mathbb{1} + i\frac{dt}{2}\right) \Psi(x,t+dt) = \left(\mathbb{1} - i \frac{dt}{2} H\right) \Psi(x,t)
+
+   for :math:`\Psi(x,t+dt)`.
+
+   parameters
+   ----------
    total_td_density : array_like
       Time dependent density of the system indexed as total_td_density[time_index][space_index]
 
    returns array_like
       Time dependent current density indexed as current_density[time_index][space_index]
+ 
    """
-   J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,n[j,:],n[j-1,:])
-   if pm.sys.im == 1:
-      for j in range(pm.sys.grid):
-         for k in range(j+1):
-            x = k*pm.sys.deltax-pm.sys.xmax
-            J[j] -= abs(pm.sys.v_pert_im(x))*n[j,k]*pm.sys.deltax
-   return J
+   dH = 0.5J * pm.sys.deltat * H
+   identity = np.eye(pm.sys.grid, dtype=np.complex)
 
+   A = identity + dH
+   Abar = identity - dH
 
-def LHS(pm, v, j):
-   r"""Constructs the matrix A to be used in the crank-nicholson solution of Ax=b when evolving the wavefunction in time (Ax=b)
+   # solve for all single-particle states at once
+   RHS = np.dot(Abar, waves[:, :pm.sys.NE])
+   waves_new = spla.solve(A,RHS)
 
-   .. math::
-       A = \mathbb{1} + \frac{1}{2}H i dt
+   return waves_new
+ 
 
-   """
-   CNLHS = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex') # Matrix for the left hand side of the Crank Nicholson method
-   for i in range(pm.sys.grid):
-      CNLHS[i,i] = 1.0+0.5j*pm.sys.deltat*(1.0/pm.sys.deltax**2+v[j,i])
-      if i < pm.sys.grid-1:
-         CNLHS[i,i+1] = -0.5j*pm.sys.deltat*(0.5/pm.sys.deltax**2)
-      if i > 0:
-         CNLHS[i,i-1] = -0.5j*pm.sys.deltat*(0.5/pm.sys.deltax**2)
-   return CNLHS
-
-   
 def main(parameters):
    r"""Performs Hartree-fock calculation
 
@@ -236,10 +263,8 @@ def main(parameters):
    pm = parameters
    pm.setup_space()
 
-   v_ext = pm.space.v_ext
-
-
    # take external potential for initial guess
+   # (setting wave functions to zero yields V=V_ext)
    waves = np.zeros((pm.sys.grid,pm.sys.NE))
    H = hamiltonian(pm, waves)
    den,eigf,eigv = groundstate(pm, H)
@@ -259,17 +284,17 @@ def main(parameters):
       
       dn = np.sum(np.abs(den-den_new))*pm.sys.deltax
       converged = dn < pm.hf.con
-      s = 'HF: dn = {:+.3e}, iter = {}'\
-          .format(dn, iteration)
+      E_HF = total_energy(pm, eigf, eigv)
+      s = 'HF: E = {:+.8f} Ha, dn = {:+.3e}, iter = {}'\
+          .format(E_HF, dn, iteration)
       pm.sprint(s, 1, newline=False)
  
       iteration += 1
       H = H_new
       den = den_new
-   print()
+   pm.sprint()
    
    # Calculate ground state energy
-   E_HF = total_energy(pm, eigf, eigv)
    pm.sprint('HF: hartree-fock energy = {}'.format(E_HF.real), 1, newline=True)
    
    results = rs.Results()
@@ -284,31 +309,42 @@ def main(parameters):
       results.save(pm)
 
    if pm.run.time_dependence:
-       for j in range(1, pm.sys.imax):
-         string = 'HF: evolving through real time: t = {:.4f}'.format(j*pm.sys.deltat)
-         pm.sprint(string,1,newline=False)
 
-         n_t,Psi = CrankNicolson(pm, v_ks_t,Psi,n_t,j)
-         if j != pm.sys.imax-1:
-            v_ks_t[j+1,:] = v_ext[:]+hartree_potential(pm, n_t[j,:])+VXC(pm, n_t[j,:])
+      # Starting values for wave functions, density
+      waves = eigf
+      n_t = np.empty((pm.sys.imax, pm.sys.grid), dtype=np.float)
+      n_t[0] = den
+      current = np.empty((pm.sys.imax, pm.sys.grid), dtype=np.float)
+      current[0] = 0.0
+
+      for j in range(1, pm.sys.imax):
+         s = 'HF: evolving through real time: t = {:.4f}'.format(j*pm.sys.deltat)
+         pm.sprint(s,1,newline=False)
+
+         waves = crank_nicolson_step(pm, waves, H)
+         S = np.dot(waves.T.conj(), waves) * pm.sys.deltax
+         orthogonal = np.allclose(S, np.eye(pm.sys.NE, dtype=np.complex),atol=1e-6) 
+         if not orthogonal:
+             pm.sprint("HF: Warning: Orthonormality of orbitals violated at iteration {}".format(j))
+
+         den = electron_density(pm, waves)
+         H = hamiltonian(pm, waves, perturb=True)
+
+         n_t[j] = den
          current[j,:] = CalculateCurrentDensity(pm, n_t,j)
-         v_xc_t[j,:] = VXC(pm, n_t[j,:])
 
+      pm.sprint()
 
-       #TODO: 
-       # implement stencil
-       # put crank-nicholson
-       # put current density
+      #TODO: 
+      # put current density
+      # don't store all psi's (also remove this from LDA)
 
-       # Output results
-       #results.add(v_ks_t, 'td_hf_vks')
-       #results.add(v_xc_t, 'td_hf_vxc')
-       results.add(n_t, 'td_hf_den')
-       results.add(current, 'td_hf_cur')
+      # Output results
+      results.add(n_t, 'td_hf_den')
+      results.add(current, 'td_hf_cur')
 
-       if pm.run.save:
-          l = ['td_lda_vks','td_lda_vxc','td_lda_den','td_lda_cur']
-          results.save(pm, list=l)
+      if pm.run.save:
+         l = ['td_hf_den','td_hf_cur']
+         results.save(pm, list=l)
  
    return results
-

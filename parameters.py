@@ -11,8 +11,8 @@ run.time_dependence = False          #: whether to run time-dependent calculatio
 run.verbosity = 'default'            #: output verbosity ('low', 'default', 'high')
 run.save = True                      #: whether to save results to disk when they are generated
 run.module = 'iDEA'                  #: specify alternative folder (in this directory) containing modified iDEA module  
-run.EXT = False                      #: Run Exact Many-Body calculation
-run.NON = False                      #: Run Non-Interacting approximation
+run.EXT = True                       #: Run Exact Many-Body calculation
+run.NON = True                       #: Run Non-Interacting approximation
 run.LDA = False                      #: Run LDA approximation
 run.MLP = False                      #: Run MLP approximation
 run.HF = False                       #: Run Hartree-Fock approximation
@@ -44,7 +44,7 @@ def v_pert(x):
 
     Switched on at t=0.
     """
-    y = -0.01*x
+    y = -0.1*x
     if(sys.im == 1):
         return y + v_pert_im(x)
     return y

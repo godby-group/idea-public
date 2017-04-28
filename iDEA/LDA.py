@@ -634,6 +634,13 @@ def main(parameters):
          n_t,Psi = CrankNicolson(pm, v_ks_t,Psi,n_t,j)
          if j != pm.sys.imax-1:
             v_ks_t[j+1,:] = v_ext[:]+hartree_potential(pm, n_t[j,:])+VXC(pm, n_t[j,:])
+
+         # Verify orthogonality of states 
+         S = np.dot(Psi[:,j,:].conj(), Psi[:,j,:].T) * pm.sys.deltax
+         orthogonal = np.allclose(S, np.eye(pm.sys.NE, dtype=np.complex),atol=1e-6)
+         if not orthogonal:
+             pm.sprint("LDA: Warning: Orthonormality of orbitals violated at iteration {}".format(j))
+
          current[j,:] = CalculateCurrentDensity(pm, n_t,j)
          v_xc_t[j,:] = VXC(pm, n_t[j,:])
 
