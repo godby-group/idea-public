@@ -120,10 +120,7 @@ def hamiltonian(pm, v_KS=None, wfs=None):
          KS potential
     wfs : array_like
          kohn-sham orbitals. if specified, v_KS is computed from wfs
-    H : array_like
-         old hamiltonian. if specified, we just update the diagonal of H.
-
-    returns array_like
+ array_like
          Hamiltonian matrix (in banded form)
     """
     # sparse version
