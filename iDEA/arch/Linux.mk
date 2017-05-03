@@ -10,5 +10,5 @@ CLEAN = rm -rf *.so
 
 F2PY = f2py
 # build for python2 or python3
-PYTHON = python2
+PYTHON = python3
 PY3CONFIG = python3-config
