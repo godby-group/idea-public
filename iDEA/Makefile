@@ -1,6 +1,3 @@
-# Select architecture (autodetect, if empty)
-ARCH=
-
 # Detect operating system
 ifeq ($(OS),Windows_NT)
   OS_detected := Windows
@@ -8,7 +5,8 @@ else
   OS_detected := $(shell uname -s)
 endif
 
-# Set up environment variables for proper architecture
+# Select architecture via the ARCH environment variable
+# (otherwise will autodetect and use default .mk file)
 ifeq ($(ARCH),)
   ifeq ($(OS_detected),Windows)
     $(warning Warning: Windows currently untested!)
@@ -21,8 +19,8 @@ else
   include arch/$(ARCH).mk
 endif
 
-# Handle versioned .so suffixes in python3
-ifeq ($(PYTHON),python3)
+# Handle versioned .so suffixes in python 3
+ifeq ($(PYTHON),3)
     SO_EXT:=$(shell $(PY3CONFIG) --extension-suffix)
 else
     SO_EXT:=.so

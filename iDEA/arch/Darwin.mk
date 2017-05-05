@@ -7,7 +7,6 @@ OPTFLAGS = -O3
 LFLAGS  = -L$(MKLROOT)/lib -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -liomp5 -ldl -lpthread -lm
 CLEAN = rm -rf *.so *.dSYM
 
-F2PY = f2py
-# build for python2 or python3
-PYTHON = python2
-PY3CONFIG = python3-config
+PYTHON = 3   # specify 2 or 3 depending on your python version
+F2PY = f2py  # f2py executable that is compatible with your python version
+PY3CONFIG = python3-config  # needed only for python 3
