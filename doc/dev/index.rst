@@ -4,8 +4,8 @@ iDEA development
 
 .. toctree::
 
+   add
+   edit
    log
    todo
-   add
    related
-   edit

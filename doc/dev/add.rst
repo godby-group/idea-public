@@ -1,7 +1,9 @@
 Adding to iDEA
 ==============
 
-The version control system used to manage the iDEA source code is `git <https://git-scm.com/>`_. Git offers a "learn git in 15 minutes" tutorial found `here <https://try.github.io/>`_. 
+The version control system used to manage the iDEA source code is 
+`git <https://git-scm.com/>`_. Git offers a "learn git in 15 minutes" tutorial
+found `here <https://try.github.io/>`_. 
 
 Commiting changes locally
 -------------------------
@@ -42,6 +44,14 @@ At the very minimum, check that the existing unit tests aren't broken:
    # run this in the base directory
    python -m unittest discover
 
+To check whether your code is properly covered by the unit tests, use the
+`coverage module <http://coverage.readthedocs.io/>`_.
+
+.. code-block:: bash
+
+   # run this in the base directory
+   coverage run -m unittest discover  # tests coverage
+   coverage html  # generates report in doc/coverage/index.html                 
 
 To have the changes you have commited pulled into the central repository for everyone to access, email jw1294@york.ac.uk with a pull request.
 
