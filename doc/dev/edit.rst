@@ -1,5 +1,5 @@
 *****************
-Editing This Site
+Documenting iDEA
 *****************
 
 This documentation is written using `Sphinx <http://sphinx-doc.org>`_,
