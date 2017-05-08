@@ -1,0 +1,21 @@
+# .controls coverage.py
+# checks coverage of unit tests
+# usage: coverage run -m unittest discover
+#        coverage html
+#        # then open doc/coverage/index.html
+[run]
+branch = True
+source = iDEA
+omit = iDEA/test_*
+
+[report]
+# Regexes for lines to exclude from consideration
+exclude_lines =
+    # Don't complain if tests don't hit defensive assertion code:
+    raise 
+    # Don't complain if non-runnable code isn't run:
+    if __name__ == .__main__.:
+
+[html]
+directory = doc/coverage
+
