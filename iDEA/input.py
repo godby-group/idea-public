@@ -136,8 +136,8 @@ class Input(object):
         run.verbosity = 'default'            #: output verbosity ('low', 'default', 'high')
         run.save = True                      #: whether to save results to disk when they are generated
         run.module = 'iDEA'                  #: specify alternative folder (in this directory) containing modified iDEA module  
-        run.EXT = False                      #: Run Exact Many-Body calculation
-        run.NON = False                      #: Run Non-Interacting approximation
+        run.EXT = True                       #: Run Exact Many-Body calculation
+        run.NON = True                       #: Run Non-Interacting approximation
         run.LDA = False                      #: Run LDA approximation
         run.MLP = False                      #: Run MLP approximation
         run.HF = False                       #: Run Hartree-Fock approximation
@@ -210,15 +210,17 @@ class Input(object):
         ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
         ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
         ext.initial_psi = 'non'              #: Initial wavefunction ('non' by default. 'hf', 'lda' or 'ext' can be selected if  
-                                             #  the files are saved within the current directory. An ext wavefunction from another   
-                                             #  directory can be used, but specify that directories name instead e.g. 'run_name')
+                                             #  the orbitals/wavefunction are saved within the current directory. An ext wavefunction  
+                                             #  from another directory can be used, but specify that directories name instead e.g. 'run_name'.
+                                             #: If no reliable starting guess can be provided e.g. wrong number of electrons per well, then
+                                             #: choose 'qho' - this will ensure stable convergence to the true ground-state.)
          
 
         ### Non-interacting approximation parameters
         self.non = InputSection()
         non = self.non
         non.rtol_solver = 1e-14              #: Tolerance of linear solver in real time propagation (Recommended: 1e-13)
-        non.save_eig = False                 #: save eigenfunctions and eigenvalues of Hamiltonian
+        non.save_eig = True                  #: Save eigenfunctions and eigenvalues of Hamiltonian
         non.RE = False                       #: Reverse engineer non-interacting density
         non.OPT = False                      #: Calculate the external potential for the non-interacting density
         
@@ -235,7 +237,7 @@ class Input(object):
         lda.tol = 1e-12                      #: convergence tolerance in the density
         lda.etol = 1e-12                     #: convergence tolerance in the energy
         lda.max_iter = 10000                 #: Maximum number of self-consistency iterations
-        lda.save_eig = False                 #: save eigenfunctions and eigenvalues of Hamiltonian
+        lda.save_eig = True                  #: Save eigenfunctions and eigenvalues of Hamiltonian
         lda.OPT = False                      #: Calculate the external potential for the LDA density 
         
 
@@ -255,7 +257,7 @@ class Input(object):
         hf.fock = 1                          #: Include Fock term (0 = Hartree approximation, 1 = Hartree-Fock approximation)
         hf.con = 1e-12                       #: Tolerance
         hf.nu = 0.9                          #: Mixing term
-        hf.save_eig = False                  #: save eigenfunctions and eigenvalues of Hamiltonian
+        hf.save_eig = True                   #: Save eigenfunctions and eigenvalues of Hamiltonian
         hf.RE = False                        #: Reverse-engineer hf density
         hf.OPT = False                       #: Calculate the external potential for the HF density
 
@@ -287,7 +289,7 @@ class Input(object):
         ### RE parameters
         self.re = InputSection()
         re = self.re
-        re.save_eig = True                   #: save Kohn-Sham eigenfunctions and eigenvalues of reverse-engineered potential
+        re.save_eig = True                   #: Save Kohn-Sham eigenfunctions and eigenvalues of reverse-engineered potential
 
 
         ### OPT parameters
@@ -477,40 +479,6 @@ class Input(object):
 
         results = pm.results
         # Execute required jobs
-        if(pm.sys.NE == 1):
-           if(pm.run.EXT == True):
-              from . import EXT1
-              results.add(EXT1.main(pm), name='ext')
-           if(pm.ext.RE == True):
-              from . import RE
-              results.add(RE.main(pm,'ext'), name='extre')
-           if(pm.ext.OPT == True):
-              from . import OPT
-              results.add(OPT.main(pm,'ext'), name='extopt')
-        elif(pm.sys.NE == 2):
-           if(pm.run.EXT == True):
-              from . import EXT2
-              results.add(EXT2.main(pm), name='ext')
-           if(pm.ext.RE == True):
-              from . import RE
-              results.add(RE.main(pm,'ext'), name='extre')
-           if(pm.ext.OPT == True):
-              from . import OPT
-              results.add(OPT.main(pm,'ext'), name='extopt')
-        elif(pm.sys.NE == 3):
-           if(pm.run.EXT == True):
-              from . import EXT3
-              results.add(EXT3.main(pm), name='ext')
-           if(pm.ext.RE == True):
-              from . import RE
-              results.add(RE.main(pm,'ext'), name='extre')
-           if(pm.ext.OPT == True):
-              from . import OPT
-              results.add(OPT.main(pm,'ext'), name='extopt')
-        elif(pm.sys.NE >= 4):
-           if(pm.run.EXT == True):
-              print('EXT: cannot run exact with more than 3 electrons')
-
         if(pm.run.NON == True):
               from . import NON
               results.add(NON.main(pm), name='non')
@@ -545,6 +513,44 @@ class Input(object):
               from . import OPT
               results.add(OPT.main(pm,'hf'), name='hfopt')
 
+        if(pm.run.LAN == True):
+              from . import LAN
+              results.add(LAN.main(pm), name='lan')
+
+        if(pm.sys.NE == 1):
+           if(pm.run.EXT == True):
+              from . import EXT1
+              results.add(EXT1.main(pm), name='ext')
+           if(pm.ext.RE == True):
+              from . import RE
+              results.add(RE.main(pm,'ext'), name='extre')
+           if(pm.ext.OPT == True):
+              from . import OPT
+              results.add(OPT.main(pm,'ext'), name='extopt')
+        elif(pm.sys.NE == 2):
+           if(pm.run.EXT == True):
+              from . import EXT2
+              results.add(EXT2.main(pm), name='ext')
+           if(pm.ext.RE == True):
+              from . import RE
+              results.add(RE.main(pm,'ext'), name='extre')
+           if(pm.ext.OPT == True):
+              from . import OPT
+              results.add(OPT.main(pm,'ext'), name='extopt')
+        elif(pm.sys.NE == 3):
+           if(pm.run.EXT == True):
+              from . import EXT3
+              results.add(EXT3.main(pm), name='ext')
+           if(pm.ext.RE == True):
+              from . import RE
+              results.add(RE.main(pm,'ext'), name='extre')
+           if(pm.ext.OPT == True):
+              from . import OPT
+              results.add(OPT.main(pm,'ext'), name='extopt')
+        elif(pm.sys.NE >= 4):
+           if(pm.run.EXT == True):
+              print('EXT: cannot run exact with more than 3 electrons')
+
         if(pm.run.MBPT == True):
               from . import MBPT
               results.add(MBPT.main(pm), name='mbpt')
@@ -554,10 +560,6 @@ class Input(object):
         if(pm.mbpt.OPT == True):
               from . import OPT
               results.add(OPT.main(pm,'mbpt'), name='mbptopt')
-
-        if(pm.run.LAN == True):
-              from . import LAN
-              results.add(LAN.main(pm), name='lan')
 
         # All jobs done
         if pm.run.save:

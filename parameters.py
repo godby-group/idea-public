@@ -11,11 +11,11 @@ run.time_dependence = False          #: whether to run time-dependent calculatio
 run.verbosity = 'default'            #: output verbosity ('low', 'default', 'high')
 run.save = True                      #: whether to save results to disk when they are generated
 run.module = 'iDEA'                  #: specify alternative folder (in this directory) containing modified iDEA module  
-run.EXT = True                       #: Run Exact Many-Body calculation
 run.NON = True                       #: Run Non-Interacting approximation
 run.LDA = False                      #: Run LDA approximation
 run.MLP = False                      #: Run MLP approximation
 run.HF = False                       #: Run Hartree-Fock approximation
+run.EXT = True                       #: Run Exact Many-Body calculation
 run.MBPT = False                     #: Run Many-body pertubation theory
 run.LAN = False                      #: Run Landauer approximation
 
@@ -80,15 +80,17 @@ ext.elf_es = False                   #: Calculate ELF for the excited-states of 
 ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
 ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
 ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
-ext.initial_psi = 'non'              #: Initial wavefunction ('non' by default. 'hf', 'lda' or 'ext' can be selected if  
-                                     #  the files are saved within the current directory. An ext wavefunction from another   
-                                     #  directory can be used, but specify that directories name instead e.g. 'run_name')
+ext.initial_psi = 'hf'               #: Initial wavefunction ('non' by default. 'hf', 'lda' or 'ext' can be selected if  
+                                     #  the orbitals/wavefunction are saved within the current directory. An ext wavefunction  
+                                     #  from another directory can be used, but specify that directories name instead e.g. 'run_name'.
+                                     #: If no reliable starting guess can be provided e.g. wrong number of electrons per well, then
+                                     #: choose 'qho' - this will ensure stable convergence to the true ground-state.)
 
 
 ### Non-interacting approximation parameters
 non = InputSection()
 non.rtol_solver = 1e-14              #: Tolerance of linear solver in real time propagation (Recommended: 1e-13)
-non.save_eig = False                 #: save eigenfunctions and eigenvalues of Hamiltonian
+non.save_eig = True                  #: Save eigenfunctions and eigenvalues of Hamiltonian
 non.RE = False                       #: Reverse-engineer non-interacting density
 non.OPT = False                      #: Calculate the external potential for the non-interacting density
 
@@ -104,7 +106,7 @@ lda.kerker_length = 0.5              #: length over which density fluctuations a
 lda.tol = 1e-12                      #: convergence tolerance in the density
 lda.etol = 1e-12                     #: convergence tolerance in the energy
 lda.max_iter = 10000                 #: Maximum number of self-consistency iterations
-lda.save_eig = False                 #: save eigenfunctions and eigenvalues of Hamiltonian
+lda.save_eig = True                  #: Save eigenfunctions and eigenvalues of Hamiltonian
 lda.OPT = False                      #: Calculate the external potential for the LDA density 
 
 
@@ -122,7 +124,7 @@ hf = InputSection()
 hf.fock = 1                          #: Include Fock term (0 = Hartree approximation, 1 = Hartree-Fock approximation)
 hf.con = 1e-12                       #: Tolerance
 hf.nu = 0.9                          #: Mixing term
-hf.save_eig = False                  #: save eigenfunctions and eigenvalues of Hamiltonian
+hf.save_eig = True                   #: Save eigenfunctions and eigenvalues of Hamiltonian
 hf.RE = False                        #: Reverse-engineer hf density
 hf.OPT = False                       #: Calculate the external potential for the HF density
 
@@ -151,7 +153,7 @@ lan.start = 'non'                    #: Ground-state Kohn-Sham potential to be p
 
 ### RE parameters
 re = InputSection()
-re.save_eig = True                   #: save Kohn-Sham eigenfunctions and eigenvalues of reverse-engineered potential
+re.save_eig = True                   #: Save Kohn-Sham eigenfunctions and eigenvalues of reverse-engineered potential
 
 
 ### OPT parameters

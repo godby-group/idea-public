@@ -391,6 +391,12 @@ def initial_wavefunction(pm, wavefunction_reduced, v_ext, ground_state=True):
             except:
                 eigenstate_1, eigenstate_2, eigenstate_3 = non_approx(pm)
 
+        # Calculate the three lowest eigenstates of the harmonic oscillator
+        elif(pm.ext.initial_psi == 'qho'):
+            eigenstate_1 = qho_approx(pm, 0)
+            eigenstate_2 = qho_approx(pm, 1)
+            eigenstate_3 = qho_approx(pm, 2)
+
         # Read an exact many-body wavefunction from this directory 
         elif(pm.ext.initial_psi == 'ext'):
             try:
