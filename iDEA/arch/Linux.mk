@@ -8,6 +8,9 @@ OPTFLAGS = -fast
 LFLAGS =  -L$(MKLROOT)/lib/intel64/ -lmkl_rt
 CLEAN = rm -rf *.so
 
-PYTHON = 3   # specify 2 or 3 depending on your python version
-F2PY = f2py  # f2py executable that is compatible with your python version
-PY3CONFIG = python3-config  # needed only for python 3
+# specify 2 or 3 depending on your python version
+PYTHON = 3
+# f2py executable that is compatible with your python version
+F2PY = f2py
+# needed only for python 3
+PY3CONFIG = python3-config

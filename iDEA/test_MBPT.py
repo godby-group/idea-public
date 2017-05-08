@@ -315,16 +315,16 @@ class TestExtrapolation(unittest.TestCase):
         G0 = 1J * np.random.random((st.x_npt,st.x_npt,st.tau_npt))
         G0_pzero_extr = MBPT.extrapolate_to_zero(G0,st,dir='from_above', order=order, points=points)
 
-	istart = 1
+        istart = 1
         iend = 1 + points
 
-	out = np.zeros((st.x_npt,st.x_npt), dtype=np.float)
-	for i in range(st.x_npt):
-	    for j in range(st.x_npt):
-	       x = st.tau_grid[istart:iend]
-	       y = G0[i,j, istart:iend].imag
-	       z = np.poly1d(np.polyfit(x, y, order))
-	       out[i,j] = z(0) 
-	G0_pzero_extr_2 = 1J * out
+        out = np.zeros((st.x_npt,st.x_npt), dtype=np.float)
+        for i in range(st.x_npt):
+            for j in range(st.x_npt):
+               x = st.tau_grid[istart:iend]
+               y = G0[i,j, istart:iend].imag
+               z = np.poly1d(np.polyfit(x, y, order))
+               out[i,j] = z(0) 
+        G0_pzero_extr_2 = 1J * out
 
         nt.assert_allclose(G0_pzero_extr, G0_pzero_extr_2, rtol=1e-3, atol=1e-6)

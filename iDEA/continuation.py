@@ -65,7 +65,7 @@ class Polefit(object):
         Parameters are random numbers with real parts in [-0.5,0.5] and
         imaginary parts in [-0.5,0.5].
         """
-	guess = np.random.rand(self.n_parameters) - 0.5 \
+        guess = np.random.rand(self.n_parameters) - 0.5 \
                 + 1J*(np.random.rand(self.n_parameters) - 0.5)
         return guess
 
