@@ -229,18 +229,19 @@ def construct_band_elements(pm, r, td):
         \end{pmatrix}
         \frac{1}{\delta x^2}
 
-    Since :math:`A = I + \dfrac{\delta \tau}{2}H` and :math:`K_{tot} = K_{1} + 
-    K_{2}`, band_elements :math:`= [1+\frac{\delta \tau}{\delta x^2}, 
-    -\frac{\delta \tau}{4\delta x^2}] `Note: This does not include the 
-    potential energy contribution.   
+    Since :math:`A = I + \dfrac{\delta \tau}{2}H` and 
+    :math:`K_{tot} = K_{1} + K_{2}`, band_elements 
+    :math:`= [1+\frac{\delta \tau}{\delta x^2}, -\frac{\delta \tau}{4\delta x^2}]`
+    
+    Note: This does not include the potential energy contribution.   
 
     parameters
     ----------
-    pm : object
+    pm: object
         Parameters object
-    r : complex float
+    r: complex
         Parameter in the equation Ax=b
-    td : integer
+    td: int
         0 for imaginary time, 1 for real time
 
     returns array_like 

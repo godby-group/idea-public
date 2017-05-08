@@ -32,6 +32,11 @@ class SpaceGrid(object):
        for i in range(self.npt):
            self.v_ext[i] = pm.sys.v_ext(self.grid[i])
 
+       self.v_pert = np.zeros(self.npt, dtype=np.float)
+       for i in range(self.npt):
+           self.v_pert[i] = pm.sys.v_pert(self.grid[i])
+
+
        self.v_int = np.zeros((pm.sys.grid,pm.sys.grid),dtype='float')
        for i in range(pm.sys.grid):
           for k in range(pm.sys.grid):
@@ -297,8 +302,6 @@ class Input(object):
         """Checks validity of input parameters."""
         pm = self
         if pm.run.time_dependence == True:
-            if pm.run.HF == True:
-                self.sprint('HF: Warning - time-dependence not implemented!')
             if pm.run.MBPT == True:
                 self.sprint('MBPT: Warning - time-dependence not implemented!')
 
@@ -326,7 +329,7 @@ class Input(object):
                 s += input_string(key,value)
         return s
 
-    def sprint(self, string, priority=1, newline=True):
+    def sprint(self, string='', priority=1, newline=True):
         """Customized print function
 
         Prints to screen and appends to log.
