@@ -24,7 +24,7 @@ Installing iDEA
 
 .. code-block:: bash
 
-   git clone user@rwgu1.york.ac.uk:~jw1294/iDEAL my_idea
+   git clone USERNAME@rwgu4.its.york.ac.uk:/shared/storage/physrwg/trunk/iDEAL/ my_idea
    cd my_idea
 
    # add current working directory to PYTHONPATH
@@ -36,7 +36,7 @@ Installing iDEA
 iDEA includes some Fortran extensions, which are built automatically the first
 time you run it. If the default options for the compiler, libraries etc.  do
 not work for your platform, you will need to adapt the options for one of the
-available architectures in :code:`iDEA/arch/<your architecture>.mk`. Then 
+available architectures in :code:`iDEA/arch/<your architecture>.mk`. Then
 :code:`export ARCH=<your architecture>` in order to tell iDEA to use this
 architecture file.
 
@@ -47,7 +47,7 @@ Generating documentation
 
    # build documentation in doc/_build/html
    cd doc
-   bash make_doc.sh  
+   bash make_doc.sh
 
 
 
@@ -59,4 +59,3 @@ To update your working copy to the latest version, simply do
 
    # Pull all changes from central git repository
    git pull
-
