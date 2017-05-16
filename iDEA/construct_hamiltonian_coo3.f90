@@ -44,7 +44,7 @@
 !        band_elements (real, shape=bandwidth): Band elements. 
 !        bandwidth (int, optional): Number of single-particle bands.
 !        max_size (int, optional): Estimate for the total number of non-zero elements in
-!        the Hamiltonian.
+!            the Hamiltonian.
 !
 !    Returns:
 !        coo_1,coo_2 (int, shape=max_size): Populated coordinate arrays.
@@ -563,7 +563,7 @@ subroutine construct_hamiltonian_coo(coo_1, coo_2, coo_data, grid, constant, v_e
   !_______________________________________________________!
 
 end subroutine construct_hamiltonian_coo
-!_______________________________________________________!
+!________________________________________________________________________________________!
 
 
 !========================================================================================!

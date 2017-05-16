@@ -411,31 +411,48 @@ def kinetic_energy(pm, eigf):
     return np.sum(energies)
 
 
-   
-def CalculateCurrentDensity(pm, n, j):
-   r"""Calculates the current density of a time evolving wavefunction by solving the continuity equation.
+def calculate_current_density(pm, density):
+    r"""Calculates the current density of a time evolving wavefunction by 
+    solving the continuity equation.
 
-   .. math::
+    .. math::
 
-       \frac{\partial n}{\partial t} + \nabla \cdot j = 0
+        \frac{\partial n}{\partial t} + \nabla \cdot j = 0
        
-   Note: This function requires RE_Utilities.so
+    Note: This function requires RE_Utilities.so
 
-   parameters
-   ----------
-   total_td_density : array_like
-      Time dependent density of the system indexed as total_td_density[time_index][space_index]
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    density : array_like
+        2D array of the time-dependent density, indexed as       
+        density[time_index,space_index]
 
-   returns array_like
-      Time dependent current density indexed as current_density[time_index][space_index]
-   """
-   J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,n[j,:],n[j-1,:])
-   if pm.sys.im == 1:
-      for j in range(pm.sys.grid):
-         for k in range(j+1):
-            x = k*pm.sys.deltax-pm.sys.xmax
-            J[j] -= abs(pm.sys.v_pert_im(x))*n[j,k]*pm.sys.deltax
-   return J
+    returns array_like
+        2D array of the current density, indexed as 
+        current_density[time_index,space_index]
+    """
+    pm.sprint('', 1, newline=True)
+    current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
+    string = 'LDA: calculating current density'
+    pm.sprint(string, 1, newline=True)
+    for i in range(1, pm.sys.imax):
+         string = 'LDA: t = {:.5f}'.format(i*pm.sys.deltat)
+         pm.sprint(string, 1, newline=False)
+         J = np.zeros(pm.sys.grid)
+         J = RE_Utilities.continuity_eqn(pm.sys.grid, pm.sys.deltax,
+             pm.sys.deltat, density[i,:], density[i-1,:])
+         if(pm.sys.im == 1):
+             for j in range(pm.sys.grid):
+                 for k in range(j+1):
+                     x = k*pm.sys.deltax-pm.sys.xmax
+                     J[j] -= abs(pm.sys.im_petrb(x))*density[i,k]*(
+                             pm.sys.deltax)
+         current_density[i,:] = J[:]
+    pm.sprint('', 1, newline=True)
+
+    return current_density
 
 
 def CrankNicolson(pm, v, Psi, n, j): 
@@ -641,14 +658,16 @@ def main(parameters):
          if not orthogonal:
              pm.sprint("LDA: Warning: Orthonormality of orbitals violated at iteration {}".format(j))
 
-         current[j,:] = CalculateCurrentDensity(pm, n_t,j)
          v_xc_t[j,:] = VXC(pm, n_t[j,:])
+
+      # Calculate the current density
+      current_density = calculate_current_density(pm, n_t)
 
       # Output results
       results.add(v_ks_t, 'td_lda_vks')
       results.add(v_xc_t, 'td_lda_vxc')
       results.add(n_t, 'td_lda_den')
-      results.add(current, 'td_lda_cur')
+      results.add(current_density, 'td_lda_cur')
 
       if pm.run.save:
          l = ['td_lda_vks','td_lda_vxc','td_lda_den','td_lda_cur']

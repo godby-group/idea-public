@@ -103,7 +103,7 @@ class SystemSection(InputSection):
     @property
     def deltat(self):
         """Spacing of temporal grid"""
-        return 1.0*self.tmax/(self.imax)
+        return 1.0*self.tmax/(self.imax-1)
 
     @property
     def grid_points(self):

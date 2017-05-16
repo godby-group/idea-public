@@ -154,16 +154,16 @@ def calculate_current_density(pm, density):
         2D array of the current density, indexed as 
         current_density[time_index,space_index]
     """
-    pm.sprint('',1,newline=True)
+    pm.sprint('', 1, newline=True)
     current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
     string = 'EXT: calculating current density'
-    pm.sprint(string,1,newline=True)
-    for i in range(pm.sys.imax):
-         string = 'EXT: t = {:.5f}'.format((i+1)*pm.sys.deltat)
-         pm.sprint(string,1,newline=False)
+    pm.sprint(string, 1, newline=True)
+    for i in range(1, pm.sys.imax):
+         string = 'EXT: t = {:.5f}'.format(i*pm.sys.deltat)
+         pm.sprint(string, 1, newline=False)
          J = np.zeros(pm.sys.grid)
          J = RE_Utilities.continuity_eqn(pm.sys.grid, pm.sys.deltax,
-             pm.sys.deltat, density[i+1,:], density[i,:])
+             pm.sys.deltat, density[i,:], density[i-1,:])
          if(pm.sys.im == 1):
              for j in range(pm.sys.grid):
                  for k in range(j+1):
@@ -171,7 +171,7 @@ def calculate_current_density(pm, density):
                      J[j] -= abs(pm.sys.im_petrb(x))*density[i,k]*(
                              pm.sys.deltax)
          current_density[i,:] = J[:]
-    pm.sprint('',1,newline=True)
+    pm.sprint('', 1, newline=True)
 
     return current_density
 
@@ -267,7 +267,7 @@ def main(parameters):
         C = 2.0*sps.identity(pm.sys.grid) - A
 
         # Construct the time-dependent density array 
-        density = np.zeros((pm.sys.imax+1,pm.sys.grid), dtype=np.float)
+        density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
 
         # Save the ground-state
         wavefunction = wavefunctions[:,0].astype(np.cfloat)
@@ -278,7 +278,7 @@ def main(parameters):
         pm.sprint(string, 1, newline=True)
         
         # Perform real time iterations
-        for i in range(pm.sys.imax):
+        for i in range(1, pm.sys.imax):
 
             # Construct the vector b
             b = C*wavefunction   
@@ -288,12 +288,12 @@ def main(parameters):
                                  tol=pm.ext.rtol_solver)
 
             # Calculate the density
-            density[i+1,:] = abs(wavefunction[:])**2
+            density[i,:] = abs(wavefunction[:])**2
 
             # Calculate the norm of the wavefunction
             normalisation = (np.linalg.norm(wavefunction)*pm.sys.deltax**0.5)
             string = 'EXT: t = {:.5f}, normalisation = {}'\
-                    .format((i+1)*pm.sys.deltat, normalisation)
+                    .format(i*pm.sys.deltat, normalisation)
             pm.sprint(string, 1, newline=False)
 
         # Calculate the current density

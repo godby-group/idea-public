@@ -620,12 +620,12 @@ def calculate_current_density(pm, density):
     current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
     string = 'EXT: calculating current density'
     pm.sprint(string, 1, newline=True)
-    for i in range(pm.sys.imax):
-         string = 'EXT: t = {:.5f}'.format((i+1)*pm.sys.deltat)
+    for i in range(1, pm.sys.imax):
+         string = 'EXT: t = {:.5f}'.format(i*pm.sys.deltat)
          pm.sprint(string, 1, newline=False)
          J = np.zeros(pm.sys.grid)
          J = RE_Utilities.continuity_eqn(pm.sys.grid, pm.sys.deltax,
-             pm.sys.deltat, density[i+1,:], density[i,:])
+             pm.sys.deltat, density[i,:], density[i-1,:])
          if(pm.sys.im == 1):
              for j in range(pm.sys.grid):
                  for k in range(j+1):
@@ -844,7 +844,7 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
         indexed as current_density[time_index,space_index].
     """
     # Array initialisations
-    density = np.zeros((pm.sys.imax+1,pm.sys.grid), dtype=np.float)
+    density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
     if(pm.ext.elf_td == 1):
         elf = np.copy(density)
     else:
@@ -862,11 +862,11 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
     pm.sprint(string, 1, newline=True)
 
     # Perform iterations
-    for i in range(pm.sys.imax):
+    for i in range(1, pm.sys.imax):
 
         # Begin timing the iteration
         start = time.time()
-        string = 'real time = {:.5f}'.format((i+1)*pm.sys.deltat) + '/' + \
+        string = 'real time = {:.5f}'.format(i*pm.sys.deltat) + '/' + \
                  '{:.5f}'.format((pm.sys.imax)*pm.sys.deltat)
         pm.sprint(string, 0, newline=True)
 
@@ -885,9 +885,9 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
 
         # Calculate the density (and ELF)
         wavefunction_2D = wavefunction_converter(pm, wavefunction, 1)
-        density[i+1,:] = calculate_density(pm, wavefunction_2D)
+        density[i,:] = calculate_density(pm, wavefunction_2D)
         if(pm.ext.elf_td == 1):
-            elf[i+1,:] = ELF.main(pm, wavefunction_2D, density=density[i+1,:])
+            elf[i,:] = ELF.main(pm, wavefunction_2D, density=density[i,:])
   
         # Stop timing the iteration
         finish = time.time()
@@ -896,7 +896,7 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
 
         # Print to screen
         if(pm.run.verbosity == 'default'):
-            string = 'EXT: ' + 't = {:.5f}'.format((i+1)*pm.sys.deltat)
+            string = 'EXT: ' + 't = {:.5f}'.format(i*pm.sys.deltat)
             pm.sprint(string, 1, newline=False)
         else:
             string = 'residual: {:.5f}'.format(np.linalg.norm(A*wavefunction
@@ -913,9 +913,9 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
     current_density = calculate_current_density(pm, density)
 
     if(pm.ext.elf_td == 1):
-        return density[1:], current_density, elf[1:]
+        return density, current_density, elf
     else:
-        return density[1:], current_density, elf
+        return density, current_density, elf
 
 
 def main(parameters):

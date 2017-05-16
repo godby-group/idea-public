@@ -74,7 +74,7 @@ subroutine construct_wavefunction(eigenstate_1, eigenstate_2, wavefunction, grid
            !=======================================================!
            ! CALCULATE PERMUTATIONS                                !
            !=======================================================!
-           pair = (1/SQRT(2.0))*(eigenstate_1(j)*eigenstate_2(k) - eigenstate_1(k)*&
+           pair = (1.0_dp/SQRT(2.0_dp))*(eigenstate_1(j)*eigenstate_2(k) - eigenstate_1(k)*&
                   &eigenstate_2(j))
            !_______________________________________________________!
 
@@ -90,4 +90,4 @@ subroutine construct_wavefunction(eigenstate_1, eigenstate_2, wavefunction, grid
   !_______________________________________________________!
 
 end subroutine construct_wavefunction
-!_______________________________________________________!
+!_________________________________________________________________________________________!

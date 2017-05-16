@@ -27,7 +27,7 @@ sys.grid = 201                       #: Number of grid points (must be odd)
 sys.stencil = 3                      #: Discretisation of 2nd derivative (3 or 5 or 7). 
 sys.xmax = 10.0                      #: Size of the system
 sys.tmax = 1.0                       #: Total real time
-sys.imax = 1000                      #: Number of real time iterations
+sys.imax = 1001                      #: Number of real time iterations (NB: deltat = tmax/(imax-1))
 sys.acon = 1.0                       #: Smoothing of the Coloumb interaction
 sys.interaction_strength = 1.0       #: Scales the strength of the Coulomb interaction
 sys.im = 0                           #: Use imaginary potentials (0: no, 1: yes)

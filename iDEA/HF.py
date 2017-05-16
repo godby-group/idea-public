@@ -186,36 +186,48 @@ def total_energy(pm, eigf, eigv):
    return E_HF.real
    
 
-def CalculateCurrentDensity(pm, n, j):
-   r"""Calculates the current density of a time evolving wavefunction by solving the continuity equation.
+def calculate_current_density(pm, density):
+    r"""Calculates the current density from the time-dependent 
+    (and ground-state) electron density by solving the continuity equation.
 
-   .. math::
+    .. math:: 
 
-       \frac{\partial n}{\partial t} + \nabla \cdot j = 0
+        \frac{\partial n}{\partial t} + \nabla \cdot j = 0
+       
+    Note: This function requires RE_Utilities.so
 
-   Note: This function requires RE_Utilities.so
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    density : array_like
+        2D array of the time-dependent density, indexed as       
+        density[time_index,space_index]
 
-   parameters
-   ----------
-   n: array_like
-      Time dependent density of the system indexed as n[time_index][space_index]
-   j: int
-      time index of current iteration
+    returns array_like
+        2D array of the current density, indexed as 
+        current_density[time_index,space_index]
+    """
+    pm.sprint('', 1, newline=True)
+    current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
+    string = 'HF: calculating current density'
+    pm.sprint(string, 1, newline=True)
+    for i in range(1, pm.sys.imax):
+         string = 'HF: t = {:.5f}'.format(i*pm.sys.deltat)
+         pm.sprint(string, 1, newline=False)
+         J = np.zeros(pm.sys.grid)
+         J = RE_Utilities.continuity_eqn(pm.sys.grid, pm.sys.deltax,
+             pm.sys.deltat, density[i,:], density[i-1,:])
+         if(pm.sys.im == 1):
+             for j in range(pm.sys.grid):
+                 for k in range(j+1):
+                     x = k*pm.sys.deltax-pm.sys.xmax
+                     J[j] -= abs(pm.sys.im_petrb(x))*density[i,k]*(
+                             pm.sys.deltax)
+         current_density[i,:] = J[:]
+    pm.sprint('', 1, newline=True)
 
-   returns
-   -------
-   J: array_like
-      Time dependent current density indexed as J[time_index][space_index]
-   """
-   J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,n[j,:],n[j-1,:])
-
-   if pm.sys.im == 1:
-      #TODO: Indices are messed up hear. Fix!
-      for i in range(pm.sys.grid):
-         for k in range(j+1):
-            x = i*pm.sys.deltax-pm.sys.xmax
-            J[j] -= abs(pm.sys.v_pert_im(x))*n[j,k]*pm.sys.deltax
-   return J
+    return current_density
 
 
 def crank_nicolson_step(pm, waves, H):
@@ -314,34 +326,30 @@ def main(parameters):
       waves = eigf
       n_t = np.empty((pm.sys.imax, pm.sys.grid), dtype=np.float)
       n_t[0] = den
-      current = np.empty((pm.sys.imax, pm.sys.grid), dtype=np.float)
-      current[0] = 0.0
 
-      for j in range(1, pm.sys.imax):
-         s = 'HF: evolving through real time: t = {:.4f}'.format(j*pm.sys.deltat)
-         pm.sprint(s,1,newline=False)
+      for i in range(1, pm.sys.imax):
+         string = 'HF: evolving through real time: t = {:.4f}'.format(i*pm.sys.deltat)
+         pm.sprint(string, 1, newline=False)
 
          waves = crank_nicolson_step(pm, waves, H)
          S = np.dot(waves.T.conj(), waves) * pm.sys.deltax
          orthogonal = np.allclose(S, np.eye(pm.sys.NE, dtype=np.complex),atol=1e-6) 
          if not orthogonal:
-             pm.sprint("HF: Warning: Orthonormality of orbitals violated at iteration {}".format(j))
+             pm.sprint("HF: Warning: Orthonormality of orbitals violated at iteration {}".format(i+1))
 
          den = electron_density(pm, waves)
          H = hamiltonian(pm, waves, perturb=True)
 
-         n_t[j] = den
-         current[j,:] = CalculateCurrentDensity(pm, n_t,j)
+         n_t[i] = den
 
       pm.sprint()
 
-      #TODO: 
-      # put current density
-      # don't store all psi's (also remove this from LDA)
+      # Calculate the current density
+      current_density = calculate_current_density(pm, n_t)
 
       # Output results
       results.add(n_t, 'td_hf_den')
-      results.add(current, 'td_hf_cur')
+      results.add(current_density, 'td_hf_cur')
 
       if pm.run.save:
          l = ['td_hf_den','td_hf_cur']

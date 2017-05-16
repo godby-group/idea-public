@@ -90,7 +90,7 @@ subroutine construct_wavefunction(eigenstate_1, eigenstate_2, eigenstate_3, wave
            !=======================================================!
            ! WAVEFUNCTION ELEMENT                                  !
            !=======================================================!
-           wavefunction(i) = (1/SQRT(6.0))*(pair_1 + pair_2 + pair_3)
+           wavefunction(i) = (1.0_dp/SQRT(6.0_dp))*(pair_1 + pair_2 + pair_3)
            i = i+1
            !_______________________________________________________!
 
@@ -100,4 +100,4 @@ subroutine construct_wavefunction(eigenstate_1, eigenstate_2, eigenstate_3, wave
   !_______________________________________________________!
 
 end subroutine construct_wavefunction
-!_______________________________________________________!
+!________________________________________________________________________________________!

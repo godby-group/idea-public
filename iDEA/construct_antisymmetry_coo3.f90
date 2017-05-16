@@ -108,7 +108,7 @@ subroutine construct_antisymmetry_coo(coo_1, coo_2, coo_3, coo_4, coo_data_1, co
            jkl = single_index(j, k, l, grid)
            coo_1(i_plus) = i_plus
            coo_2(i_plus) = jkl
-           coo_data_1(i_plus) = 1.0
+           coo_data_1(i_plus) = 1.0_dp
            !_______________________________________________________!
 
            !=======================================================!
@@ -116,19 +116,19 @@ subroutine construct_antisymmetry_coo(coo_1, coo_2, coo_3, coo_4, coo_data_1, co
            !=======================================================!
            coo_3(i_plus) = jkl
            coo_4(i_plus) = i_plus
-           coo_data_2(i_plus) = 1.0
+           coo_data_2(i_plus) = 1.0_dp
 
            if((j /= k) .AND. (k == l)) then
                kjl = single_index(k, j, l, grid)
                coo_3(grid**3-1-i_minus) = kjl
                coo_4(grid**3-1-i_minus) = i_plus
-               coo_data_2(grid**3-1-i_minus) = -1.0
+               coo_data_2(grid**3-1-i_minus) = -1.0_dp
                i_minus = i_minus+1
 
                lkj = single_index(l, k, j, grid)
                coo_3(grid**3-1-i_minus) = lkj
                coo_4(grid**3-1-i_minus) = i_plus
-               coo_data_2(grid**3-1-i_minus) = -1.0
+               coo_data_2(grid**3-1-i_minus) = -1.0_dp
                i_minus = i_minus+1
            end if 
 
@@ -136,13 +136,13 @@ subroutine construct_antisymmetry_coo(coo_1, coo_2, coo_3, coo_4, coo_data_1, co
                jlk = single_index(j, l, k, grid)
                coo_3(grid**3-1-i_minus) = jlk
                coo_4(grid**3-1-i_minus) = i_plus
-               coo_data_2(grid**3-1-i_minus) = -1.0
+               coo_data_2(grid**3-1-i_minus) = -1.0_dp
                i_minus = i_minus+1
 
                lkj = single_index(l, k, j, grid)
                coo_3(grid**3-1-i_minus) = lkj
                coo_4(grid**3-1-i_minus) = i_plus
-               coo_data_2(grid**3-1-i_minus) = -1.0
+               coo_data_2(grid**3-1-i_minus) = -1.0_dp
                i_minus = i_minus+1
            end if
 
@@ -150,31 +150,31 @@ subroutine construct_antisymmetry_coo(coo_1, coo_2, coo_3, coo_4, coo_data_1, co
                jlk = single_index(j, l, k, grid)
                coo_3(grid**3-1-i_minus) = jlk
                coo_4(grid**3-1-i_minus) = i_plus
-               coo_data_2(grid**3-1-i_minus) = -1.0
+               coo_data_2(grid**3-1-i_minus) = -1.0_dp
                i_minus = i_minus+1
 
                kjl = single_index(k, j, l, grid)
                coo_3(grid**3-1-i_minus) = kjl
                coo_4(grid**3-1-i_minus) = i_plus
-               coo_data_2(grid**3-1-i_minus) = -1.0
+               coo_data_2(grid**3-1-i_minus) = -1.0_dp
                i_minus = i_minus+1
 
                lkj = single_index(l, k, j, grid)
                coo_3(grid**3-1-i_minus) = lkj
                coo_4(grid**3-1-i_minus) = i_plus
-               coo_data_2(grid**3-1-i_minus) = -1.0
+               coo_data_2(grid**3-1-i_minus) = -1.0_dp
                i_minus = i_minus+1
 
                klj = single_index(k, l, j, grid)
                coo_3(grid**3-1-i_minus) = klj
                coo_4(grid**3-1-i_minus) = i_plus
-               coo_data_2(grid**3-1-i_minus) = 1.0
+               coo_data_2(grid**3-1-i_minus) = 1.0_dp
                i_minus = i_minus+1
 
                ljk = single_index(l, j, k, grid)
                coo_3(grid**3-1-i_minus) = ljk
                coo_4(grid**3-1-i_minus) = i_plus
-               coo_data_2(grid**3-1-i_minus) = 1.0
+               coo_data_2(grid**3-1-i_minus) = 1.0_dp
                i_minus = i_minus+1
            end if
 
@@ -189,7 +189,7 @@ subroutine construct_antisymmetry_coo(coo_1, coo_2, coo_3, coo_4, coo_data_1, co
   !_______________________________________________________!
 
 end subroutine construct_antisymmetry_coo
-!_______________________________________________________!
+!________________________________________________________________________________________!
 
 
 !========================================================================================!

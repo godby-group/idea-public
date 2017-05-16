@@ -107,7 +107,7 @@ subroutine construct_antisymmetry_coo(coo_1, coo_2, coo_3, coo_4, coo_data_1, co
         jk = single_index(j, k, grid)
         coo_1(i_plus) = i_plus
         coo_2(i_plus) = jk
-        coo_data_1(i_plus) = 1.0
+        coo_data_1(i_plus) = 1.0_dp
         !_______________________________________________________!
 
         !=======================================================!
@@ -115,13 +115,13 @@ subroutine construct_antisymmetry_coo(coo_1, coo_2, coo_3, coo_4, coo_data_1, co
         !=======================================================!
         coo_3(i_plus) = jk
         coo_4(i_plus) = i_plus
-        coo_data_2(i_plus) = 1.0
+        coo_data_2(i_plus) = 1.0_dp
         
         if(j /= k) then
             kj = single_index(k, j, grid)
             coo_3(grid**2-1-i_minus) = kj
             coo_4(grid**2-1-i_minus) = i_plus
-            coo_data_2(grid**2-1-i_minus) = -1.0
+            coo_data_2(grid**2-1-i_minus) = -1.0_dp
             i_minus = i_minus+1
         end if 
         !_______________________________________________________!
@@ -134,7 +134,7 @@ subroutine construct_antisymmetry_coo(coo_1, coo_2, coo_3, coo_4, coo_data_1, co
   !_______________________________________________________!
 
 end subroutine construct_antisymmetry_coo
-!_______________________________________________________!
+!________________________________________________________________________________________!
 
 
 !========================================================================================!
