@@ -52,7 +52,7 @@ class SpaceTimeGrid(object):
         #   tau_grid = [dt/2,dt+dt/2,...,T/2+dt/2,-T/2+dt/2,...,-dt/2] # tau_npt odd
         #   tau_grid = [dt/2,dt+dt/2,...,T/2-dt/2,-T/2+dt/2,...,-dt/2] # tau_npt even
         #self.tau_grid = 2*self.tau_max * np.fft.fftfreq(self.tau_npt) + self.tau_delta/2.0
-        
+
         # (imaginary) frequency
         self.omega_max = np.pi / self.tau_delta
         self.omega_npt= self.tau_npt
@@ -97,11 +97,11 @@ class Container(object):
     """Stores quantities for GW cycle"""
     pass
 
-        
+
 def main(parameters):
     r"""Runs GW calculation
-    
-    Steps: 
+
+    Steps:
     {eps_j, psi_j}
     => G0(rr';i\tau)
     => P(rr';i\tau)
@@ -112,7 +112,7 @@ def main(parameters):
     => S(rr';i\tau)
     => S(rr';i\omega)
     => G(rr';i\omega)
-    
+
    parameters
    ----------
    parameters : object
@@ -144,7 +144,7 @@ def main(parameters):
     # to pass a long list of arguments
     def save(O, shortname, force_dg=False):
         """Auxiliary function for saving 3d objects
-        
+
         """
         if (shortname in pm.mbpt.save_diag) or force_dg:
             name = "gs_mbpt_{}_dg".format(shortname)
@@ -210,13 +210,39 @@ def main(parameters):
 
         pm.sprint('MBPT: computing S(it)',0)
         S = self_energy(G, W)
-        save(S, "S{}_it".format(cycle))
+
+        if(pm.mbpt.w == 'dynamical'):
+            save(S, "Sc{}_it".format(cycle))
+        else:
+            save(S, "Sxc{}_it".format(cycle))
+
         if not pm.mbpt.flavour == 'GW0':
             del W # not needed anymore
 
         pm.sprint('MBPT: transforming S to imaginary frequency',0)
         S = fft_t(S, st, dir='it2if')
-        save(S, "S{}_iw".format(cycle))
+        if(pm.mbpt.w == 'dynamical'):
+            save(S, "Sc{}_iw".format(cycle))
+        else:
+            save(S, "Sxc{}_iw".format(cycle))
+
+        # save Sx for all runs
+        Sx = np.zeros(S.shape, dtype=np.complex)
+        for i in range(st.tau_npt):
+            Sx[:,:,i] = H.vx
+        save(Sx, "Sx{}_iw".format(cycle))
+        del Sx
+
+        # calculate and save Scx for dynamical runs
+        if(pm.mbpt.w == 'dynamical'):
+            Sxc = np.zeros(S.shape, dtype=np.complex)
+            for i in range(st.tau_npt):
+                Sxc[:,:,i] = H.vx + S[:,:,i]    #Sxc = Sx + Sc
+            save(Sxc, "Sxc{}_iw".format(cycle))
+            Sxc = fft_t(Sxc, st, dir='if2it')
+            save(Sxc, "Sxc{}_it".format(cycle))
+            del Sxc
+
 
         pm.sprint('MBPT: updating S(iw)',0)
         # real for real orbitals...
@@ -229,21 +255,21 @@ def main(parameters):
             delta += H.vx
         for i in range(st.tau_npt):
             S[:,:,i] += delta
-        save(S, "D{}_iw".format(cycle))
+        save(S, "S{}_iw".format(cycle))
 
 
         pm.sprint('MBPT: computing expectation values <i|sigma(w)|j>',0)
         H.sigma_iw_dg = bracket_r(S, h0.orbitals, st)
         if pm.mbpt.flavour == 'QSGW':
             H.sigma_iw_full = bracket_r(S, h0.orbitals, st, mode='full')
-        
+
         # Align fermi energy of input and output Green function
         if pm.mbpt.hedin_shift:
             pm.sprint('MBPT: performing Hedin shift',0)
-            
+
             # Get QP energies
             qp_energies = H.sigma_iw_dg[:,0].real + h0.energies
-            
+
             # Sort orbitals and energies if required
             if not all(qp_energies[i] <= qp_energies[i+1] for i in range(0,len(qp_energies)-2)):
                 pm.sprint("MBPT: Warning: QP energies out of order, reordering the following indices...")
@@ -252,7 +278,7 @@ def main(parameters):
                 qp_energies = qp_energies[indices]
                 h0.orbitals = h0.orbitals[indices]
                 h0.energies = h0.energies[indices]
-     
+
             # Do Hedin Shift
             H.qp_shift = 0.5 * (qp_energies[st.NE-1] + qp_energies[st.NE]) # Quasi-particle shift to keep fermi-energy in HOMO-LUMO gap
             H.qp_shift = H.qp_shift.real # Take just the real part
@@ -260,13 +286,13 @@ def main(parameters):
             pm.sprint('MBPT: quasi-particle shift: {:.7f} Ha.'.format(H.qp_shift))
             for i in range(st.x_npt):
                 S[i,i,:] -= H.qp_shift / st.x_delta # Perfrom hedin shift
-                
+
             # Print new qp_energies
             new_b = bracket_r(S, h0.orbitals, st)[:,0].real + h0.energies
             pm.sprint('MBPT: qp_energies after shift: {}...'.format(new_b[0:pm.sys.NE+2]),0)
-                        
+
         # Compute new quasiparticle energies (QSGW: and wave functions)
-        if pm.mbpt.flavour == 'QSGW': 
+        if pm.mbpt.flavour == 'QSGW':
             pm.sprint('MBPT: analytic continuation of sigma(iw) to obtain sigma(w)',0)
             S_w = analytic_continuation(H.sigma_iw_full.reshape(st.norb*st.norb,st.tau_npt), st, pm)
             S_w = np.array(S_w).reshape((st.norb,st.norb))
@@ -297,7 +323,7 @@ def main(parameters):
 
         den_norm = np.sum(den_new) * st.x_delta
         pm.sprint("MBPT: norm of new density: {:.3f} electrons".format(den_norm))
-        den_maxdiff = np.max(np.abs(den_new - H.den)) 
+        den_maxdiff = np.max(np.abs(den_new - H.den))
         H.den = den_new
 
         if pm.mbpt.flavour == 'G0W0':
@@ -334,7 +360,7 @@ def read_input_quantities(pm, st):
     This includes single-particle energies, orbitals and the density.
 
     .. math ::
-        
+
         \mathcal{H}_0 = T + V_{ext}(r) + V_{Hxc}(r,r') \\
         V_{Hxc}(r,r') = \delta(r-r')V_H(r) + V_x(r,r') + V_c(r,r')
 
@@ -379,7 +405,7 @@ def read_input_quantities(pm, st):
         energies = energies[:st.norb]
         orbitals = orbitals[:st.norb]
 
-    # Shifting energies such that E=0 is half way between homo and lumo 
+    # Shifting energies such that E=0 is half way between homo and lumo
     homo = energies[st.NE-1]
     lumo = energies[st.NE]
     gap = lumo - homo
@@ -493,7 +519,7 @@ def non_interacting_green_function(orbitals, energies, st, zero='0-'):
 
     .. math ::
 
-        G_0(r,r';i\tau) = (-i) \sum_s^{empty} \varphi_s(r) \varphi_s(r') e^{-\varepsilon_s\tau} \theta(\tau) 
+        G_0(r,r';i\tau) = (-i) \sum_s^{empty} \varphi_s(r) \varphi_s(r') e^{-\varepsilon_s\tau} \theta(\tau)
                         +   i  \sum_s^{occupied} \varphi_s(r) \varphi_s(r') e^{-\varepsilon_s\tau} \theta(-\tau)
 
 
@@ -515,7 +541,7 @@ def non_interacting_green_function(orbitals, energies, st, zero='0-'):
 
       - '0+': :math:`G(0) = \lim_{t\downarrow 0}G(it)`,
         determined by empty states
-      - '0-': :math:`G(0) = \lim_{t\uparrow 0}G(it)`, 
+      - '0-': :math:`G(0) = \lim_{t\uparrow 0}G(it)`,
         determined by occupied states with :math:`(-i)G(r,r,0)=\rho(r)`
       - 'both': return '0-' Green function *and* it=0 slice of '0+' Green function
 
@@ -617,7 +643,7 @@ def bracket_r(O, orbitals, st, mode='diagonal'):
         bracket_r  = np.dot(orbs.conj(), tmp.reshape((st.norb,st.x_npt,st.tau_npt)))
     else:
         raise ValueError("Unknown mode {}".format(mode))
-        
+
     return bracket_r
 
 
@@ -666,7 +692,7 @@ def fft_t(F, st, dir, phase_shift=False):
 
     n = float(F.shape[-1])
 
-    # Crazy - taking out the prefactors p really makes it faster    
+    # Crazy - taking out the prefactors p really makes it faster
     if dir == 't2f':
         out = ifft_1d(F) * st.tau_delta
         #out = np.fft.ifft(F, axis=-1) * n * st.tau_delta
@@ -934,7 +960,7 @@ def extrapolate_to_zero(F, st, dir='from_below', order=6, points=7):
       order of polynomial fit (order+1 parameters)
     points: int
       choose points=order+1 unless you face instability issues
-   
+
     Returns
     -------
         extrapolated value F(r,r';it=0)
@@ -952,7 +978,7 @@ def extrapolate_to_zero(F, st, dir='from_below', order=6, points=7):
     #    for j in range(st.x_npt):
     #       x = st.tau_grid[istart:iend]
     #       y = F[i,j, istart:iend].imag
-    #       z = np.poly1d(np.polyfit(x, y, order))  
+    #       z = np.poly1d(np.polyfit(x, y, order))
     #       out[i,j] = z(0)
 
     x = st.tau_grid[istart:iend]
@@ -1078,5 +1104,3 @@ def optimise_hamiltonian(h0, S_w, st):
     # np.dot(a,b) sums over last axis of a and 2nd-to-last axis of b
     eigvec = eigvec.swapaxes(0,1)
     qp_orbitals = np.dot(eigvec, h0.orbitals)
-
-
