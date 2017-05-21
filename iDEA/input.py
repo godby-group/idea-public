@@ -16,7 +16,7 @@ from . import results as rs
 
 
 class SpaceGrid(object):
-   """Stores basic real space arrays 
+   """Stores basic real space arrays
 
    These arrays should be helpful in many types of iDEA calculations.
    Storing them in the Input object avoids having to recompute them
@@ -44,7 +44,7 @@ class SpaceGrid(object):
 
        stencil = pm.sys.stencil
        if stencil == 3:
-           self.second_derivative = np.array([1,-2,1], dtype=np.float) / self.delta**2 
+           self.second_derivative = np.array([1,-2,1], dtype=np.float) / self.delta**2
            self.second_derivative_indices = [-1,0,1]
            self.second_derivative_band = np.array([-2,1], dtype=np.float) / self.delta**2
        elif stencil == 5:
@@ -131,18 +131,18 @@ class Input(object):
         ### Run parameters
         self.run = InputSection()
         run = self.run
-        run.name = 'run_name'                #: Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\) 
+        run.name = 'run_name'                #: Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\)
         run.time_dependence = False          #: whether to run time-dependent calculation
         run.verbosity = 'default'            #: output verbosity ('low', 'default', 'high')
         run.save = True                      #: whether to save results to disk when they are generated
-        run.module = 'iDEA'                  #: specify alternative folder (in this directory) containing modified iDEA module  
+        run.module = 'iDEA'                  #: specify alternative folder (in this directory) containing modified iDEA module
         run.EXT = True                       #: Run Exact Many-Body calculation
         run.NON = True                       #: Run Non-Interacting approximation
         run.LDA = False                      #: Run LDA approximation
         run.MLP = False                      #: Run MLP approximation
         run.HF = False                       #: Run Hartree-Fock approximation
         run.MBPT = False                     #: Run Many-body pertubation theory
-        run.LAN = False                      #: Run Landauer approximation 
+        run.LAN = False                      #: Run Landauer approximation
 
 
         ### System parameters
@@ -150,14 +150,14 @@ class Input(object):
         sys = self.sys
         sys.NE = 2                           #: Number of electrons
         sys.grid = 201                       #: Number of grid points (must be odd)
-        sys.stencil = 3                      #: Discretisation of 2nd derivative (3 or 5 or 7). 
+        sys.stencil = 3                      #: Discretisation of 2nd derivative (3 or 5 or 7).
         sys.xmax = 10.0                      #: Size of the system
         sys.tmax = 1.0                       #: Total real time
         sys.imax = 1000                      #: Number of real time iterations
         sys.acon = 1.0                       #: Smoothing of the Coloumb interaction
         sys.interaction_strength = 1.0       #: Scales the strength of the Coulomb interaction
         sys.im = 0                           #: Use imaginary potentials
-        
+
 
         def v_ext(x):
             """Initial external potential
@@ -165,10 +165,10 @@ class Input(object):
             return 0.5*(0.25**2)*(x**2)
         sys.v_ext = v_ext
         #sys.v_ext = lambda x: 0.5*(0.25**2)*(x**2)
-        
-        def v_pert(x): 
+
+        def v_pert(x):
             """Time-dependent perturbation potential
-        
+
             Switched on at t=0.
             """
             y = -0.01*x
@@ -177,21 +177,21 @@ class Input(object):
             return y
         sys.v_pert = v_pert
         #sys.v_pert = lambda x: 0.5*(0.25**2)*(x**2)
-        
-        def v_pert_im(x):                                        
+
+        def v_pert_im(x):
             """Imaginary perturbation potential
-            
+
             Switched on at t=0.
             """
-            strength = 1.0                                      
-            length_from_edge = 5.0                              
-            I = sys.xmax - length_from_edge                         
-            if(-sys.xmax < x and x < -I) or (sys.xmax > x and x > I):   
-                return -strength*1.0j                           
-            return 0.0 
-        sys.v_pert_im = v_pert_im                                          
-        
-        
+            strength = 1.0
+            length_from_edge = 5.0
+            I = sys.xmax - length_from_edge
+            if(-sys.xmax < x and x < -I) or (sys.xmax > x and x > I):
+                return -strength*1.0j
+            return 0.0
+        sys.v_pert_im = v_pert_im
+
+
         ### Exact parameters
         self.ext = InputSection()
         ext = self.ext
@@ -209,12 +209,12 @@ class Input(object):
         ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
         ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
         ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
-        ext.initial_psi = 'non'              #: Initial wavefunction ('non' by default. 'hf', 'lda' or 'ext' can be selected if  
-                                             #  the orbitals/wavefunction are saved within the current directory. An ext wavefunction  
+        ext.initial_psi = 'non'              #: Initial wavefunction ('non' by default. 'hf', 'lda' or 'ext' can be selected if
+                                             #  the orbitals/wavefunction are saved within the current directory. An ext wavefunction
                                              #  from another directory can be used, but specify that directories name instead e.g. 'run_name'.
                                              #: If no reliable starting guess can be provided e.g. wrong number of electrons per well, then
                                              #: choose 'qho' - this will ensure stable convergence to the true ground-state.)
-         
+
 
         ### Non-interacting approximation parameters
         self.non = InputSection()
@@ -223,7 +223,7 @@ class Input(object):
         non.save_eig = True                  #: Save eigenfunctions and eigenvalues of Hamiltonian
         non.RE = False                       #: Reverse engineer non-interacting density
         non.OPT = False                      #: Calculate the external potential for the non-interacting density
-        
+
 
         ### LDA parameters
         self.lda = InputSection()
@@ -238,8 +238,8 @@ class Input(object):
         lda.etol = 1e-12                     #: convergence tolerance in the energy
         lda.max_iter = 10000                 #: Maximum number of self-consistency iterations
         lda.save_eig = True                  #: Save eigenfunctions and eigenvalues of Hamiltonian
-        lda.OPT = False                      #: Calculate the external potential for the LDA density 
-        
+        lda.OPT = False                      #: Calculate the external potential for the LDA density
+
 
         ### MLP parameters
         self.mlp = InputSection()
@@ -250,7 +250,7 @@ class Input(object):
         mlp.reference_potential = 'non'      #: Choice of reference potential for mixing with the SOA
         mlp.OPT = False                      #: Calculate the external potential for the MLP density
 
-        
+
         ### HF parameters
         self.hf = InputSection()
         hf = self.hf
@@ -261,7 +261,7 @@ class Input(object):
         hf.RE = False                        #: Reverse-engineer hf density
         hf.OPT = False                       #: Calculate the external potential for the HF density
 
-        
+
         ### MBPT parameters
         self.mbpt = InputSection()
         mbpt = self.mbpt
@@ -278,7 +278,7 @@ class Input(object):
         mbpt.hedin_shift = True              #: whether to perform Hedin shift
         mbpt.RE = False                      #: Reverse-engineer mbpt density
         mbpt.OPT = False                     #: Calculate the external potential for the MBPT density
-        
+
 
         ### LAN parameters
         self.lan = InputSection()
@@ -295,7 +295,7 @@ class Input(object):
         ### OPT parameters
         self.opt = InputSection()
         opt = self.opt
-        opt.tol = 1e-3                       #: Tolerance of the error in the density  
+        opt.tol = 1e-3                       #: Tolerance of the error in the density
         opt.mu = 1.0                         #: 1st convergence parameter
         opt.p = 0.05                         #: 2nd convergence parameter
 
@@ -380,7 +380,7 @@ class Input(object):
         pm = importlib.import_module(module)
 
         # Replace default member variables with those from parameters file.
-        # The following recursive approach is adapted from 
+        # The following recursive approach is adapted from
         # See http://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
         def update(d, u, l=1):
             for k, v in u.items():
@@ -394,7 +394,7 @@ class Input(object):
                 # No need to copy any of the builtin attributes added
                 elif l > 1:
                     d[k] = u[k]
-            return d 
+            return d
 
         self.__dict__ = update(self.__dict__, pm.__dict__)
 
@@ -439,7 +439,7 @@ class Input(object):
         # Copy parameters file to output folder, if there is one
         if os.path.isfile(pm.filename):
             shutil.copy2(pm.filename,pm.output_dir)
-          
+
         # Copy ViDEO file to output folder
         vfile = 'scripts/ViDEO.py'
         if os.path.isfile(vfile):
@@ -451,11 +451,11 @@ class Input(object):
             #s  = "Warning: Unable to copy ViDEO.py since running iDEA as python module."
             #s += " Simply add the scripts folder to your PATH variable to use ViDEO.py anywhere"
             #pm.sprint(s,1)
-        
+
 
     def setup_space(self):
         """Prepares for performing calculations
-        
+
         precomputes quantities on grids, etc.
         """
         self.space = SpaceGrid(self)
@@ -577,7 +577,7 @@ class Input(object):
             # store pickled version of parameters object
             import pickle
             f = open(pm.output_dir + '/parameters.p', 'wb')
-            pickle.dump(tmp, f)
+            pickle.dump(tmp, f, protocol=4)
             f.close()
 
             del tmp

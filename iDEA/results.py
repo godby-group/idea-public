@@ -87,7 +87,7 @@ class Results(object):
         f = open(filename, 'rb')
         data = pickle.load(f)
         f.close()
-        
+
         return data
 
     def add_pickled_data(self, name, pm, dir=None):
@@ -134,14 +134,14 @@ class Results(object):
                     outname = "{}/{}.db".format(dir,key)
                     pm.sprint("Saving {} to {}".format(key,outname),0)
                     f = open(outname, 'wb')
-                    pickle.dump(val,f)
+                    pickle.dump(val,f,protocol=4) # protocol=4 incase the pickle file is large (<4GB)
                     f.close()
                     #np.savetxt(outname, val)
 
 
     def save_hdf5(self, pm, dir=None, list=None, f=None):
         """Save results to HDF5 database.
-        
+
         This requires the h5py python package.
 
         parameters
