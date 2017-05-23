@@ -251,12 +251,7 @@ def SolveKSE(V,A,Wavefunction,j,frac1,frac2,z):
 # Function to calculate the current density
 def CalculateCurrentDensity(n,n_MB,upper_bound,j):
    J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,n[j,:],n[j-1,:])
-   if pm.sys.im == 1:
-      for j in range(pm.sys.grid):
-         for k in range(j+1):
-            x = k*pm.sys.deltax-pm.sys.xmax
-            J[j] -= abs(pm.sys.v_pert_imb(x))*n[j,k]*pm.sys.deltax
-   else:
+   if(pm.sys.im == 0):
       J = ExtrapolateCD(J,j,n,n_MB,upper_bound)
    return J
 

@@ -113,12 +113,7 @@ def getc_h(den):
 # Function to calculate the current density
 def CalculateCurrentDensity(n,j):
    J = RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,n[j,:],n[j-1,:])
-   if pm.sys.im == 1:
-      for j in range(pm.sys.grid):
-         for k in range(j+1):
-            x = k*pm.sys.deltax-pm.sys.xmax
-            J[j] -= abs(pm.sys.v_pert_im(x))*n[j,k]*pm.sys.deltax
-   else:
+   if(pm.sys.im == 0):
       J = ExtrapolateCD(J,j,n,(int((pm.sys.grid-1)/2.0)))
    return J
 

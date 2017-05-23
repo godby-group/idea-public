@@ -238,12 +238,6 @@ def calculate_current_density(pm, densities):
          J = np.zeros(pm.sys.grid)
          J = RE_Utilities.continuity_eqn(pm.sys.grid, pm.sys.deltax,
              pm.sys.deltat, densities[i,:], density[i-1,:])
-         if(pm.sys.im == 1):
-             for j in range(pm.sys.grid):
-                 for k in range(j+1):
-                     x = k*pm.sys.deltax-pm.sys.xmax
-                     J[j] -= abs(pm.sys.im_petrb(x))*densities[i,k]*(
-                             pm.sys.deltax)
          current_density[i,:] = J[:]
     pm.sprint('', 1, newline=True)
 

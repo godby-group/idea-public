@@ -88,13 +88,8 @@ def SolveKSE(V,Psi,j,frac1,frac2,z_change):
 # Function to calculate the current density
 def CalculateCurrentDensity(n,upper_bound,j):
    J=RE_Utilities.continuity_eqn(pm.sys.grid,pm.sys.deltax,pm.sys.deltat,n[j,:],n[j-1,:])
-   if pm.sys.im==1:
-      for j in range(pm.sys.grid):
-         for k in range(j+1):
-            x=k*pm.sys.deltax-pm.sys.xmax
-            J[j]-=abs(pm.sys.v_pert_im(x))*n[j,k]*pm.sys.deltax
-   else:
-      J=ExtrapolateCD(J,j,n,upper_bound)
+   if(pm.sys.im == 0):
+       J=ExtrapolateCD(J,j,n,upper_bound)
    return J
 
 # Main function
