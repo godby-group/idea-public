@@ -434,15 +434,16 @@ def calculate_current_density(pm, density):
         current_density[time_index,space_index]
     """
     pm.sprint('', 1, newline=True)
-    current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
+    current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float, 
+                      order='F')
     string = 'LDA: calculating current density'
     pm.sprint(string, 1, newline=True)
     for i in range(1, pm.sys.imax):
          string = 'LDA: t = {:.5f}'.format(i*pm.sys.deltat)
          pm.sprint(string, 1, newline=False)
-         J = np.zeros(pm.sys.grid)
-         J = RE_Utilities.continuity_eqn(pm.sys.grid, pm.sys.deltax,
-             pm.sys.deltat, density[i,:], density[i-1,:])
+         J = np.zeros(pm.sys.grid, dtype=np.float, order='F')
+         J = RE_Utilities.continuity_eqn(J, density[i,:], density[i-1,:], 
+             pm.sys.deltax, pm.sys.deltat, pm.sys.grid)
          current_density[i,:] = J[:]
     pm.sprint('', 1, newline=True)
 
@@ -633,7 +634,7 @@ def main(parameters):
       v_ks_t = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
       v_xc_t = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
       current = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
-      n_t = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
+      n_t = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float',order='F')
       v_ks_t[0,:] = v_ks[:]
       n_t[0,:] = n[:]
       for i in range(pm.sys.grid): 

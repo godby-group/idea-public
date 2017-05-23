@@ -99,14 +99,14 @@ def construct_antisymmetry_matrices(pm):
                /spmisc.factorial(2))
 
     # COOrdinate holding arrays for the reduction matrix
-    coo_1 = np.zeros((coo_size), dtype=int)
+    coo_1 = np.zeros((coo_size), dtype=int, order='F')
     coo_2 = np.copy(coo_1)
-    coo_data_1 = np.zeros((coo_size), dtype=np.float)
+    coo_data_1 = np.zeros((coo_size), dtype=np.float, order='F')
     
     # COOrdinate holding arrays for the expansion matrix 
-    coo_3 = np.zeros((pm.sys.grid**2), dtype=int)
+    coo_3 = np.zeros((pm.sys.grid**2), dtype=int, order='F')
     coo_4 = np.copy(coo_3)
-    coo_data_2 = np.zeros((pm.sys.grid**2), dtype=np.float)  
+    coo_data_2 = np.zeros((pm.sys.grid**2), dtype=np.float, order='F')  
 
     # Populate the COOrdinate holding arrays with the coordinates and data
     coo_1, coo_2, coo_3, coo_4, coo_data_1, coo_data_2 = (antisymmetry_coo.
@@ -179,9 +179,9 @@ def construct_A_reduced(pm, reduction_matrix, expansion_matrix, v_ext,
     # of the system's Hamiltonian, then initialize the COOrdinate sparse matrix
     # holding arrays with this shape
     max_size = hamiltonian_max_size(pm)
-    coo_1 = np.zeros((max_size), dtype=int)
-    coo_2 = np.zeros((max_size), dtype=int)
-    coo_data = np.zeros((max_size), dtype=np.float)
+    coo_1 = np.zeros((max_size), dtype=int, order='F')
+    coo_2 = np.copy(coo_1)
+    coo_data = np.zeros((max_size), dtype=np.float, order='F')
 
     # Pass the holding arrays and band elements to the Hamiltonian constructor, 
     # and populate the holding arrays with the coordinates and data
@@ -617,15 +617,16 @@ def calculate_current_density(pm, density):
         current_density[time_index,space_index]
     """
     pm.sprint('', 1, newline=True)
-    current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
+    current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float, 
+                      order='F')
     string = 'EXT: calculating current density'
     pm.sprint(string, 1, newline=True)
     for i in range(1, pm.sys.imax):
          string = 'EXT: t = {:.5f}'.format(i*pm.sys.deltat)
          pm.sprint(string, 1, newline=False)
-         J = np.zeros(pm.sys.grid)
-         J = RE_Utilities.continuity_eqn(pm.sys.grid, pm.sys.deltax,
-             pm.sys.deltat, density[i,:], density[i-1,:])
+         J = np.zeros(pm.sys.grid, dtype=np.float, order='F')
+         J = RE_Utilities.continuity_eqn(J, density[i,:], density[i-1,:], 
+             pm.sys.deltax, pm.sys.deltat, pm.sys.grid)
          current_density[i,:] = J[:]
     pm.sprint('', 1, newline=True)
 
@@ -838,7 +839,7 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
         indexed as current_density[time_index,space_index].
     """
     # Array initialisations
-    density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
+    density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float, order='F')
     if(pm.ext.elf_td == 1):
         elf = np.copy(density)
     else:
@@ -947,7 +948,8 @@ def main(parameters):
                 dtype=np.float)*expansion_matrix
 
     # Generate the initial wavefunction
-    wavefunction_reduced = np.zeros(reduction_matrix.shape[0], dtype=np.float)
+    wavefunction_reduced = np.zeros(reduction_matrix.shape[0], dtype=np.float, 
+                           order='F')
     wavefunction_reduced = initial_wavefunction(pm, wavefunction_reduced, 
                            v_ext)
 
