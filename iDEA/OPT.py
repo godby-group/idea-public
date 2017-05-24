@@ -33,13 +33,13 @@ def construct_target_density(pm, approx, x_points, target_density_array=None,
         target_density[space_index]
     """
     if(target_density_array is not None):
-	return target_density_array
+        return target_density_array
     elif(target_density_function is not None):
-	return target_density_function(x_points)
+        return target_density_function(x_points)
     else:
         name = 'gs_{}_den'.format(approx)
         results = rs.Results()
-	return results.read(name, pm)
+        return results.read(name, pm)
     
 
 def calculate_density_error(pm, density, target_density):
