@@ -134,7 +134,8 @@ def main(parameters, approx, target_density_array=None,
     reduction_matrix, expansion_matrix = EXT.construct_antisymmetry_matrices(pm) 
 
     # Generate the initial wavefunction
-    wavefunction_reduced = np.zeros(reduction_matrix.shape[0], dtype=np.float)
+    wavefunction_reduced = np.zeros(reduction_matrix.shape[0], dtype=np.float, 
+                           order='F')
     wavefunction_reduced = EXT.initial_wavefunction(pm, wavefunction_reduced, 
                            v_ext)
 
