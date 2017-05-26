@@ -28,13 +28,15 @@
 !        deltat (real): Distance between temporal grid points.
 !        density_new (real, shape=grid): Array containing electron density at time t.
 !        density_old (real, shape=grid): Array containing electron density at time t-dt.
+!        current_density(real, shape=grid): Array to be populated with the electron
+!            current density at time t.
 !
 !    Returns:
 !        current_density (real, shape=grid): Array containing electron current density at
 !            time t.
 !
 !========================================================================================!
-subroutine continuity_eqn(grid, deltax, deltat, density_new, density_old)
+subroutine continuity_eqn(current_density, density_new, density_old, deltax, deltat, grid)
 
   implicit none
 
@@ -55,21 +57,20 @@ subroutine continuity_eqn(grid, deltax, deltat, density_new, density_old)
   real (kind=dp) :: deltat
 
   !f2py intent(in) :: density_new, density_old
-  real (kind=dp) :: density_new(1:grid), density_old(1:grid)
+  real (kind=dp) :: density_new(0:grid-1), density_old(0:grid-1)
 
-  !f2py intent(out) :: current_density
-  real (kind=dp) :: current_density(1:grid)
+  !f2py intent(in, out) :: current_density
+  real (kind=dp) :: current_density(0:grid-1)
   !______________________________________________________________________________________!
 
   ! Parameter and array initialisations
   prefactor = deltax/deltat
-  current_density(:) = 0.0_dp
 
   !=============================================================!
   ! MAIN PROGRAM LOOP                                           !
   !=============================================================!
-  do j=2,grid
-     do k=1, j-1
+  do j=1,grid-1
+     do k=0, j-1
         current_density(j) = current_density(j) - prefactor*(density_new(k)-density_old(k))
      end do
   end do
@@ -98,7 +99,7 @@ end subroutine continuity_eqn
 !            match the exact electron current density within the specified tolerance?
 !                                                                                    
 !========================================================================================!
-subroutine compare(grid, current_density_ks, current_density_ext, tolerance)
+subroutine compare(current_density_ks, current_density_ext, tolerance, grid)
 
   implicit none
 
@@ -114,7 +115,7 @@ subroutine compare(grid, current_density_ks, current_density_ext, tolerance)
   real (kind=dp) :: tolerance
 
   !f2py intent(in) :: current_density_ext, current_density_ks
-  real (kind=dp) :: current_density_ext(1:grid), current_density_ks(1:grid)
+  real (kind=dp) :: current_density_ext(0:grid-1), current_density_ks(0:grid-1)
 
   !f2py intent(out) :: current_density_check
   logical :: current_density_check

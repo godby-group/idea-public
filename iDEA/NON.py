@@ -142,15 +142,16 @@ def calculate_current_density(pm, density):
         current_density[time_index,space_index]
     """
     pm.sprint('', 1, newline=True)
-    current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
+    current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float, 
+                      order='F')
     string = 'NON: calculating current density'
     pm.sprint(string, 1, newline=True)
     for i in range(1, pm.sys.imax):
          string = 'NON: t = {:.5f}'.format(i*pm.sys.deltat)
          pm.sprint(string, 1, newline=False)
-         J = np.zeros(pm.sys.grid)
-         J = RE_Utilities.continuity_eqn(pm.sys.grid, pm.sys.deltax,
-             pm.sys.deltat, density[i,:], density[i-1,:])
+         J = np.zeros(pm.sys.grid, dtype=np.float, order='F')
+         J = RE_Utilities.continuity_eqn(J, density[i,:], density[i-1,:], 
+             pm.sys.deltax, pm.sys.deltat, pm.sys.grid)
          current_density[i,:] = J[:]
     pm.sprint('', 1, newline=True)
 
@@ -237,7 +238,8 @@ def main(parameters):
         C = 2.0*sps.identity(pm.sys.grid) - A
 
         # Construct the time-dependent density array 
-        density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
+        density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float, 
+                  order='F')
 
         # Save the ground-state
         for j in range(pm.sys.NE):

@@ -37,7 +37,7 @@ class TestHarmonicOscillator(unittest.TestCase):
         self.pm = pm
 
     def test_non_interacting_system_1(self):
-        """Test interacting system"""
+        """Test non-interacting system"""
         pm = self.pm
         pm.sys.interaction_strength = 0.0
         results = EXT2.main(pm)
