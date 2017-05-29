@@ -103,7 +103,7 @@ class Results(object):
             directory where result is stored
             default: pm.output_dir + '/raw'
         """
-        data = self.read(name, dir, verbosity)
+        data = self.read(name, pm, dir)
         setattr(self, name, data)
 
 
