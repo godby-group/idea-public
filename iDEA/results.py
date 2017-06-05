@@ -85,7 +85,7 @@ class Results(object):
         pm.sprint("Reading {} from {}".format(name,filename),0)
         #pm.sprint("Reading {} from {}".format(Results.label(name),filename),0)
         f = open(filename, 'rb')
-        data = pickle.load(f)
+        data = pickle.load(f, encoding='latin1')
         f.close()
 
         return data
