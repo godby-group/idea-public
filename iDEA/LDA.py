@@ -109,19 +109,13 @@ def banded_to_full(H):
     return H_full
 
 
-def hamiltonian(pm, v_KS=None, wfs=None):
-    r"""Compute LDA Hamiltonian
-
-    Computes LDA Hamiltonian from a given Kohn-Sham potential.
+def kinetic(pm):
+    r"""Compute kinetic energy operator
 
     parameters
     ----------
-    v_KS : array_like
-         KS potential
-    wfs : array_like
-         kohn-sham orbitals. if specified, v_KS is computed from wfs
- array_like
-         Hamiltonian matrix (in banded form)
+    pm : array_like
+        parameters object
     """
     # sparse version
     #sd = pm.space.second_derivative
@@ -136,10 +130,32 @@ def hamiltonian(pm, v_KS=None, wfs=None):
     # banded version
     sd = pm.space.second_derivative_band
     nbnd = len(sd)
-    H_new = np.zeros((nbnd, pm.sys.grid), dtype=np.float)
+    T = np.zeros((nbnd, pm.sys.grid), dtype=np.float)
 
     for i in range(nbnd):
-        H_new[i,:] = -0.5 * sd[i]
+        T[i,:] = -0.5 * sd[i]
+
+    return T
+
+
+
+def hamiltonian(pm, v_KS=None, wfs=None):
+    r"""Compute LDA Hamiltonian
+
+    Computes LDA Hamiltonian from a given Kohn-Sham potential.
+
+    parameters
+    ----------
+    v_KS : array_like
+         KS potential
+    wfs : array_like
+         kohn-sham orbitals. if specified, v_KS is computed from wfs
+    returns
+    -------
+    H_new: array_like
+         Hamiltonian matrix (in banded form)
+    """
+    H_new = kinetic(pm)
 
     if not(wfs is None):
         v_KS = ks_potential(pm, electron_density(pm, wfs))
@@ -315,7 +331,7 @@ def total_energy_eigv(pm, eigv, eigf=None, n=None, V_H=None, V_xc=None):
    parameters
    ----------
    pm : array_like
-        external potential
+        parameters object
    eigv : array_like
         eigenvalues
    eigf : array_like
