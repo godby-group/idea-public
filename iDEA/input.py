@@ -209,7 +209,7 @@ class Input(object):
         ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
         ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
         ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
-        ext.initial_psi = 'non'              #: Initial wavefunction ('non' by default. 'hf', 'lda' or 'ext' can be selected if
+        ext.initial_psi = 'qho'              #: Initial wavefunction ('non' by default. 'hf', 'lda' or 'ext' can be selected if
                                              #  the orbitals/wavefunction are saved within the current directory. An ext wavefunction
                                              #  from another directory can be used, but specify that directories name instead e.g. 'run_name'.
                                              #: If no reliable starting guess can be provided e.g. wrong number of electrons per well, then
