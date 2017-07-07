@@ -87,7 +87,7 @@ def save_plot_td(filename,dx,L,save_plot_timestep):
 
 # Function to animate time dependent pickle file
 def animate_mp4(filename,dx,L,step):
-   input_file = open('raw/' + str(filename) + '.db', 'r')
+   input_file = open('raw/' + str(filename) + '.db', 'rb')
    raw_data = pickle.load(input_file)
    for i in range(0,len(raw_data),step):
        spring = 'animating: ' + str(int(100.0*i/len(raw_data))) + '%'

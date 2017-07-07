@@ -1,5 +1,79 @@
 Changelog
 =========
+ * **v2.2.0** (2017-06-XX)
+
+   * HF: fixed convention used in Fock operator & 10x speedup from faster
+      construction. fock() now returns F, not F*dx.
+   * HF: fixed bug in mixing
+   * HF: added time-dependence
+   * LDA: major rewrite. Added Pulay mixing and conjugate gradient methods
+     for converging tricky systems (Pulay is now the default)
+   * EXT2/3: construction of initial wave function is faster
+     (~2x speed up in EXT2, ~6x in EXT3)
+   * EXT2/3: Optimisation code rewritten, new "OPT" section in the
+     input parameters
+   * EXT2/3: 2-3x speedup in imaginary time via better starting wave function.
+     Another 3x by improved construction of arrays and matrices.
+     Gram-Schmidt algorithm implemented to allow calculation of excited states.
+     Option to save wavefunctions.
+   * EXT2/3: Initial wave function can now be constructed from HF, LDA or NON 
+     orbitals (harmonic oscillator remains the default).
+     Alternatively, an EXT wave function can be given from a previous run.
+   * RE: Now looks for an exact KS potential to start from. 
+   * MBPT: Can now save 
+     the "many-body self-energy" iGW + V_h0 - V_h (+ Hedin shift) (S),
+     the "GW self-energy" iGW (Sxc) as well as the exchange-only
+     (Sx) and correlation-only parts (Sc).
+   * Added "space grid" class.
+     The Input object now provides some useful grids that should be
+     useful in almost any iDEA calculation
+
+     pm.space.grid    # the spatial grid
+     pm.space.v_ext   # the external potential on the grid
+     pm.space.v_int   # the coulomb interaction on the grid
+   * LDA: Fixed inconsistency in LDA E_xc
+    Mike originally fitted the e_xc(n) and then put in
+    (numerically computed) values for V_xc(n) that were
+    capped after the 2nd or 3rd digit.
+
+    We now use only *one* set of parameters, with all others
+    derived directly from them (accurate to machine precision).
+   * iDEA.py renamed to run.py
+    The name iDEA.py results in conflicts when resolving import statements
+    (in particular, when copying iDEA.py to another directory, you
+    received an error when running `python iDEA.py`).
+   * Makefile: Now contains a "make clean" command that should work cross-platform
+   * Pickled version of parameters object is now saved in outputs/run_name/parameters.p
+   * Added "stencil" parameter that specifies how many space points are taken
+     to discretise the 2nd derivative (for the kinetic energy).
+     Added to most codes (EXT, LDA, LAN, MLP, RE, HF, NON)
+   * Results object now has .save_hdf5 function which can store all results
+     in a single HDF5 file (HDF5 is a widely supported, descriptive format
+     that can be read on many OS's and programming languages)
+   * EXT1: drop-in replacement for SPiDEA for 1e runs.
+     Solves 1e Schroedinger equation via eigensolver (no imaginary time).
+     Excited states can be calculated. The ground state can be perturbed and 
+     propagated through real time via Crank-Nicholson.
+   * ELF: option to take density, if known
+   * MKL dependency has been removed completely.
+     EXT2 was found to be slower with MKL than with numpy/scipy routines in Anaconda.
+   * MBPT: 400x speedup in extrapolation of the Green function
+   * All of iDEA is now compatible with python3.
+     python3 is now the default python version used in York in view of
+     discontinuation of official python2 support in 2020. As of now, iDEA should
+     still be backwards compatible with python2 though.
+     python version needs to be specified in the "architecture" file in arch/
+   * automatic test of unit test coverage via "coverage" python module
+     (see documentation)
+   * ViDEO: now uses matplotlib for plotting   
+     (except for animations, which haven't been modified)
+   * orbitals for LDA, NON and HF are now save by default
+   * Order of runs has changed: EXT is run after the various approximations,
+     thus making it more convenient to select one of them as a starting point.
+   * Current density is now always zero at grid point 0
+     (shifted current density by one grid point to the right).
+     Fixed bug for imaginary potentials.
+   * All pickle calls use protocol 4 (not default in python3)
 
  * **v2.1.0** (2017-02-15)
 
