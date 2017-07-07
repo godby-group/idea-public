@@ -1,6 +1,6 @@
 Changelog
 =========
- * **v2.2.0** (2017-06-XX)
+ * **v2.2.0** (2017-07-07)
 
    * HF: fixed convention used in Fock operator & 10x speedup from faster
       construction. fock() now returns F, not F*dx.
