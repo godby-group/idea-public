@@ -39,6 +39,7 @@ class LDATestHarmonic(unittest.TestCase):
         sys.v_ext = v_ext
 
         pm.lda.save_eig = True
+        pm.lda.NE = 2
         pm.setup_space()
         
         self.pm = pm
@@ -53,8 +54,8 @@ class LDATestHarmonic(unittest.TestCase):
         pm = self.pm
         results = LDA.main(pm)
 
-        eigf = results.gs_lda_eigf
-        eigv = results.gs_lda_eigv
+        eigf = results.gs_lda2_eigf
+        eigv = results.gs_lda2_eigv
 
         # check that eigenfunctions are normalised as expected
         norms = np.sum(eigf*eigf.conj(), axis=1) * pm.sys.deltax
@@ -74,7 +75,7 @@ class LDATestHarmonic(unittest.TestCase):
         pm = self.pm
         results = LDA.main(pm)
 
-        eigf = results.gs_lda_eigf[:pm.sys.NE].T
+        eigf = results.gs_lda2_eigf[:pm.sys.NE].T
         #eigv = results.gs_lda_eigv
 
         n = LDA.electron_density(pm, eigf)

@@ -25,6 +25,7 @@ class TestCG(unittest.TestCase):
         pm = input.Input()
         pm.run.save = False
         pm.run.verbosity = 'low'
+        pm.lda.NE = 2
 
         self.pm = pm
 
@@ -188,6 +189,7 @@ class TestCGLDA(unittest.TestCase):
         pm.sys.v_ext = v_ext
         
         pm.lda.save_eig = True
+        pm.lda.NE = 2
         pm.lda.scf_type = 'cg'
 
         self.pm = pm
@@ -202,8 +204,8 @@ class TestCGLDA(unittest.TestCase):
         pm.lda.max_iter = 5  # just start, don't solve it perfectly
 
         results = LDA.main(pm)  # solving using linear mixing
-        vks = results.gs_lda_vks
-        wfs = results.gs_lda_eigf[:pm.sys.NE].T * np.sqrt(pm.sys.deltax)
+        vks = results.gs_lda2_vks
+        wfs = results.gs_lda2_eigf[:pm.sys.NE].T * np.sqrt(pm.sys.deltax)
         H = LDA.banded_to_full(LDA.hamiltonian(pm, vks))
 
         # compute current conjugate direction
