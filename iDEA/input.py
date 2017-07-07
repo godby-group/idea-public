@@ -33,30 +33,43 @@ class SpaceGrid(object):
            self.v_ext[i] = pm.sys.v_ext(self.grid[i])
 
        self.v_pert = np.zeros(self.npt, dtype=np.float)
+       if(pm.sys.im == 1):
+           self.v_pert = self.v_pert.astype(np.cfloat)
        for i in range(self.npt):
            self.v_pert[i] = pm.sys.v_pert(self.grid[i])
-
 
        self.v_int = np.zeros((pm.sys.grid,pm.sys.grid),dtype='float')
        for i in range(pm.sys.grid):
           for k in range(pm.sys.grid):
              self.v_int[i,k] = 1.0/(abs(self.grid[i]-self.grid[k])+pm.sys.acon)
 
-       stencil = pm.sys.stencil
-       if stencil == 3:
+       stencil_first_derivative = pm.re.stencil
+       if stencil_first_derivative == 5:
+           self.first_derivative = 1.0/12 * np.array([1,-8,0,8,-1], dtype=np.float) / self.delta
+           self.first_derivative_indices = [-2,-1,0,1,2]
+           self.first_derivative_band = 1.0/12 * np.array([0,-8,1], dtype=np.float) / self.delta
+       elif stencil_first_derivative == 7:
+           self.first_derivative = 1.0/60 * np.array([-1,9,-45,0,45,-9,1], dtype=np.float) / self.delta
+           self.first_derivative_indices = [-3,-2,-1,0,1,2,3]
+           self.first_derivative_band = 1.0/60 * np.array([0,-45,9,-1], dtype=np.float) / self.delta
+       else:
+           raise ValueError("re.stencil = {} not implemented. Please select 5 or 7.".format(stencil_first_derivative))
+
+       stencil_second_derivative = pm.sys.stencil
+       if stencil_second_derivative == 3:
            self.second_derivative = np.array([1,-2,1], dtype=np.float) / self.delta**2
            self.second_derivative_indices = [-1,0,1]
            self.second_derivative_band = np.array([-2,1], dtype=np.float) / self.delta**2
-       elif stencil == 5:
+       elif stencil_second_derivative == 5:
            self.second_derivative = 1.0/12 * np.array([-1,16,-30,16,-1], dtype=np.float) / self.delta**2
            self.second_derivative_indices = [-2,-1,0,1,2]
            self.second_derivative_band = 1.0/12 * np.array([-30,16,-1], dtype=np.float) / self.delta**2
-       elif stencil == 7:
+       elif stencil_second_derivative == 7:
            self.second_derivative = 1.0/180 * np.array([2,-27,270,-490,270,-27,2], dtype=np.float) / self.delta**2
            self.second_derivative_indices = [-3,-2,-1,0,1,2,3]
            self.second_derivative_band = 1.0/180 * np.array([-490,270,-27,2], dtype=np.float) / self.delta**2
        else:
-           raise ValueError("sys.stencil = {} not implemented. Please select 3, 5 or 7.".format(stencil))
+           raise ValueError("sys.stencil = {} not implemented. Please select 3, 5 or 7.".format(stencil_second_derivative))
 
 
 
@@ -136,11 +149,11 @@ class Input(object):
         run.verbosity = 'default'            #: output verbosity ('low', 'default', 'high')
         run.save = True                      #: whether to save results to disk when they are generated
         run.module = 'iDEA'                  #: specify alternative folder (in this directory) containing modified iDEA module
-        run.EXT = True                       #: Run Exact Many-Body calculation
         run.NON = True                       #: Run Non-Interacting approximation
         run.LDA = False                      #: Run LDA approximation
         run.MLP = False                      #: Run MLP approximation
         run.HF = False                       #: Run Hartree-Fock approximation
+        run.EXT = True                       #: Run Exact Many-Body calculation
         run.MBPT = False                     #: Run Many-body pertubation theory
         run.LAN = False                      #: Run Landauer approximation
 
@@ -153,7 +166,7 @@ class Input(object):
         sys.stencil = 3                      #: Discretisation of 2nd derivative (3 or 5 or 7).
         sys.xmax = 10.0                      #: Size of the system
         sys.tmax = 1.0                       #: Total real time
-        sys.imax = 1000                      #: Number of real time iterations
+        sys.imax = 1001                      #: Number of real time iterations (NB: deltat = tmax/(imax-1))
         sys.acon = 1.0                       #: Smoothing of the Coloumb interaction
         sys.interaction_strength = 1.0       #: Scales the strength of the Coulomb interaction
         sys.im = 0                           #: Use imaginary potentials
@@ -209,11 +222,11 @@ class Input(object):
         ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
         ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
         ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
-        ext.initial_psi = 'non'              #: Initial wavefunction ('non' by default. 'hf', 'lda' or 'ext' can be selected if
-                                             #  the orbitals/wavefunction are saved within the current directory. An ext wavefunction
-                                             #  from another directory can be used, but specify that directories name instead e.g. 'run_name'.
-                                             #: If no reliable starting guess can be provided e.g. wrong number of electrons per well, then
-                                             #: choose 'qho' - this will ensure stable convergence to the true ground-state.)
+        ext.initial_psi = 'qho'              #: Initial wavefunction ('qho' by default. 'non' can be selected. 'hf', 'lda1', 'lda2', 'lda3', 
+                                             #  'ldaheg' or 'ext' can be selected if the orbitals/wavefunction are available. An ext 
+                                             #  wavefunction from another run can be used, but specify the run.name instead e.g. 'run_name'.
+                                             #: WARNING: If no reliable starting guess can be provided e.g. wrong number of electrons per well, 
+                                             #: then choose 'qho' - this will ensure stable convergence to the true ground-state.)
 
 
         ### Non-interacting approximation parameters
@@ -228,7 +241,7 @@ class Input(object):
         ### LDA parameters
         self.lda = InputSection()
         lda = self.lda
-        lda.NE = 2                           #: Number of electrons used in construction of the LDA
+        lda.NE = 2                           #: Number of electrons used in construction of the LDA (1, 2, 3 or 'heg')
         lda.scf_type = 'pulay'               #: how to perform scf (None, 'linear', 'pulay', 'cg')
         lda.mix = 0.2                        #: Mixing parameter for linear & Pulay mixing (float in [0,1])
         lda.pulay_order = 20                 #: length of history for Pulay mixing (max: lda.max_iter)
@@ -290,7 +303,16 @@ class Input(object):
         self.re = InputSection()
         re = self.re
         re.save_eig = True                   #: Save Kohn-Sham eigenfunctions and eigenvalues of reverse-engineered potential
-
+        re.stencil = 5                       #: Discretisation of 1st derivative (5 or 7)
+        re.mu = 1.0                          #: 1st convergence parameter in the ground-state reverse-engineering algorithm 
+        re.p = 0.05                          #: 2nd convergence parameter in the ground-state reverse-engineering algorithm
+        re.nu = 1.0                          #: Convergence parameter in the time-dependent reverse-engineering algorithm
+        re.rtol_solver = 1e-12               #: Tolerance of linear solver in real time propagation (Recommended: 1e-12)
+        re.density_tolerance = 1e-7          #: Tolerance of the error in the time-dependent density
+        re.cdensity_tolerance = 1e-7         #: Tolerance of the error in the current density
+        re.max_iterations = 10               #: Maximum number of iterations per time step to find the Kohn-Sham potential 
+        re.damping = 1.0                     #: Damping factor used when filtering out noise in the Kohn-Sham vector potential
+                                             #  (0: No damping)
 
         ### OPT parameters
         self.opt = InputSection()

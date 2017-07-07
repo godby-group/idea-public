@@ -24,7 +24,7 @@ run.LAN = False                      #: Run Landauer approximation
 sys = SystemSection()
 sys.NE = 2                           #: Number of electrons
 sys.grid = 201                       #: Number of grid points (must be odd)
-sys.stencil = 3                      #: Discretisation of 2nd derivative (3 or 5 or 7). 
+sys.stencil = 3                      #: Discretisation of 2nd derivative (3 or 5 or 7)
 sys.xmax = 10.0                      #: Size of the system
 sys.tmax = 1.0                       #: Total real time
 sys.imax = 1001                      #: Number of real time iterations (NB: deltat = tmax/(imax-1))
@@ -44,7 +44,7 @@ def v_pert(x):
 
     Switched on at t=0.
     """
-    y = -0.1*x
+    y = -0.01*x
     if(sys.im == 1):
         return y + v_pert_im(x)
     return y
@@ -80,9 +80,9 @@ ext.elf_es = False                   #: Calculate ELF for the excited-states of 
 ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
 ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
 ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
-ext.initial_psi = 'qho'              #: Initial wavefunction ('qho' by default. 'non' can be selected. 'hf', 'lda' or 'ext' can be 
-                                     #  selected if the orbitals/wavefunction are available. An ext wavefunction from another run
-                                     #  can be used, but specify the run.name instead e.g. 'run_name'.
+ext.initial_psi = 'qho'              #: Initial wavefunction ('qho' by default. 'non' can be selected. 'hf', 'lda1', 'lda2', 'lda3', 
+                                     #  'ldaheg' or 'ext' can be selected if the orbitals/wavefunction are available. An ext 
+                                     #  wavefunction from another run can be used, but specify the run.name instead e.g. 'run_name'.
                                      #: WARNING: If no reliable starting guess can be provided e.g. wrong number of electrons per well, 
                                      #: then choose 'qho' - this will ensure stable convergence to the true ground-state.)
 
@@ -97,7 +97,7 @@ non.OPT = False                      #: Calculate the external potential for the
 
 ### LDA parameters
 lda = InputSection()
-lda.NE = 2                           #: Number of electrons used in construction of the LDA
+lda.NE = 2                           #: Number of electrons used in construction of the LDA (1, 2, 3 or 'heg')
 lda.scf_type = 'pulay'               #: how to perform scf (None, 'linear', 'pulay', 'cg')
 lda.mix = 0.2                        #: Mixing parameter for linear & Pulay mixing (float in [0,1])
 lda.pulay_order = 20                 #: length of history for Pulay mixing (max: lda.max_iter)
@@ -154,7 +154,16 @@ lan.start = 'non'                    #: Ground-state Kohn-Sham potential to be p
 ### RE parameters
 re = InputSection()
 re.save_eig = True                   #: Save Kohn-Sham eigenfunctions and eigenvalues of reverse-engineered potential
-
+re.stencil = 5                       #: Discretisation of 1st derivative (5 or 7)
+re.mu = 1.0                          #: 1st convergence parameter in the ground-state reverse-engineering algorithm 
+re.p = 0.05                          #: 2nd convergence parameter in the ground-state reverse-engineering algorithm
+re.nu = 1.0                          #: Convergence parameter in the time-dependent reverse-engineering algorithm
+re.rtol_solver = 1e-12               #: Tolerance of linear solver in real time propagation (Recommended: 1e-12)
+re.density_tolerance = 1e-7          #: Tolerance of the error in the time-dependent density
+re.cdensity_tolerance = 1e-7         #: Tolerance of the error in the current density
+re.max_iterations = 10               #: Maximum number of iterations per time step to find the Kohn-Sham potential 
+re.damping = 1.0                     #: Damping factor used when filtering out noise in the Kohn-Sham vector potential
+                                     #  (0: No damping)
 
 ### OPT parameters
 opt = InputSection()
