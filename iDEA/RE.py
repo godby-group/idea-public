@@ -330,7 +330,8 @@ def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
     hamiltonian[0,:] += v_ks[:]
     wavefunctions_ks, energies_ks, density_ks = (solve_gsks_equations(
             pm, hamiltonian))
-    density_error = np.sum(abs(density_approx[:]-density_ks[:]))*pm.sys.deltax
+    density_difference = abs(density_approx-density_ks)
+    density_error = np.trapz(density_difference, dx=pm.sys.deltax)
     string = 'RE: initial guess density error = {}'.format(density_error) 
     pm.sprint(string, 1, newline=True) 
 
@@ -350,8 +351,8 @@ def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
                                                     hamiltonian)
 
         # Calculate the error in the ground-state Kohn-Sham density
-        density_error = np.sum(abs(density_approx[:]-density_ks[:])
-                        )*pm.sys.deltax
+        density_difference = abs(density_approx-density_ks)
+        density_error = np.trapz(density_difference, dx=pm.sys.deltax)
         string = 'RE: density error = {}'.format(density_error) 
         pm.sprint(string, 1, newline=False) 
 
@@ -405,7 +406,9 @@ def solve_gsks_equations(pm, hamiltonian):
                                     select='i', select_range=(0,pm.sys.NE-1))
 
     # Normalise the wavefunctions
-    wavefunctions_ks /= pm.sys.deltax**0.5
+    for j in range(pm.sys.NE):
+        normalisation = np.linalg.norm(wavefunctions_ks[:,j])*pm.sys.deltax**0.5
+        wavefunctions_ks[:,j] /= normalisation
 
     # Calculate the electron density
     density_ks = np.sum(wavefunctions_ks[:,:pm.sys.NE]**2, axis=1, dtype=np.float)
@@ -496,8 +499,9 @@ def calculate_time_dependence(pm, A_initial, momentum, A_ks, damping,
                         )*pm.sys.deltax
 
         # Calculate the error in the Kohn-Sham current density
-        current_density_error = np.sum(abs(current_density_approx[:]-
-                                current_density_ks[:]))*pm.sys.deltax
+        current_density_difference = abs(current_density_approx-current_density_ks)
+        current_density_error = np.trapz(current_density_difference, 
+                                dx=pm.sys.deltax)
         if(iterations == 0):
             current_density_error_min = np.copy(current_density_error)
 
@@ -537,8 +541,9 @@ def calculate_time_dependence(pm, A_initial, momentum, A_ks, damping,
                     )*pm.sys.deltax
 
     # Calculate the error in the Kohn-Sham current density
-    current_density_error = np.sum(abs(current_density_approx[:]-
-                            current_density_ks[:]))*pm.sys.deltax
+    current_density_difference = abs(current_density_approx-current_density_ks)
+    current_density_error = np.trapz(current_density_difference, 
+                            dx=pm.sys.deltax)
  
     return (A_ks, density_ks[1,:], current_density_ks, wavefunctions_ks, 
            density_error, current_density_error)
@@ -655,7 +660,7 @@ def remove_gauge(pm, A_ks, v_ks, v_ks_gs):
              
     # Shift the Kohn-Sham potential to match the ground-state Kohn-Sham 
     # potential at the centre of the system
-    shift = v_ks_gs[int(pm.sys.grid-1/2)] - v_ks[int(pm.sys.grid-1/2)]
+    shift = v_ks_gs[int((pm.sys.grid-1)/2)] - v_ks[int((pm.sys.grid-1)/2)]
     v_ks[:] += shift
 
     return v_ks[:]
@@ -666,7 +671,7 @@ def calculate_hartree_potential(pm, density):
 
     .. math::
 
-        V_{\mathrm{H}}(x) = = \int U(x,x') n(x')dx'
+        V_{\mathrm{H}}(x) = \int U(x,x') n(x')dx'
 
     parameters
     ----------
@@ -968,6 +973,10 @@ def main(parameters, approx):
 
             # Save the current time step
             A_ks[0,:] = A_ks[1,:] 
+ 
+            # Print to screen
+            if(i == pm.sys.imax-1):
+                pm.sprint('', 1, newline=True)
 
         # Save the time-dependent quantities to file
         results.add(density_ks,'td_{}_den'.format(approxre))

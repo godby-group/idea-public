@@ -6,7 +6,6 @@ are calculated.
 from __future__ import division
 from __future__ import absolute_import
 
-import copy
 import pickle
 import numpy as np
 import scipy as sp
@@ -113,8 +112,7 @@ def construct_A(pm, H):
             H[0,:], H[1,:], H[2,:], H[3,:]], [-3, -2, -1, 0, 1, 2, 3], 
             shape=(pm.sys.grid,pm.sys.grid), format='csc')
 
-    I = sps.identity(pm.sys.grid)
-    A += I
+    A += sps.identity(pm.sys.grid) 
 
     return A
 
@@ -184,19 +182,20 @@ def main(parameters):
     V = construct_V(pm, 0)
 
     # Construct the Hamiltonian matrix
-    H = copy.copy(K)
+    H = np.copy(K)
     H[0,:] += V[:]
 
     # Solve the Schrodinger equation
     pm.sprint('NON: computing ground state density',1)
-    #energies, wavefunctions = spla.eig_banded(H, lower=True, select='i', 
-    #                          select_range=(0,pm.sys.NE-1))
-    energies, wavefunctions = spla.eig_banded(H, lower=True)
+    energies, wavefunctions = spla.eig_banded(H, lower=True, select='i', 
+                              select_range=(0,pm.sys.NE-1))
 
-    # Normalise wavefunctions
-    wavefunctions /= pm.sys.deltax**0.5
+    # Normalise the wavefunctions
+    for j in range(pm.sys.NE):
+        normalisation = np.linalg.norm(wavefunctions[:,j])*pm.sys.deltax**0.5
+        wavefunctions[:,j] /= normalisation
 
-    # Normalise the wavefunctions and calculate the density 
+    # Calculate the density 
     density = np.sum(wavefunctions[:,:pm.sys.NE]**2, axis=1)
 
     # Calculate the energy and print to screen
@@ -230,7 +229,7 @@ def main(parameters):
         V = construct_V(pm, 1)
 
         # Construct the Hamiltonian matrix
-        H = copy.copy(K)
+        H = np.copy(K)
         H[0,:] += V[:]
 
         # Construct the sparse matrices used in the Crank-Nicholson method
@@ -268,7 +267,7 @@ def main(parameters):
                 density[i,:] += abs(wavefunction[:])**2
 
                 # Calculate the norm of the wavefunction
-                normalisation = (np.linalg.norm(wavefunction)*pm.sys.deltax**0.5)
+                normalisation = np.linalg.norm(wavefunction)*pm.sys.deltax**0.5
                 string = "NON: N = {}, t = {:.5f}, normalisation = {}" \
                         .format(n+1, i*pm.sys.deltat, normalisation)
                 pm.sprint(string, 1, newline=False)
