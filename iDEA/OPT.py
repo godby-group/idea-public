@@ -267,6 +267,8 @@ def main(parameters, approx, target_density_array=None,
             # Calculate the electron density
             density = np.zeros(pm.sys.grid, dtype=np.float)
             density[:] = abs(wavefunction[:,0])**2
+            if(run == 1):
+                density_best = np.copy(density)
 
             # Calculate the error in the density
             density_error = calculate_density_error(pm, density, target_density)
@@ -280,6 +282,7 @@ def main(parameters, approx, target_density_array=None,
             # Ensure stable convergence 
             if(density_error < density_error_old):
                 v_ext_best[:] = v_ext[:]
+                density_best[:] = density[:]
                 if(abs(density_error - density_error_old)<1e-8):
                     pm.opt.mu = 0.5*pm.opt.mu
             else:
@@ -328,6 +331,7 @@ def main(parameters, approx, target_density_array=None,
         density_error = pm.opt.tol + 1.0
         density_error_old = np.copy(density_error) + 1.0
         v_ext_best = np.copy(v_ext)
+        density_best = np.copy(v_ext)
         run = 1
 
         # Calculate the external potential
@@ -367,6 +371,8 @@ def main(parameters, approx, target_density_array=None,
             # Calculate the electron density
             wavefunction_ND = EXT.wavefunction_converter(pm, wavefunction, 0)
             density = EXT.calculate_density(pm, wavefunction_ND)
+            if(run == 1):
+                density_best = np.copy(density)
 
             # Calculate the error in the density
             density_error = calculate_density_error(pm, density, target_density)
@@ -378,6 +384,7 @@ def main(parameters, approx, target_density_array=None,
             # Ensure stable convergence 
             if(density_error < density_error_old):
                 v_ext_best[:] = v_ext[:]
+                density_best[:] = density[:]
                 if(abs(density_error - density_error_old)<1e-8):
                     pm.opt.mu = 0.5*pm.opt.mu
             else:
@@ -411,7 +418,7 @@ def main(parameters, approx, target_density_array=None,
     approxopt = approx + 'opt'
     results = rs.Results()
     results.add(v_ext_best,'gs_{}_vxt'.format(approxopt))
-    results.add(density,'gs_{}_den'.format(approxopt))
+    results.add(density_best,'gs_{}_den'.format(approxopt))
     results.add(target_density,'gs_{}_tden'.format(approxopt))
     results.add(energy,'gs_{}_E'.format(approxopt))
     if(pm.run.save):
