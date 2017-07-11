@@ -187,13 +187,10 @@ def main(parameters):
 
     # Solve the Schrodinger equation
     pm.sprint('NON: computing ground state density',1)
-    energies, wavefunctions = spla.eig_banded(H, lower=True, select='i', 
-                              select_range=(0,pm.sys.NE-1))
+    energies, wavefunctions = spla.eig_banded(H, lower=True)
 
     # Normalise the wavefunctions
-    for j in range(pm.sys.NE):
-        normalisation = np.linalg.norm(wavefunctions[:,j])*pm.sys.deltax**0.5
-        wavefunctions[:,j] /= normalisation
+    wavefunctions /= pm.sys.deltax**0.5
 
     # Calculate the density 
     density = np.sum(wavefunctions[:,:pm.sys.NE]**2, axis=1)
