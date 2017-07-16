@@ -222,10 +222,10 @@ class Input(object):
         ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
         ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
         ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
-        ext.initial_psi = 'qho'              #: Initial wavefunction ('qho' by default. 'non' can be selected. 'hf', 'lda1', 'lda2', 'lda3', 
-                                             #  'ldaheg' or 'ext' can be selected if the orbitals/wavefunction are available. An ext 
+        ext.initial_psi = 'qho'              #: Initial wavefunction ('qho' by default. 'non' can be selected. 'hf', 'lda1', 'lda2', 'lda3',
+                                             #  'ldaheg' or 'ext' can be selected if the orbitals/wavefunction are available. An ext
                                              #  wavefunction from another run can be used, but specify the run.name instead e.g. 'run_name'.
-                                             #: WARNING: If no reliable starting guess can be provided e.g. wrong number of electrons per well, 
+                                             #: WARNING: If no reliable starting guess can be provided e.g. wrong number of electrons per well,
                                              #: then choose 'qho' - this will ensure stable convergence to the true ground-state.)
 
 
@@ -274,6 +274,17 @@ class Input(object):
         hf.RE = False                        #: Reverse-engineer hf density
         hf.OPT = False                       #: Calculate the external potential for the HF density
 
+        ### HYB parameters
+        self.hyb = InputSection()
+        hyb = self.hyb
+        hyb.alpha = 'o'                      #: Fraction of HF (float in [0,1]) (set to 'o' to calculate and use optimal alpha)
+        hyb.alphas = (0.5,1.0,6)             #: If finding optimal alpa, this defines the range (a,b,c)  a->b in c steps
+        hyb.mix = 0.5                        #: Mixing parameter for linear  mixing (float in [0,1])
+        hyb.tol = 1e-12                      #: convergence tolerance in the density
+        hyb.max_iter = 10000                 #: Maximum number of self-consistency iterations
+        hyb.save_eig = True                  #: Save eigenfunctions and eigenvalues of Hamiltonian
+        hyb.OPT = False                      #: Calculate the external potential for the LDA density
+        hyb.RE = False                       #: Calculate the external potential for the LDA density
 
         ### MBPT parameters
         self.mbpt = InputSection()
@@ -304,13 +315,13 @@ class Input(object):
         re = self.re
         re.save_eig = True                   #: Save Kohn-Sham eigenfunctions and eigenvalues of reverse-engineered potential
         re.stencil = 5                       #: Discretisation of 1st derivative (5 or 7)
-        re.mu = 1.0                          #: 1st convergence parameter in the ground-state reverse-engineering algorithm 
+        re.mu = 1.0                          #: 1st convergence parameter in the ground-state reverse-engineering algorithm
         re.p = 0.05                          #: 2nd convergence parameter in the ground-state reverse-engineering algorithm
         re.nu = 1.0                          #: Convergence parameter in the time-dependent reverse-engineering algorithm
         re.rtol_solver = 1e-12               #: Tolerance of linear solver in real time propagation (Recommended: 1e-12)
         re.density_tolerance = 1e-7          #: Tolerance of the error in the time-dependent density
         re.cdensity_tolerance = 1e-7         #: Tolerance of the error in the current density
-        re.max_iterations = 10               #: Maximum number of iterations per time step to find the Kohn-Sham potential 
+        re.max_iterations = 10               #: Maximum number of iterations per time step to find the Kohn-Sham potential
         re.damping = 1.0                     #: Damping factor used when filtering out noise in the Kohn-Sham vector potential
                                              #  (0: No damping)
 
@@ -572,7 +583,15 @@ class Input(object):
         elif(pm.sys.NE >= 4):
            if(pm.run.EXT == True):
               print('EXT: cannot run exact with more than 3 electrons')
-
+        if(pm.run.HYB == True):
+              from . import HYB
+              results.add(HYB.main(pm), name='hyb')
+        if(pm.hyb.RE == True):
+              from . import RE
+              results.add(RE.main(pm,'hyb'), name='hybre')
+        if(pm.hyb.OPT == True):
+              from . import OPT
+              results.add(OPT.main(pm,'hyb'), name='hybopt')
         if(pm.run.MBPT == True):
               from . import MBPT
               results.add(MBPT.main(pm), name='mbpt')
