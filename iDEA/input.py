@@ -155,6 +155,7 @@ class Input(object):
         run.HF = False                       #: Run Hartree-Fock approximation
         run.EXT = True                       #: Run Exact Many-Body calculation
         run.MBPT = False                     #: Run Many-body pertubation theory
+        run.HYB = False                      #: Run Hybrid (HF-LDA) calculation
         run.LAN = False                      #: Run Landauer approximation
 
 
