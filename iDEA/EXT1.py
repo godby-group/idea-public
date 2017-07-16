@@ -6,8 +6,6 @@ calculated. Excited states of the unperturbed system can also be calculated.
 from __future__ import division
 from __future__ import absolute_import
 
-
-import copy
 import pickle
 import numpy as np
 import scipy as sp
@@ -46,25 +44,12 @@ def construct_K(pm):
     returns sparse_matrix
         Kinetic energy matrix
     """
-    if(pm.sys.grid < pm.sys.stencil):
-        raise ValueError("Insufficient spatial grid points.")
-    if(pm.sys.stencil == 3):
-        K = np.zeros((2,pm.sys.grid), dtype=np.float)
-        K[0,:] = np.ones(pm.sys.grid)/(pm.sys.deltax**2)
-        K[1,:] = -0.5*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 
-    elif(pm.sys.stencil == 5):
-        K = np.zeros((3,pm.sys.grid), dtype=np.float)
-        K[0,:] = (5.0/4.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 							
-        K[1,:] = -(2.0/3.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 
-        K[2,:] = (1.0/24.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 
-    elif(pm.sys.stencil == 7):
-        K = np.zeros((4,pm.sys.grid), dtype=np.float)
-        K[0,:] = (49.0/36.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 							
-        K[1,:] = -(3.0/4.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 
-        K[2,:] = (3.0/40.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 
-        K[3,:] = -(1.0/180.0)*np.ones(pm.sys.grid)/(pm.sys.deltax**2) 
-    else:
-        raise ValueError("pm.sys.stencil must be either 3, 5 or 7.")    
+    sd = pm.space.second_derivative_band
+    nbnd = len(sd)
+    K = np.zeros((nbnd, pm.sys.grid), dtype=np.float)
+
+    for i in range(nbnd):
+        K[i,:] = -0.5 * sd[i]
 
     return K
 
@@ -126,8 +111,7 @@ def construct_A(pm, H):
             H[0,:], H[1,:], H[2,:], H[3,:]], [-3, -2, -1, 0, 1, 2, 3], 
             shape=(pm.sys.grid,pm.sys.grid), format='csc')
 
-    I = sps.identity(pm.sys.grid)
-    A += I
+    A += sps.identity(pm.sys.grid)  
 
     return A
 
@@ -197,7 +181,7 @@ def main(parameters):
     V = construct_V(pm, 0)
 
     # Construct the Hamiltonian matrix
-    H = copy.copy(K)
+    H = np.copy(K)
     H[0,:] += V[:]
 
     # Solve the Schrodinger equation
@@ -207,7 +191,7 @@ def main(parameters):
     # Normalise the wavefunctions and calculate the densities 
     densities = np.zeros((pm.ext.excited_states+1,pm.sys.grid), dtype=np.float)
     for j in range(pm.ext.excited_states+1):
-        normalisation = (np.linalg.norm(wavefunctions[:,j])*pm.sys.deltax**0.5)
+        normalisation = np.linalg.norm(wavefunctions[:,j])*pm.sys.deltax**0.5
         wavefunctions[:,j] /= normalisation
         densities[j,:] = abs(wavefunctions[:,j])**2
 
@@ -254,7 +238,7 @@ def main(parameters):
         V = construct_V(pm, 1)
 
         # Construct the Hamiltonian matrix
-        H = copy.copy(K)
+        H = np.copy(K)
         H[0,:] += V[:]
 
         # Construct the sparse matrices used in the Crank-Nicholson method
