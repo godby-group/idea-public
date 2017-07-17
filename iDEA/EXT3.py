@@ -868,8 +868,6 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
         pm.sprint(string, 0, newline=True)
      
         # Construct the vector b and its reduction vector
-        if(pm.run.verbosity == 'high'): 
-            b = C*wavefunction[:]
         b_reduced = C_reduced*wavefunction_reduced
      
         # Solve Ax=b
@@ -896,8 +894,8 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
             string = 'EXT: ' + 't = {:.5f}'.format(i*pm.sys.deltat)
             pm.sprint(string, 1, newline=False)
         else:
-            string = 'residual: {:.5f}'.format(np.linalg.norm(A*wavefunction
-                     - b))
+            string = 'residual: {:.5f}'.format(np.linalg.norm(
+                     A_reduced*wavefunction_reduced - b_reduced))
             pm.sprint(string, 0, newline=True)
             norm = np.linalg.norm(wavefunction)*(np.sqrt(pm.sys.deltax)**3)
             string = 'normalisation: {:.5f}'.format(norm**2)
