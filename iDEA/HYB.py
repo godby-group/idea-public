@@ -98,11 +98,11 @@ def calc_with_alpha(pm, alpha, occupations):
 
 
 def save_results(pm, results, density, E, eigf, eigv, alpha):
-   results.add(density,'gs_hyb_den{}'.format(alpha))
-   results.add(E,'gs_hyb_E{}'.format(alpha))
+   results.add(density,'gs_hyb_den{}'.format(alpha).replace('.','_'))
+   results.add(E,'gs_hyb_E{}'.format(alpha).replace('.','_'))
    if pm.non.save_eig:
-      results.add(eigf.T,'gs_hyb_eigf{}'.format(alpha))
-      results.add(eigv,'gs_hyb_eigv{}'.format(alpha))
+      results.add(eigf.T,'gs_hyb_eigf{}'.format(alpha).replace('.','_'))
+      results.add(eigv,'gs_hyb_eigv{}'.format(alpha).replace('.','_'))
    if (pm.run.save):
       results.save(pm)
 
