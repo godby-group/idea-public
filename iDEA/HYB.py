@@ -41,14 +41,14 @@ def hamiltonian(pm, eigf, density, alpha):
    return H, Vh, Vxc_LDA, F
 
 
-def calc_with_alpha(pm, alpha):
+def calc_with_alpha(pm, alpha, occupations):
 
    # Initialise self-consistency
    counter = 0
    convergence = 1.0
    H, Vh, Vxc_LDA, F = hamiltonian(pm, np.zeros((pm.sys.grid,pm.sys.grid)), np.zeros(pm.sys.grid), alpha)
    density, eigf, eigv = iDEA.HF.groundstate(pm, H)
-
+   E = 0
    # Perform self-consistency
    while convergence > pm.hyb.tol and counter < pm.hyb.max_iter:
 
@@ -64,25 +64,36 @@ def calc_with_alpha(pm, alpha):
 
       # Solve single-particle SE
       density, eigf, eigv = iDEA.HF.groundstate(pm, H)
+      
+      # Get a list of occupied wavefunctions:
+      occupied = eigf[:, :pm.sys.NE]
+      
+      # scale HOMO orbital by its occupation
+      occupied[:, pm.sys.NE-1] = occupied[:, pm.sys.NE-1]*np.sqrt(pm.hyb.homo_occupation)
+      
+      # calculate density associated with occupied orbitals - this takes into account fractional occupation
+      density = np.sum(occupied*occupied.conj(), axis=1).real
 
       # Test for convergance
       convergence = sum(abs(density - density_old))
-      pm.sprint('HYB: computing ground-state density with alpha = {0}, convergence = {1}'.format(alpha, convergence), 1, newline=False)
+      pm.sprint('HYB: computing GS density with alpha = {0}, convergence = {1}'.format(alpha, convergence), 1, newline=False)
       counter += 1
 
       # Calculate the total energy
       E_SYS = 0.0
       for i in range(0, pm.sys.NE):
-         E_SYS += eigv[i]
+         E_SYS += eigv[i]*occupations[i]
       E_H = 0.5*np.dot(Vh, density)*pm.sys.deltax
       E_F = 0.0
       for k in range(pm.sys.NE):
          orb = eigf[:,k]
-         E_F -= 0.5 * np.dot(orb.conj().T, np.dot(F, orb)) * pm.sys.deltax
+         E_F -= 0.5 * np.dot(orb.conj().T, np.dot(F, orb)) * pm.sys.deltax * occupations[k]
       pm.lda.NE = 3
       E_LDA = iDEA.LDA.EXC(pm, density) - (np.dot(density, Vxc_LDA)*pm.sys.deltax)
       E = (E_SYS - E_H + alpha*E_F + (1.0 - alpha)*E_LDA).real
 
+   pm.sprint('', 1, newline=True)
+   pm.sprint('HYB: total energy = {0} converged in {1} iterations'.format(E, counter), 1, newline=True)
    return density, eigf, eigv, E
 
 
@@ -96,14 +107,19 @@ def save_results(pm, results, density, E, eigf, eigv, alpha):
       results.save(pm)
 
 
-def optimal_alpha(pm, results, alphas):
+def optimal_alpha(pm, results, alphas, occupations):
+
+   pm.sprint('HYB: Finding optimal value of alpha', 1, newline=True)
+
    # Running E(N) calculations:
    nElect = pm.sys.NE
-   energies, eigsHOMO = n_run(pm, results, alphas)
+   pm.sprint('HYB: Starting calculations for N electrons (N={})'.format(pm.sys.NE), 1, newline=True)
+   energies, eigsHOMO = n_run(pm, results, alphas, occupations)
 
    # Running E(N-1) calculations:
    pm.sys.NE = nElect - 1
-   energies_minus_one, eigsLUMO = n_minus_one_run(pm, results, alphas)
+   pm.sprint('HYB: Starting calculations for N-1 electrons (N-1={})'.format(pm.sys.NE), 1, newline=True)
+   energies_minus_one, eigsLUMO = n_minus_one_run(pm, results, alphas, occupations)
 
    # Save all results
    results.add(alphas,'gs_hyb_alphas')
@@ -115,23 +131,22 @@ def optimal_alpha(pm, results, alphas):
       results.save(pm)
 
 
-def n_run(pm, results, alphas):
+def n_run(pm, results, alphas, occupations):
    energies  = np.array([])
    eigsHOMO  = np.array([])
-   print (alphas)
    for alpha in alphas:
-      density, eigf, eigv, energy = calc_with_alpha(pm, alpha)
+      density, eigf, eigv, energy = calc_with_alpha(pm, alpha, occupations)
       eigsHOMO = np.append(eigsHOMO, eigv[pm.sys.NE - 1])
       energies = np.append(energies, energy)
       save_results(pm, results, density, energy, eigf, eigv, alpha)
    return energies, eigsHOMO
 
 
-def n_minus_one_run(pm, results, alphas):
+def n_minus_one_run(pm, results, alphas, occupations):
    energies  = np.array([])
    eigsLUMO  = np.array([])
    for alpha in alphas:
-      density, eigf, eigv, energy = calc_with_alpha(pm, alpha)
+      density, eigf, eigv, energy = calc_with_alpha(pm, alpha, occupations)
       eigsLUMO = np.append(eigsLUMO, eigv[pm.sys.NE])
       energies = np.append(energies, energy)
    return energies, eigsLUMO
@@ -142,14 +157,21 @@ def main(parameters):
    pm = parameters
    pm.setup_space()
    results = rs.Results()
+   pm.sprint('HYB: HOMO occupation = {}'.format(pm.hyb.homo_occupation), 1, newline=True)
 
-   # Run code to find optimal alpha
+   # Occupations of all the orbitals, only the last value should be fractional:
+   occupations = np.ones(pm.sys.NE)
+
+   # Run code to find optimal alpha - no fractional occupation in this part
    if pm.hyb.alpha == 'o':
        alphas = np.linspace(pm.hyb.alphas[0], pm.hyb.alphas[1], pm.hyb.alphas[2])
-       optimal_alpha(pm, results, alphas)
+       optimal_alpha(pm, results, alphas, occupations)
 
-   # Run code for one given alpha
+   # Run code for one given alpha - fractional occupation only in here
    else:
-       density, eigf, eigv, E = calc_with_alpha(pm, pm.hyb.alpha)
+       occupations[pm.sys.NE - 1] = pm.hyb.homo_occupation
+       density, eigf, eigv, E = calc_with_alpha(pm, pm.hyb.alpha, occupations)
+       save_results(pm, results, density, E, eigf, eigv, pm.hyb.alpha)
+       
 
    return results
