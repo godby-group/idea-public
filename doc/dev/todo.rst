@@ -11,6 +11,11 @@ Things Todo
  #. Documentation for MLP, HYB
  #. Make all code uniform + Large code tests
 
+Bugs
+====
+ #. LDA screen-printing gives the iteration number as a decimal number
+ #. Hybrid code sometimes stops the EXT code from running
+
 Feature requests
 ================
  #. Possibly improve citation handling in documentation by adding bibtex
@@ -20,6 +25,3 @@ Feature requests
  #. Add self-screening correction to GW code
  #. Add Bethe-Salpeter to GW code
  #. Time-dependent hybrid code
-
-
-
