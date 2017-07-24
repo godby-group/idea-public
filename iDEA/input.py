@@ -590,7 +590,7 @@ class Input(object):
               results.add(HYB.main(pm), name='hyb')
         if(pm.hyb.RE == True):
               from . import RE
-              results.add(RE.main(pm,'hyb'), name='hybre')
+              results.add(RE.main(pm,'hyb{}'.format(pm.hyb.alpha).replace('.','_')), name='hybre')
         if(pm.hyb.OPT == True):
               from . import OPT
               results.add(OPT.main(pm,'hyb'), name='hybopt')

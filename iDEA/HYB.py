@@ -64,13 +64,13 @@ def calc_with_alpha(pm, alpha, occupations):
 
       # Solve single-particle SE
       density, eigf, eigv = iDEA.HF.groundstate(pm, H)
-      
+
       # Get a list of occupied wavefunctions:
       occupied = eigf[:, :pm.sys.NE]
-      
+
       # scale HOMO orbital by its occupation
       occupied[:, pm.sys.NE-1] = occupied[:, pm.sys.NE-1]*np.sqrt(pm.hyb.homo_occupation)
-      
+
       # calculate density associated with occupied orbitals - this takes into account fractional occupation
       density = np.sum(occupied*occupied.conj(), axis=1).real
 
@@ -98,11 +98,11 @@ def calc_with_alpha(pm, alpha, occupations):
 
 
 def save_results(pm, results, density, E, eigf, eigv, alpha):
-   results.add(density,'gs_hyb_den{}'.format(alpha).replace('.','_'))
-   results.add(E,'gs_hyb_E{}'.format(alpha).replace('.','_'))
+   results.add(density,'gs_hyb{}_den'.format(alpha).replace('.','_'))
+   results.add(E,'gs_hyb{}_E'.format(alpha).replace('.','_'))
    if pm.non.save_eig:
-      results.add(eigf.T,'gs_hyb_eigf{}'.format(alpha).replace('.','_'))
-      results.add(eigv,'gs_hyb_eigv{}'.format(alpha).replace('.','_'))
+      results.add(eigf.T,'gs_hyb{}_eigf'.format(alpha).replace('.','_'))
+      results.add(eigv,'gs_hyb{}_eigv'.format(alpha).replace('.','_'))
    if (pm.run.save):
       results.save(pm)
 
@@ -172,6 +172,6 @@ def main(parameters):
        occupations[pm.sys.NE - 1] = pm.hyb.homo_occupation
        density, eigf, eigv, E = calc_with_alpha(pm, pm.hyb.alpha, occupations)
        save_results(pm, results, density, E, eigf, eigv, pm.hyb.alpha)
-       
+
 
    return results
