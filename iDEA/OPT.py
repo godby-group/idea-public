@@ -293,6 +293,7 @@ def main(parameters, approx, target_density_array=None,
 
             # Correct the external potential 
             deltav_ext = calculate_deltav_ext(pm, density, target_density)
+	    v_ext[:] = v_ext_best[:]
             v_ext += deltav_ext
  
             # Iterate
@@ -331,7 +332,6 @@ def main(parameters, approx, target_density_array=None,
         density_error = pm.opt.tol + 1.0
         density_error_old = np.copy(density_error) + 1.0
         v_ext_best = np.copy(v_ext)
-        density_best = np.copy(v_ext)
         run = 1
 
         # Calculate the external potential
@@ -395,6 +395,7 @@ def main(parameters, approx, target_density_array=None,
 
             # Correct the external potential 
             deltav_ext = calculate_deltav_ext(pm, density, target_density)
+	    v_ext[:] = v_ext_best[:]
             v_ext += deltav_ext
 
             # Set the initial wavefunction equal to the current wavefunction
