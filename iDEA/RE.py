@@ -402,8 +402,7 @@ def solve_gsks_equations(pm, hamiltonian):
         electron density, indexed as density_ks[space_index].
     """
     # Solve the Kohn-Sham equations
-    energies_ks, wavefunctions_ks = spla.eig_banded(hamiltonian, lower=True,
-                                    select='i')
+    energies_ks, wavefunctions_ks = spla.eig_banded(hamiltonian, lower=True)
 
     # Normalise the wavefunctions
     for j in range(pm.sys.NE):
