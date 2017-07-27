@@ -365,7 +365,7 @@ def read_input_quantities(pm, st):
         V_{Hxc}(r,r') = \delta(r-r')V_H(r) + V_x(r,r') + V_c(r,r')
 
     Possible flavours of pm.mbpt.h0 are
-      * 'lda'/'ext': :math:`V_{Hxc}(r,r') = \delta(r-r') (V_H(r) + V_{xc}(r))`
+      * 'lda1/2/3'/'ext': :math:`V_{Hxc}(r,r') = \delta(r-r') (V_H(r) + V_{xc}(r))`
          This form also applies to any reverse-engineered input.
       * 'h': :math:`V_{Hxc}(r,r') = \delta(r-r') V_H(r)`
       * 'hf': :math:`V_{Hxc}(r,r') = \delta(r-r') V_H(r) + V_x(r,r')`
@@ -435,7 +435,7 @@ def read_input_quantities(pm, st):
     elif flavour == 'h':
         # Hartree: v_Hxc = v_H
         np.fill_diagonal(vhxc, vh / st.x_delta)
-    elif flavour == 'lda' or flavour in ['nonre', 'hre', 'ldare', 'extre', 'hfre']:
+    elif flavour == 'lda1' or 'lda2'or 'lda3' or flavour in ['nonre', 'hre', 'ldare', 'extre', 'hfre']:
         # KS-DFT: v_Hxc = v_H + v_xc
         # (or any reverse-engineered starting point)
         tmp = vh + rs.Results.read('gs_{}_vxc'.format(flavour), pm)
