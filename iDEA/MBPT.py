@@ -180,11 +180,12 @@ def main(parameters):
             pm.sprint('MBPT: setting up P(it)',0)
             P = irreducible_polarizability(G, G_pzero)
             save(P, "P{}_it".format(cycle))
+            save(P, "P_it")
 
             pm.sprint('MBPT: transforming P to imaginary frequency',0)
             P = fft_t(P, st, dir='it2if')
             save(P, "P{}_iw".format(cycle))
-
+            save(P, "P_iw")
 
             #### testing alternative way of computing W
             # this is completely identical for flavor=dynamical
@@ -197,24 +198,29 @@ def main(parameters):
             pm.sprint('MBPT: setting up eps(iw)',0)
             eps = dielectric_matrix(P, st)
             save(eps, "eps{}_iw".format(cycle))
+            save(eps, "eps_iw")
             del P # not needed anymore
 
             pm.sprint('MBPT: setting up W(iw)',0)
             W = screened_interaction(st, epsilon=eps, w_flavour=pm.mbpt.w)
             save(W, "W{}_iw".format(cycle))
+            save(W, "W_iw")
             del eps # not needed anymore
 
             pm.sprint('MBPT: transforming W to imaginary time',0)
             W = fft_t(W, st, dir='if2it')
             save(W, "W{}_it".format(cycle))
+            save(W, "W_it")
 
         pm.sprint('MBPT: computing S(it)',0)
         S = self_energy(G, W)
 
         if(pm.mbpt.w == 'dynamical'):
             save(S, "Sc{}_it".format(cycle))
+            save(S, "Sc_it")
         else:
             save(S, "Sxc{}_it".format(cycle))
+            save(S, "Sxc_it")
 
         if not pm.mbpt.flavour == 'GW0':
             del W # not needed anymore
@@ -223,14 +229,17 @@ def main(parameters):
         S = fft_t(S, st, dir='it2if')
         if(pm.mbpt.w == 'dynamical'):
             save(S, "Sc{}_iw".format(cycle))
+            save(S, "Sc_iw")
         else:
             save(S, "Sxc{}_iw".format(cycle))
+            save(S, "Sxc_iw")
 
         # save Sx for all runs
         Sx = np.zeros(S.shape, dtype=np.complex)
         for i in range(st.tau_npt):
             Sx[:,:,i] = H.vx
         save(Sx, "Sx{}_iw".format(cycle))
+        save(Sx, "Sx_iw")
         del Sx
 
         # calculate and save Scx for dynamical runs
@@ -239,8 +248,11 @@ def main(parameters):
             for i in range(st.tau_npt):
                 Sxc[:,:,i] = H.vx + S[:,:,i]    #Sxc = Sx + Sc
             save(Sxc, "Sxc{}_iw".format(cycle))
+            save(Sxc, "Sxc_iw")
+
             Sxc = fft_t(Sxc, st, dir='if2it')
             save(Sxc, "Sxc{}_it".format(cycle))
+            save(Sxc, "Sxc_it")
             del Sxc
 
 
@@ -256,7 +268,7 @@ def main(parameters):
         for i in range(st.tau_npt):
             S[:,:,i] += delta
         save(S, "S{}_iw".format(cycle))
-
+        save(S, "S_iw")
 
         pm.sprint('MBPT: computing expectation values <i|sigma(w)|j>',0)
         H.sigma_iw_dg = bracket_r(S, h0.orbitals, st)
@@ -313,6 +325,7 @@ def main(parameters):
         pm.sprint('MBPT: transforming G to imaginary time',0)
         G = fft_t(G, st, dir='if2it')
         save(G, "G{}_it".format(cycle))
+        save(G, "G_it")
 
         # extract density
         G_mzero = G[:,:,0]
@@ -435,7 +448,7 @@ def read_input_quantities(pm, st):
     elif flavour == 'h':
         # Hartree: v_Hxc = v_H
         np.fill_diagonal(vhxc, vh / st.x_delta)
-    elif flavour == 'lda1' or 'lda2'or 'lda3' or flavour in ['nonre', 'hre', 'ldare', 'extre', 'hfre']:
+    elif flavour == 'lda1' or 'lda2' or 'lda3' or flavour in ['nonre', 'hre', 'lda1re', 'lda2re', 'lda3re', 'extre', 'hfre']:
         # KS-DFT: v_Hxc = v_H + v_xc
         # (or any reverse-engineered starting point)
         tmp = vh + rs.Results.read('gs_{}_vxc'.format(flavour), pm)
