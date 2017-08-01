@@ -7,6 +7,24 @@ by MBPT.
 import ctypes, ctypes.util
 import numpy as np
 
+# Check whether MKL is available
+#import os
+#mkl = ctypes.cdll.LoadLibrary('{}/lib/libmkl_rt.dylib'.format(os.environ['MKLROOT']))
+lib = ctypes.util.find_library('mkl_rt')
+if lib is not None:
+    mkl = ctypes.cdll.LoadLibrary(lib)
+    MKL_AVAILABLE = True
+else:
+    # In Linux, find_library does *not* search $LD_LIBRARY_PATH
+    # This should be fixed in python >= 3.6
+    # See https://bugs.python.org/issue9998
+    try:
+        mkl = ctypes.CDLL('libmkl_rt.so')
+        MKL_AVAILABLE = True
+    except:
+        MKL_AVAILABLE = False
+        print("Warning: MKL library libmkl_rt not found in path")
+
 # Constants from mkl_df_defines.h
 DFTI_NUMBER_OF_TRANSFORMS = ctypes.c_int(7)
 DFTI_PLACEMENT = ctypes.c_int(11)
@@ -18,21 +36,6 @@ DFTI_SINGLE = ctypes.c_int(35)
 DFTI_DOUBLE = ctypes.c_int(36)
 
 DFTI_NOT_INPLACE = ctypes.c_int(44)
-
-#import os
-#mkl = ctypes.cdll.LoadLibrary('{}/lib/libmkl_rt.dylib'.format(os.environ['MKLROOT']))
-
-lib = ctypes.util.find_library('mkl_rt')
-if lib is not None:
-    mkl = ctypes.cdll.LoadLibrary(lib)
-else:
-    # In Linux, find_library does *not* search $LD_LIBRARY_PATH
-    # This should be fixed in python >= 3.6
-    # See https://bugs.python.org/issue9998
-    try:
-        mkl = ctypes.CDLL('libmkl_rt.so')
-    except:
-        raise ImportError("Library libmkl_rt not found in path")
 
 #mkl.MKL_Set_Num_Threads(ctypes.c_int(1))
 

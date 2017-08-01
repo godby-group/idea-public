@@ -16,7 +16,7 @@ documentation of the format consult the resources linked above.
 
   * You want to refer to a particular function or class? You can!
 
-    .. autofunction:: iDEA.RE.GroundState
+    .. autofunction:: iDEA.RE.calculate_ground_state
        :noindex:
   * Add images/plots to ``iDEA/doc/_static`` and then include them
 
