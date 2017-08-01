@@ -4,7 +4,8 @@
 *.swp
 *.pyc
 *.save
-*.egg-info/
 /dev*/ 
 /doc/apidoc/*rst
 /doc/_build/*
+*.egg-info/
+*.ipynb_checkpoints/

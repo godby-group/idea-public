@@ -9,8 +9,10 @@ iDEA
    :titlesonly:
    :hidden:
 
-   intro/index
    tutorial/index
+   jupyter/index
+   theory/index
+   intro/index
    dev/index
    API documentation <apidoc/modules>
 
