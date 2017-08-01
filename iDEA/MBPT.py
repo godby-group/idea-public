@@ -448,7 +448,7 @@ def read_input_quantities(pm, st):
     elif flavour == 'h':
         # Hartree: v_Hxc = v_H
         np.fill_diagonal(vhxc, vh / st.x_delta)
-    elif flavour == 'lda1' or 'lda2' or 'lda3' or flavour in ['nonre', 'hre', 'lda1re', 'lda2re', 'lda3re', 'extre', 'hfre']:
+    elif flavour in ['lda1', 'lda2', 'lda3','nonre', 'hre', 'lda1re', 'lda2re', 'lda3re', 'extre', 'hfre']:
         # KS-DFT: v_Hxc = v_H + v_xc
         # (or any reverse-engineered starting point)
         tmp = vh + rs.Results.read('gs_{}_vxc'.format(flavour), pm)
