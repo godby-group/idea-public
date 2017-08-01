@@ -3,69 +3,95 @@
 
 # ## Two electrons in a well
 # 
-# Now that's been quite a slog to get through all that theory, it'll nice to have the concepts we've introduced be illuminated by actually running iDEA. Hopefully at this point you've read the "Getting started" notebook, so we can skip through the details of actually running the code and instead focus on the physical results. 
+# Now that's been quite a slog to get through all that theory, it'll be nice to bring the equations to life by actually running iDEA. We'll focus on the physics going on and won't worry too much about how iDEA is solving the equations under the hood.
+# 
+# We start by investigating the electronic ground state of two electrons sitting in a harmonic well.
+# Let's define our external potential $V_{ext}(r)$.
 
-# In[2]:
-
-
-from iDEA.input import Input
-pm = Input.from_python_file("parameters.py")
-
-
-# We're just going to run the ground state exact, non-interacting and LDA parts of the code since this is what we've spent time looking at so far in this notebook. 
-
-# In[3]:
+# In[10]:
 
 
-pm.run.name = "gaussian_potential_run1"
-pm.run.LDA = True
-#pm.run.verbosity = "low"
+# Let's define our external potential
+omega = 0.25   # resonance frequency in atomic units
+def harmonic_well(x):
+    return 1/2 * omega**2 * x**2
 
-#Checking that we've got everything turned on that we want
-print(pm.run)
-print(pm.sys)
-
-
-# In[9]:
-
-
-# define our new potential
+# and plot it
 import numpy as np
-def gaussian_pot(x):
-    return -0.6 * np.exp(-0.2 * (x**2))
-
-# and pass it to iDEA
-pm.sys.v_ext = gaussian_pot
-
-# Let's see what it looks like
-pm.setup_space()
-x = pm.space.grid
+x = np.linspace(-10,10,100)
 
 import matplotlib.pyplot as plt
-plt.plot(x,gaussian_pot(x),'--',label="External Potential")
+plt.plot(x, harmonic_well(x), '--')
 plt.xlabel("x [a.u.]")
 plt.ylabel(r"$V_{ext}(x)$ [a.u.]")
 plt.show()
 
 
-# In[5]:
+# Now we'll fill $N=2$ electrons into the system and use the iDEA code to find the exact solution to the time-independent Schrödinger equation
+# 
+# $$\begin{equation}\left(-\frac{1}{2} \sum_i \frac{\partial^2}{\partial r_i^2} + V_{ext}(r_i) + \frac{1}{2}\sum_{i\neq j}v(r_i-r_j) \right) \Psi(r_1,r_2) = E \Psi(r_1,r_2)\end{equation}$$
+# 
+
+# In[9]:
 
 
-# Now let's run iDEA with the parameters we've entered
-results = pm.execute()
+from iDEA.input import Input
+pm = Input()   # create input parameters with default settings
+pm.sys.NE = 2  # we want 2 electrons
+pm.sys.v_ext = harmonic_well  # pass on our external potential
+
+print(pm.sys)  # show all system parameters
+
+pm.run.name = "harmonic_well"
+pm.run.EXT  = True     # run the exact system
+pm.run.LDA  = True     # run DFT in the local density approximation
+pm.run.NON  = True     # run the non-interacting approximation
+
+print(pm.sys)  # show all run parameters
 
 
-# In[8]:
+# We're going to compute the ground state both exactly and in the non-interacting and local-density approximations. Let's go!
+
+# In[11]:
 
 
-#We then plot the different densities to compare the different approaches
-import matplotlib.pyplot as plt
+# run iDEA with specified parameters and save results
+# this shouldn't take more than a minute
+results = pm.execute()  
 
-plt.plot(results.ext.gs_ext_vxt,'--', label = "External Potential")
-plt.plot(results.ext.gs_ext_den, label = "Exact gs density")
-plt.plot(results.non.gs_non_den, label = "Noninteracting gs density")
-plt.plot(results.lda.gs_lda2_den, label = "LDA gs density")
 
+# Given $\Psi(r_1,r_2)$, we can compute the corresponding density $n(r)$ - in fact, iDEA has already done it for us.
+
+# In[34]:
+
+
+x = pm.space.grid
+plt.plot(x,results.ext.gs_ext_vxt,'--', label = "External Potential")
+plt.plot(x,results.ext.gs_ext_den, label = "Exact gs density")
+
+plt.xlabel("x [a.u.]")
+plt.xlim([-5,5])
+plt.ylim([0,1])
+plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+           ncol=2, mode="expand", borderaxespad=0.)
+plt.show()
+
+
+# It turns out that for two (spinless) electrons, you get two bumps inside the well.
+# 
+# Let's see how the non-interacting and local-density approximations measure up against the exact solution.
+
+# In[39]:
+
+
+plt.plot(x,results.ext.gs_ext_vxt,'--', label = "External Potential")
+plt.plot(x,results.ext.gs_ext_den, label = "Exact gs density")
+plt.plot(x,results.non.gs_non_den, label = "Noninteracting gs density")
+plt.plot(x,results.lda.gs_lda2_den, label = "LDA gs density")
+
+plt.xlabel("x [a.u.]")
+plt.xlim([-5,5])
+plt.ylim([0,1])
 plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
            ncol=2, mode="expand", borderaxespad=0.)
 plt.show()
@@ -76,3 +102,17 @@ plt.show()
 # Firstly we can see that the non-interacting electron approximation gets the rough shape of the potential right. However, the electron's are more likely to be found near the centre of the well since they prefer to be in regions of low potential, and don't have Coulomb interaction pushing them away from each other. 
 # 
 # We also see that the LDA does a very good job, almost perfectly recovering the exact case. 
+
+# Now, in Kohn-Sham density functional theory, the task is to find the Kohn-Sham potential $V_{KS}(r)$ such that the solution of the Kohn-Sham equations
+# 
+# $$\begin{equation} \left(-\frac{1}{2} \frac{\partial^2}{\partial r^2}+V_{KS}(r)\right) \psi_i(r) = i \frac{\partial}{\partial t} \psi_i(r)
+# \end{equation}$$
+# 
+# yields the same density. Since we already know the exact $n(r)$, the task reduces to an optimisation problem. Try to optimize the Kohn-Sham potential to bring $n_{KS}(r)$ as close as possible to $n(r)$. (TODO: provide code)
+# 
+
+# In[ ]:
+
+
+
+

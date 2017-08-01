@@ -16,28 +16,29 @@ with each other, we can predict the electronic, optical and mechanical
 properties of materials.
 
 
-Units
-------
+Notation
+---------
 
-We are going to use atomic units where
-:math:`e = \hbar = m_e = 4 \pi \epsilon_0 = 1` which saves a lot of
+We are going to use `Hartree atomic units <https://en.wikipedia.org/wiki/Atomic_units>` where
+:math:`e = \hbar = m_e = 4 \pi \varepsilon_0 = 1` which saves a lot of
 clutter! This means the standard unit of length is the Bohr radius
 :math:`a_0 = 5.29 \times 10^{-11} \mathrm{m}`, and the unit of energy is
-the Hartree :math:`E_H = 2Ry = 27.2 \mathrm{eV}`. Also be aware that
+the Hartree :math:`E_H = 2\mathrm{Ry} = 27.2 \mathrm{eV}`. Also be aware that
 capital :math:`\Psi` refers to a many-body wave function whereas lower
-case :math:`\psi` refers to single particle wave functions. Also, we have
-kept everything in 3 dimensions to keep things general, but be aware that
-iDEA works in 1D only.
+case :math:`\psi` refers to single particle wave functions. 
+
+Below, we keep everything in 3 dimensions to keep things general, but be aware
+that iDEA works in 1D only.
 
 Schrödinger equation
 ---------------------
 
-The name of the game is to solve the Schrodinger equation for both the
+The name of the game is to solve the Schrödinger equation for both the
 ground state system, :math:`\hat{H} \Psi = E \Psi` and for the time
-dependant one, :math:`\hat{H} \Psi = i \frac{\partial \Psi}{\partial t}`
-(we'll consider the time dependant case in another notebook).
+dependent one, :math:`\hat{H} \Psi = i \frac{\partial \Psi}{\partial t}`
+(we'll consider the time dependent case later).
 
-In an ideal world, we would solve the many-body Schrodinger equation
+In an ideal world, we would solve the many-body Schrödinger equation
 exactly and then armed with these wavefunctions, we'd have complete
 knowledge of the system and be able to make precise predictions.
 Unfortunately, however, the problem is much too hard to solve in the
@@ -58,7 +59,7 @@ dimensions takes the form
 but of course has a different 1D form which is implemented in the iDEA code.
 
 The difficulty arises with the third term, the electron-electron
-interaction. This term means that the Schrodinger equation isn't
+interaction. This term means that the Schrödinger equation isn't
 seperable so the wavefunction isn't simply a suitable anti-symmetric
 product of single particle wavefunctions. We now explore several
 approaches to solve this problem that are used by the iDEA code.
@@ -75,14 +76,13 @@ universe all electrons feel it. This means we get to see the effects of
 to maximise the amount of physics we can highlight for a given effort
 (on both your part and mine!).
 
-As we mentioned earlier, the exact solution is, normally, much too hard
+As we mentioned earlier, the exact problem is, normally, much too hard
 to solve; the difficulty growing exponentially with the number of
-electrons in the system. However, for systems with 2 or 3 electrons, we
-:math:`\mathrm{\textit{are}}` able to solve the problem exactly. In
-fact, this is one of the key concepts in iDEA - solving simple systems
-exactly to allow us to compare, and possibly improve, the approximate
-solutions. Armed with these improvements, we are in a better position to
-tackle the larger systems with many electrons.
+electrons in the system. However, for systems with 2 or 3 electrons, we *are*
+able to solve the problem exactly. In fact, this is one of the key concepts in
+iDEA - solving simple systems exactly to allow us to compare, and possibly
+improve, the approximate solutions. Armed with these improvements, we are in a
+better position to tackle the larger systems with many electrons.
 
 Given we can't solve the many-electron system exactly in general, we
 need to have a look at the various different approaches of tackling the
@@ -93,9 +93,9 @@ Complete neglect of interaction
 ---------------------------------
 
 This is by far the simplest approach - you just completely ignore the
-coulomb interaction between the electrons. Clearly this massively
+Coulomb interaction between the electrons. Clearly this massively
 simplifies the problem, giving a separable Hamiltonian for a start! This
-means that we are able to solve the Schrodinger equation by the method
+means that we are able to solve the Schrödinger equation by the method
 of separation of variables, solving it for each electron individually.
 Then the total wavefunction is just a product of these single particle
 wave functions, in a suitable anti symmetric arrangement. One often
