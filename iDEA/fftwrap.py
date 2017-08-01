@@ -1,10 +1,20 @@
 """Wrapper for specialized Fast Fourier Transforms
 
-Loads the Intel Math Kernel Library, if present, to speed up
-specific Fourier transforms (e.g. 1d transform of nd array).
+If present, loads the Intel Math Kernel Library as a dynamic library
+(.so/.dylib) via the ctypes module in order to speed up specific Fourier
+transforms, such as 1d transforms of nd arrays.
 Falls back to numpy, if MKL is not present.
 
-Loads the dynamic library (.so/.dylib file) via the ctypes module.  
+Note: numpy and MKL have different scaling conventions for the FFT.
+numpy scales the forward transform by 1/n, see the documentation
+http://docs.scipy.org/doc/numpy/reference/routines.fft.html#implementation-details.
+The MKL scales neither forward nor backward transform.
+
+Here, we adopt the MKL convention, which corresponds to
+
+    [1,0,0,...] --fft-> [1,1,1,...]
+    [1,1,1,...] -ifft-> [n,0,0,...]
+
 """
 import ctypes, ctypes.util
 import numpy as np
@@ -34,7 +44,7 @@ if not MKL_AVAILABLE:
         return np.fft.fft(F, axis=-1)
 
     def ifft_1d(F):
-        return np.fft.ifft(F, axis=-1)
+        return np.fft.ifft(F, axis=-1) * F.shape[-1]
 
 else:
 

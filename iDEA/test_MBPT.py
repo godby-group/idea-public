@@ -187,8 +187,14 @@ class TestFFT(unittest.TestCase):
 
     def test_fft_t_1(self):
         """Test that fft in real time gives expected results.
+
+        Test that the Fourier transform of the delta function 
+
+        .. math :: f(t) = \delta(t)
+
+        equals unity.
         
-        This assumes a time grid that includes t=0.
+        Note: This assumes a time grid that includes t=0.
         """
         st = self.st
 
@@ -205,8 +211,8 @@ class TestFFT(unittest.TestCase):
 
     def test_fft_it_1(self):
         """Test that fft in imaginary time gives expected results.
-        
-        This assumes an imaginary time grid that includes it=0.
+
+        Note: This assumes an imaginary time grid that includes it=0.
         """
         st = self.st
 
@@ -217,7 +223,7 @@ class TestFFT(unittest.TestCase):
         f_iw = MBPT.fft_t(f_it,st,dir='it2if',phase_shift=shift)
         nt.assert_array_almost_equal(f_iw,np.ones(st.tau_npt), decimal=d)
 
-        # Inverse Fourier transform of [1,1,...] should be [1/st.deltax, ...]
+        # Inverse Fourier transform of [1,1,...] should be [1J/st.deltax, ...]
         f2_it = MBPT.fft_t(f_iw,st,dir='if2it',phase_shift=shift)
         nt.assert_array_almost_equal(f_it,f2_it, decimal=d)
 

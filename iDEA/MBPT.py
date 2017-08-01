@@ -669,10 +669,6 @@ def fft_t(F, st, dir, phase_shift=False):
     This differs from the more common convention (adopted by numpy) of using
     negative exponents for the *forward* transform.
 
-    numpy by default scales the forward transform by 1/n. See also
-    http://docs.scipy.org/doc/numpy/reference/routines.fft.html#implementation-details.
-    The MKL scales neither forward nor backward transform.
-
     FLOPS: tau_npt * grid**2 * (log(grid) + 2)
 
     parameters
