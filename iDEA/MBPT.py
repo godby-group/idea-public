@@ -21,8 +21,8 @@ from . import continuation
 
 from . import mklfftwrap
 if mklfftwrap.MKL_AVAILABLE:
-    import mklfftwrap.fft_t as fft_1d
-    import mklfftwrap.ifft_t as ifft_1d
+    fft_1d = mklfftwrap.fft_t
+    ifft_1d = mklfftwrap.ifft_t
 else:
     # define alternatives via numpy fft
     def fft_1d(F):
