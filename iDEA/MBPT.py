@@ -19,18 +19,7 @@ import scipy as sp
 from . import results as rs
 from . import continuation
 
-from . import mklfftwrap
-if mklfftwrap.MKL_AVAILABLE:
-    fft_1d = mklfftwrap.fft_t
-    ifft_1d = mklfftwrap.ifft_t
-else:
-    # define alternatives via numpy fft
-    def fft_1d(F):
-        return np.fft.fft(F, axis=-1) / F.shape[-1]
-
-    def ifft_1d(F):
-        return np.fft.ifft(F, axis=-1) * F.shape[-1]
-
+from .fftwrap import fft_1d, ifft_1d
 
 class SpaceTimeGrid(object):
     """Stores spatial and frequency grids"""
