@@ -11,6 +11,7 @@ import importlib
 import os
 import sys
 import copy
+import time
 
 from . import results as rs
 
@@ -140,6 +141,7 @@ class Input(object):
         """Sets default values of some properties."""
         self.filename = ''
         self.log = ''
+        self.last_print = time.clock()
 
         ### Run parameters
         self.run = InputSection()
@@ -366,10 +368,13 @@ class Input(object):
                 s += input_string(key,value)
         return s
 
-    def sprint(self, string='', priority=1, newline=True):
+    def sprint(self, string='', priority=1, newline=True, refresh=0.05):
         """Customized print function
 
         Prints to screen and appends to log.
+
+        If newline == False, overwrites last line,
+        but refreshes only every refresh seconds.
 
         parameters
         ----------
@@ -382,18 +387,33 @@ class Input(object):
             2: important
         newline : bool
             If False, overwrite the last line
+        refresh : float
+            If newline == False, print only every "refresh" seconds
         """
         verbosity = self.run.verbosity
         self.log += string + '\n'
         if priority >= self.priority_dict[verbosity]:
+
+            timestamp = time.clock()
             if newline:
                 print(string)
-            else:
-                #print(string, end='\r')
-                sys.stdout.write('\033[K')
-                sys.stdout.flush()
+                self.last_print = timestamp
+            # When overwriting lines, we only print every "refresh" seconds
+            elif timestamp - self.last_print > refresh:
+                ## this only overwrites, no erase
+                #print('\r' + string, end='')
+
+                # Overwrite line
                 sys.stdout.write('\r' + string)
+                # Delete rest of line starting from cursor position (in case
+                # previous line was longer). See
+                # https://en.wikipedia.org/wiki/ANSI_escape_code#CSI_codes
+                sys.stdout.write(chr(27) + '[K')
                 sys.stdout.flush()
+
+                self.last_print = timestamp
+            else:
+                pass
 
     @classmethod
     def from_python_file(cls,filename):
