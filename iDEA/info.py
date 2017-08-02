@@ -16,7 +16,8 @@ authors = [
     'Mike Entwistle', 
     'Matthew Smith',
     'Aaron Long',
-    'Leopold Talirz'
+    'Leopold Talirz',
+    'Rex Godby',
 ]
 
 na = len(authors)
