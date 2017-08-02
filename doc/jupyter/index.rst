@@ -2,18 +2,18 @@
 Examples
 *********
 
-You'll find a few jupyter notebooks in `examples/jupyter`.
-Once you've installed iDEA on your computer, you can run these examples
-interactively via
+You'll find a collection of jupyter notebooks in the :code:`jupyter/`
+subdirectory. Once you've installed iDEA on your computer, you can run these
+examples interactively via
 
 .. code-block:: bash
 
-    cd examples/jupyter
+    cd jupyter/
     jupyter notebook
 
 
 If you prefer to get a first impression without installing iDEA, 
-you may want to have a look at the static HTML versions of the examples.
+you find static HTML versions of the examples below.
 
 .. toctree::
 

@@ -34,7 +34,7 @@ plt.show()
 
 
 from iDEA.input import Input
-pm = Input.from_python_file("parameters.py")
+pm = Input()
 pm.run.name = "symmetric_well_run1"
 pm.run.LDA = True
 pm.run.verbosity = "low"
@@ -51,9 +51,10 @@ print(pm.sys)
 
 
 results = pm.execute()
+print("Done")
 
 
-# In[5]:
+# In[4]:
 
 
 import matplotlib.pyplot as plt
@@ -65,4 +66,10 @@ plt.plot(results.lda.gs_lda2_den, label = "LDA gs density")
 plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
            ncol=2, mode="expand", borderaxespad=0.)
 plt.show()
+
+
+# In[ ]:
+
+
+
 
