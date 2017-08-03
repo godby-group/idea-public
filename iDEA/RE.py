@@ -312,10 +312,11 @@ def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
     pm.sprint(string, 1, newline=True)
     v_ks = np.zeros(pm.sys.grid, dtype=np.float)
     try:
-        name = 'gs_{}re_vks'.format(approx)
+        # using the exact Vks as a starting guess results in much quicker
+        # convergence in most systems.
+        name = 'gs_{}_vks'.format(pm.re.starting_guess)
         v_ks[:] = rs.Results.read(name, pm)
-        string = '    (found exact ground-state Kohn-Sham potential to start' + \
-                 ' from)'
+        string = '    (found {} ground-state Kohn-Sham potential to start from)'.format(pm.re.starting_guess)
         pm.sprint(string, 1, newline=True)
         file_exist = True
     except:
@@ -337,7 +338,7 @@ def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
 
     # Solve the ground-state Kohn-Sham equations and iteratively correct v_ks
     iterations = 0
-    while(pm.re.mu >1e-15):
+    while(pm.re.mu > 1e-15 and density_error > pm.re.gs_density_tolerance):
 
         # Save the last iteration
         density_error_old = density_error
@@ -370,6 +371,9 @@ def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
     pm.sprint(string, 1, newline=True)
     string = '    error = {}'.format(density_error)
     pm.sprint(string, 1, newline=True)
+    if density_error > pm.re.gs_density_tolerance:
+        string = 'RE: WARNING: density error above tolerance of {}!'.format(pm.re.gs_density_tolerance)
+        pm.sprint(string, 2, newline=True)
 
     # Extract the exact v_ks from the Hamiltonian matrix
     v_ks[:] = hamiltonian[0,:] - kinetic_energy[0,:]
@@ -951,7 +955,7 @@ def main(parameters, approx):
             pm.sprint(string,1,newline=False)
 
             # If the required tolerance has been reached
-            if((density_error < pm.re.density_tolerance) and
+            if((density_error < pm.re.td_density_tolerance) and
             (current_density_error < pm.re.cdensity_tolerance)):
 
                 # Remove the gauge to get the full Kohn-Sham scalar potential

@@ -149,11 +149,11 @@ class Input(object):
         run.verbosity = 'default'            #: output verbosity ('low', 'default', 'high')
         run.save = True                      #: whether to save results to disk when they are generated
         run.module = 'iDEA'                  #: specify alternative folder (in this directory) containing modified iDEA module
-        run.NON = True                       #: Run Non-Interacting approximation
+        run.NON = False                      #: Run Non-Interacting approximation
         run.LDA = False                      #: Run LDA approximation
         run.MLP = False                      #: Run MLP approximation
         run.HF = False                       #: Run Hartree-Fock approximation
-        run.EXT = True                       #: Run Exact Many-Body calculation
+        run.EXT = False                      #: Run Exact Many-Body calculation
         run.MBPT = False                     #: Run Many-body pertubation theory
         run.HYB = False                      #: Run Hybrid (HF-LDA) calculation
         run.LAN = False                      #: Run Landauer approximation
@@ -319,9 +319,11 @@ class Input(object):
         re.stencil = 5                       #: Discretisation of 1st derivative (5 or 7)
         re.mu = 1.0                          #: 1st convergence parameter in the ground-state reverse-engineering algorithm
         re.p = 0.05                          #: 2nd convergence parameter in the ground-state reverse-engineering algorithm
+        re.gs_density_tolerance = 1e-9       #: Tolerance of the error in the ground-state density
+        re.starting_guess = 'extre'          #: Starting guess of groud-state Vks (if not available will start with Vxt)
         re.nu = 1.0                          #: Convergence parameter in the time-dependent reverse-engineering algorithm
         re.rtol_solver = 1e-12               #: Tolerance of linear solver in real time propagation (Recommended: 1e-12)
-        re.density_tolerance = 1e-7          #: Tolerance of the error in the time-dependent density
+        re.td_density_tolerance = 1e-7       #: Tolerance of the error in the time-dependent density
         re.cdensity_tolerance = 1e-7         #: Tolerance of the error in the current density
         re.max_iterations = 10               #: Maximum number of iterations per time step to find the Kohn-Sham potential
         re.damping = 1.0                     #: Damping factor used when filtering out noise in the Kohn-Sham vector potential
