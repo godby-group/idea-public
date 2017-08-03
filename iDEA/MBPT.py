@@ -19,21 +19,7 @@ import scipy as sp
 from . import results as rs
 from . import continuation
 
-try:
-    from .mklfftwrap import fft_t as fft_1d
-    from .mklfftwrap import ifft_t as ifft_1d
-    MKLWRAPPER_AVAILABLE = True
-except ImportError:
-    MKLWRAPPER_AVAILABLE = False
-    print("here")
-
-    # define alternatives via numpy fft
-    def fft_1d(F):
-        return np.fft.fft(F, axis=-1) / F.shape[-1]
-
-    def ifft_1d(F):
-        return np.fft.ifft(F, axis=-1) * F.shape[-1]
-
+from .fftwrap import fft_1d, ifft_1d
 
 class SpaceTimeGrid(object):
     """Stores spatial and frequency grids"""
@@ -682,10 +668,6 @@ def fft_t(F, st, dir, phase_shift=False):
     which uses negative imaginary exponents for the *backward* transform in real time.
     This differs from the more common convention (adopted by numpy) of using
     negative exponents for the *forward* transform.
-
-    numpy by default scales the forward transform by 1/n. See also
-    http://docs.scipy.org/doc/numpy/reference/routines.fft.html#implementation-details.
-    The MKL scales neither forward nor backward transform.
 
     FLOPS: tau_npt * grid**2 * (log(grid) + 2)
 

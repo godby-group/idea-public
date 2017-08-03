@@ -47,6 +47,8 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
     'numpydoc',
+    'nbsphinx',
+    'IPython.sphinxext.ipython_console_highlighting',
 ]
 
 numpydoc_show_class_members = False
@@ -94,7 +96,7 @@ language = None
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build','*ViDEO.py']
+exclude_patterns = ['_build','*ViDEO.py', '**.ipynb_checkpoints']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.

@@ -264,8 +264,8 @@ def main(parameters):
                 density[i,:] += abs(wavefunction[:])**2
 
                 # Calculate the norm of the wavefunction
-                normalisation = np.linalg.norm(wavefunction)*pm.sys.deltax**0.5
-                string = "NON: N = {}, t = {:.5f}, normalisation = {}" \
+                normalisation = 1.0 - np.linalg.norm(wavefunction)*pm.sys.deltax**0.5
+                string = "NON: N = {}, t = {:.5f}, normalisation error = {:+8.5e}" \
                         .format(n+1, i*pm.sys.deltat, normalisation)
                 pm.sprint(string, 1, newline=False)
 

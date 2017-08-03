@@ -1,9 +1,9 @@
 """Contains information on version, authors, etc."""
 
 # The short X.Y version.
-version = '2.1'
+version = '2.2'
 # The full version, including alpha/beta/rc tags.
-release = '2.1.0'
+release = '2.2.0'
 
 
 authors = [
@@ -16,7 +16,8 @@ authors = [
     'Mike Entwistle', 
     'Matthew Smith',
     'Aaron Long',
-    'Leopold Talirz'
+    'Leopold Talirz',
+    'Rex Godby',
 ]
 
 na = len(authors)

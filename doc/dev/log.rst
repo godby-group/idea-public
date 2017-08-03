@@ -32,16 +32,16 @@ Changelog
      pm.space.v_ext   # the external potential on the grid
      pm.space.v_int   # the coulomb interaction on the grid
    * LDA: Fixed inconsistency in LDA E_xc
-    Mike originally fitted the e_xc(n) and then put in
-    (numerically computed) values for V_xc(n) that were
-    capped after the 2nd or 3rd digit.
+     Mike originally fitted the e_xc(n) and then put in
+     (numerically computed) values for V_xc(n) that were
+     capped after the 2nd or 3rd digit.
 
-    We now use only *one* set of parameters, with all others
-    derived directly from them (accurate to machine precision).
+     We now use only *one* set of parameters, with all others
+     derived directly from them (accurate to machine precision).
    * iDEA.py renamed to run.py
-    The name iDEA.py results in conflicts when resolving import statements
-    (in particular, when copying iDEA.py to another directory, you
-    received an error when running `python iDEA.py`).
+     The name iDEA.py results in conflicts when resolving import statements
+     (in particular, when copying iDEA.py to another directory, you
+     received an error when running `python iDEA.py`).
    * Makefile: Now contains a "make clean" command that should work cross-platform
    * Pickled version of parameters object is now saved in outputs/run_name/parameters.p
    * Added "stencil" parameter that specifies how many space points are taken

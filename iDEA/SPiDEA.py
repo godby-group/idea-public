@@ -15,8 +15,8 @@ import numpy as np
 import scipy as sp
 import scipy.sparse as sps
 import scipy.sparse.linalg as spsla
-import RE_Utilities
-import results as rs
+from . import RE_Utilities
+from . import results as rs
 
 
 def construct_K(pm):

@@ -725,7 +725,7 @@ def calculate_current_density(pm, density_ks):
 def xc_correction(pm, v_xc, x_points):
     r"""Calculates an approximation to the constant that needs to be added to
     the exchange-correlation potential so that it asymptotically approaches
-    zero at large |x|. The approximate error (standard deviation) on the
+    zero at large :math:`|x|`. The approximate error (standard deviation) on the
     constant is also calculated.
 
     .. math::
@@ -769,7 +769,7 @@ def xc_correction(pm, v_xc, x_points):
 def xc_fit(x_points, correction):
     r"""Applies a fit to the exchange-correlation potential over a specified
     range near the edge of the system's grid to determine the correction that
-    needs to be applied to give the correct asymptotic behaviour at large |x|
+    needs to be applied to give the correct asymptotic behaviour at large :math:`|x|`
 
     .. math::
 

@@ -677,7 +677,7 @@ def main(parameters):
 
       gap = energies_out[pm.sys.NE]- energies_out[pm.sys.NE-1]
       if gap < 1e-3:
-          s = "LDA: Warning: small KS gap {:.3e} Ha. Convergence may be slow.".format(gap)
+          s = "\nLDA: Warning: small KS gap {:.3e} Ha. Convergence may be slow.".format(gap)
           pm.sprint(s)
 
       # compute self-consistent density error
