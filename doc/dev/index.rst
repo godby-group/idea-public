@@ -5,7 +5,7 @@ Developers
 .. toctree::
 
    add
-   edit
+   documentation
    log
    todo
    related

@@ -1,10 +1,13 @@
 #!/bin/bash
 
-#echo "### Converting Jupyter Notebooks ###"
-jupyter_fldr=../../jupyter
-ln -sfn ${jupyter_fldr}/01_well/well.ipynb jupyter/
-ln -sfn ${jupyter_fldr}/02_double_well/double_well.ipynb jupyter/
-ln -sfn ${jupyter_fldr}/03_tunneling/tunneling_solution.ipynb jupyter/
+echo "### symlinking Jupyter Notebooks ###"
+src=../../jupyter
+dest=jupyter
+#ln -sfn $src jupyter/notebooks
+ln -sfn $src/00_get_started/get_started.ipynb $dest/
+ln -sfn $src/01_well/well.ipynb $dest/
+ln -sfn $src/02_double_well/double_well.ipynb $dest/
+ln -sfn $src/03_tunneling/tunneling_solution.ipynb $dest/
 #for f in "$jupyter_fldr/*.ipynb"; do
 #    jupyter nbconvert --to html --output-dir tutorial  $f 
 #done

@@ -7,6 +7,7 @@ release = '2.2.0'
 
 
 authors = [
+    'Rex Godby',
     'Piers Lillystone', 
     'James Ramsden', 
     'Matt Hodgson', 
@@ -15,9 +16,10 @@ authors = [
     'Jack Wetherell', 
     'Mike Entwistle', 
     'Matthew Smith',
-    'Aaron Long',
     'Leopold Talirz',
-    'Rex Godby',
+    'Aaron Long',
+    'Robbie Oliver',
+    'Ewan Richardson',
 ]
 
 na = len(authors)
