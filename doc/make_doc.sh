@@ -23,3 +23,4 @@ echo "### Making documentation ###"
 rm -fr _build
 make html
 
+echo "### Please find the documentation website in _build/html ###"
