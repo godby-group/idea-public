@@ -5,6 +5,21 @@ version = '2.2'
 # The full version, including alpha/beta/rc tags.
 release = '2.2.0'
 
+def get_sha1():
+    """Returns sha1 hash of last commit from git
+
+    Works only, if the code resides inside a git repository.
+    Returns None otherwise.
+    """
+    try:
+        import os
+        cwd = os.path.dirname(os.path.realpath(__file__))
+        import subprocess
+        cmd = ['git', 'rev-parse', 'HEAD']
+        sha1 = subprocess.check_output(cmd, cwd=cwd, stderr=subprocess.STDOUT)
+        return sha1.strip().decode('ascii')
+    except Exception:
+        return None
 
 authors = [
     'Rex Godby',
@@ -21,6 +36,9 @@ authors = [
     'Robbie Oliver',
     'Ewan Richardson',
 ]
+
+# sort authors alphabetically
+authors.sort(key = lambda n: n.split()[-1])
 
 na = len(authors)
 authors_long = ""
