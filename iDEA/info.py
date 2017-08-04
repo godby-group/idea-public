@@ -35,6 +35,7 @@ authors = [
     'Aaron Long',
     'Robbie Oliver',
     'Ewan Richardson',
+    'Razak Elmaslmane',
 ]
 
 # sort authors alphabetically
