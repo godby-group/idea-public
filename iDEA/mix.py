@@ -324,7 +324,7 @@ class RPAPreconditioner(object):
         .. math ::
             \chi^0(x,x') = \sum_j^{'} \sum_k^{''} \phi_j(x)\phi_k^*(x)\phi_j^*(x')\phi_k(x') \frac{2}{\varepsilon_j-\varepsilon_k}
 
-        where :math:`\sum^'` sums over occupied states and :math:`\sum^{''}` sums over empty states
+        where :math:`\sum^{'}` sums over occupied states and :math:`\sum^{''}` sums over empty states
 
         See also https://wiki.fysik.dtu.dk/gpaw/documentation/tddft/dielectric_response.html
 

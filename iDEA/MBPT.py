@@ -654,12 +654,10 @@ def fft_t(F, st, dir, phase_shift=False):
 
     .. math::
 
-        \begin{align}
-            F(\omega) &= \int dt F(t) e^{i\omega t} \\
-            F(t) &= \int \frac{d\omega}{2\pi} F(\omega) e^{-i\omega t}\\
-            F(i\omega) &= -i\int dt F(it) e^{-i\omega t}\\
-            F(it) &= i\int \frac{d\omega}{2\pi} F(i\omega) e^{i\omega t}
-        \end{align}
+       F(\omega) &= \int dt F(t) e^{i\omega t} \\
+       F(t) &= \int \frac{d\omega}{2\pi} F(\omega) e^{-i\omega t}\\
+       F(i\omega) &= -i\int dt F(it) e^{-i\omega t}\\
+       F(it) &= i\int \frac{d\omega}{2\pi} F(i\omega) e^{i\omega t}
 
     The infinitesimals :math:`d\tau,d\omega/2\pi` are automatically
     included in the Fourier transforms.

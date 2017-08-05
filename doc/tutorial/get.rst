@@ -51,7 +51,7 @@ Updating iDEA
 Generating the documentation
 -----------------------------
 A recent version of the documentation can be found on the iDEA web page.
-If you are making changes to the code and/or the documentation, you will
+If you are making changes to the code and/or the documentation, you may
 need to generate the documentation by yourself
 
 **Requirements**
@@ -59,15 +59,22 @@ need to generate the documentation by yourself
  * `Sphinx <http://sphinx-doc.org>`_ 1.4 or later 
  * `numpydoc extension <https://pypi.python.org/pypi/numpydoc>`_ 0.7 or later (adds support for numpy-style docstrings)
  * `nbconvert extension <http://sphinx-doc.org>`_ 5.2 or later (renders static versions of jupyter notebooks)
-
-.. code-block:: bash
-
-   cd doc
-   bash make_doc.sh
-   # find documentation in doc/_build/html
+ * (optional) `LaTeX <https://www.latex-project.org/get/>`_ (for the LaTeX version of the documentation)
 
 Note: in order to install the required packages on a system without admin rights, do
 
 .. code-block:: bash
 
    pip install --user sphinx numpydoc nbconvert
+
+In order to produce the documentation in html and latex form:
+
+.. code-block:: bash
+
+   cd doc
+   bash make_doc.sh
+   # find html documentation in _build/html
+   # find latex documentation in _build/latex 
+   make latexpdf  # generates _build/latex/iDEA.pdf
+
+

@@ -39,3 +39,4 @@ iDEA's main features are:
 * Established and novel localisation measures
 * Many-body perturbation theory
 
+iDEA Contributors: |idea_contributors|

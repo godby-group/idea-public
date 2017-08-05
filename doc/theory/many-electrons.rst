@@ -44,7 +44,7 @@ knowledge of the system and be able to make precise predictions.
 Unfortunately, however, the problem is much too hard to solve in the
 way. Let's have a look at the Hamiltonian to see why.
 
-.. math::  \begin{equation} \hat{H} = - \frac{1}{2} \sum_i \nabla_i^2 + V_{ext}(\textbf{r}_i) + V_{ee}(\mid \textbf{r}_i - \textbf{r}_j \mid ) \end{equation},
+.. math::  \hat{H} = - \frac{1}{2} \sum_i \nabla_i^2 + V_{ext}(\textbf{r}_i) + V_{ee}(\mid \textbf{r}_i - \textbf{r}_j \mid ),
 
 where we have used the Born-Oppenheimer approximation (treating the
 nuclei as so massive that they do not move on the timescale of electron

@@ -69,7 +69,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'iDEA'
-copyright = u'2010 - 2017, ' + info.authors_short
+copyright = u'2010 - 2017, the iDEA contributors'
 author = info.authors_long
 
 # The version info for the project you're documenting, acts as replacement for
@@ -139,7 +139,7 @@ html_theme = 'alabaster'
 html_theme_options = {
     'sidebar_includehidden' : True,
     'github_button' : False,
-    'show_powered_by' : False,
+    'show_powered_by' : True,
     'logo' : 'logo.png',
     'logo_name' : False,
     'logo_text_align': 'left',
@@ -276,8 +276,13 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
+authors_latex = " \\and ".join(info.authors)
 latex_documents = [
-  (master_doc, 'iDEA.tex', u'iDEA Documentation', info.authors_long, 'manual'),
+  (master_doc,  
+   'iDEA.tex', 
+   u'iDEA Documentation', 
+   authors_latex,
+   'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -336,3 +341,5 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #texinfo_no_detailmenu = False
+
+rst_epilog = '.. |idea_contributors| replace:: {}'.format(info.authors_long)

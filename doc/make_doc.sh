@@ -22,5 +22,6 @@ sphinx-apidoc -o $fldr ../iDEA
 echo "### Making documentation ###"
 rm -fr _build
 make html
+make latex
 
 echo "### Please find the documentation website in _build/html ###"

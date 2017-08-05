@@ -32,7 +32,7 @@ plt.show()
 # ### Computing the ground state
 # Now we'll fill $N=2$ electrons into the system and use the iDEA code to find the exact solution to the time-independent Schrödinger equation
 # 
-# $$\begin{equation}\left(-\frac{1}{2} \sum_i \frac{\partial^2}{\partial r_i^2} + V_{ext}(r_i) + \frac{1}{2}\sum_{i\neq j}v(r_i-r_j) \right) \Psi(r_1,r_2) = E \Psi(r_1,r_2)\end{equation}$$
+# $$\left(-\frac{1}{2} \sum_i \frac{\partial^2}{\partial r_i^2} + V_{ext}(r_i) + \frac{1}{2}\sum_{i\neq j}v(r_i-r_j) \right) \Psi(r_1,r_2) = E \Psi(r_1,r_2)$$
 # 
 
 # In[2]:
@@ -110,8 +110,7 @@ plt.show()
 # 
 # Now, in Kohn-Sham density functional theory, the task is to find the Kohn-Sham potential $V_{KS}(r)$ such that the solution of the non-interacting Kohn-Sham system
 # 
-# $$\begin{equation} \left(-\frac{1}{2} \frac{\partial^2}{\partial r^2}+V_{KS}(r)\right) \psi_i(r) = i \frac{\partial}{\partial t} \psi_i(r)
-# \end{equation}$$
+# $$\left(-\frac{1}{2} \frac{\partial^2}{\partial r^2}+V_{KS}(r)\right) \psi_i(r) = i \frac{\partial}{\partial t} \psi_i(r)$$
 # 
 # yields the same density as the exact ground state. Since we are lucky enough to already *know* the exact $n(r)$ for our system, this task reduces to an optimisation problem. 
 # 

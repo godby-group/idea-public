@@ -3,7 +3,7 @@ Changelog
  * **v2.2.0** (2017-07-07)
 
    * HF: fixed convention used in Fock operator & 10x speedup from faster
-      construction. fock() now returns F, not F*dx.
+     construction. fock() now returns F, not F*dx.
    * HF: fixed bug in mixing
    * HF: added time-dependence
    * LDA: major rewrite. Added Pulay mixing and conjugate gradient methods

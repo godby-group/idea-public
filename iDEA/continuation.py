@@ -106,7 +106,7 @@ class Polefit(object):
 
         .. math:: 
             f'(z) = -\sum_{j=1}^n \frac{a_j}{(z-b_j)^2}
-                  = -\sum_{j=1}^n \left(\frac{p_{2j-1}}{(z-p_{2j})^2}
+                  = -\sum_{j=1}^n \left(\frac{p_{2j-1}}{(z-p_{2j})^2}\right)
 
         May be used to compute quasiparticle weights via
         

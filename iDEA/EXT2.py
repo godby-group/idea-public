@@ -59,10 +59,8 @@ def inverse_single_index(pm, jk):
 
     .. math::
 
-        \begin{align}
-            &k = jk \ \text{mod} \ grid \\
-            &j = \dfrac{jk-k}{grid} 
-        \end{align}
+        &k = jk \ \text{mod} \ grid \\
+        &j = \dfrac{jk-k}{grid} 
 
     parameters
     ----------
@@ -132,11 +130,9 @@ def construct_A_reduced(pm, reduction_matrix, expansion_matrix, v_ext,
 
     .. math:: 
         
-        \begin{align}
             \text{Imaginary time}: \ &A = I + \dfrac{\delta \tau}{2}H \\
             \text{Real time}: \ &A = I + i\dfrac{\delta t}{2}H \\ \\
             &A_{\mathrm{red}} = RAE 
-        \end{align}
 
     where :math:`R =` reduction matrix and :math:`E =` expansion matrix
 
@@ -283,9 +279,7 @@ def hamiltonian_max_size(pm):
     elements. These are truncated at the point of creation in the 
     scipy.sparse.coo_matrix() constructor. For example, with a 3-point stencil:
 
-    .. math:: 
-    
-        \text{max_size} = x^2 + 4x^2 = 5x^2
+    .. math:: \textrm{max\_size} = x^2 + 4x^2 = 5x^2
 
     parameters
     ----------
@@ -680,14 +674,12 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced,
 
     .. math:: 
 
-        \begin{align}
-            &\Big(I + \dfrac{\delta \tau}{2}H\Big) \Psi(x_{1},x_{2},
-            \tau+\delta \tau) = \Big(I - \dfrac{\delta \tau}{2}H\Big) \Psi(
-            x_{1},x_{2},\tau) \\
-            &\Psi(x_{1},x_{2},\tau) = \sum_{m}c_{m}e^{-\varepsilon_{m}
-            \tau}\phi_{m} \implies \lim_{\tau \to \infty} \Psi(x_{1},x_{2},
-            \tau) = \phi_{0}
-        \end{align}
+        &\Big(I + \dfrac{\delta \tau}{2}H\Big) \Psi(x_{1},x_{2},
+        \tau+\delta \tau) = \Big(I - \dfrac{\delta \tau}{2}H\Big) \Psi(
+        x_{1},x_{2},\tau) \\
+        &\Psi(x_{1},x_{2},\tau) = \sum_{m}c_{m}e^{-\varepsilon_{m}
+        \tau}\phi_{m} \implies \lim_{\tau \to \infty} \Psi(x_{1},x_{2},
+        \tau) = \phi_{0}
 
     parameters
     ----------
