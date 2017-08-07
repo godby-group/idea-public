@@ -33,13 +33,29 @@ class Results(object):
         'vxc': r'$V_{xc}$',
         'vks': r'$V_{KS}$',
         'tden' : r'$\rho$',
+        'W' : r'$W$',
+        'S' : r'$\Sigma$',
+        'Sc' : r'$\Sigma_{c}$',
+        'Sx' : r'$\Sigma_{x}$',
+        'Sxc' : r'$\Sigma_{xc}$',
     }
+
+    def __init__(self):
+        self.__saved__ = []  # list of results saved to disk
+
+    @property
+    def __to_save__(self):
+        """List of results not yet saved to disk"""
+        results = list(self.__dict__.keys())
+        if '__saved__' in results: results.remove('__saved__')
+
+        return [r for r in results if r not in self.__saved__]
 
     @staticmethod
     def label(shortname):
         r""" returns full label for shortname of result.
 
-        Expand shortname used for 1d quantities saved by iDEA.
+        Expand shortname used for quantities saved by iDEA.
         E.g. 'gs_non_den' => 'ground state $\rho$ (non-interacting)'
         """
         c, m, q = shortname.split('_')
@@ -48,12 +64,12 @@ class Results(object):
         return s
 
     def add(self,results,name):
-        """Add results to the container."""
+        """Add results to the container.
+        """
 
-        ## If we are adding another Results instance, copy attributes
-        #if isinstance(results,Results):
-        #    self.__dict__.update(results.__dict__)
-        #else:
+        if hasattr(self, name):
+            if name in self.__saved__:
+                self.__saved__.remove(name)
 
         if not hasattr(self, name) or not isinstance(results,Results):
             setattr(self, name, cp.deepcopy(results))
@@ -61,6 +77,7 @@ class Results(object):
         # copy its attributes
         else:
             getattr(self, name).__dict__.update(results.__dict__)
+
 
     @staticmethod
     def read(name, pm, dir=None):
@@ -104,8 +121,7 @@ class Results(object):
             default: pm.output_dir + '/raw'
         """
         data = self.read(name, pm, dir)
-        setattr(self, name, data)
-
+        self.add(data, name)
 
 
     def save(self, pm, dir=None, list=None):
@@ -121,23 +137,30 @@ class Results(object):
         verbosity : string
             additional info will be printed for verbosity 'high'
         list : array_like
-            if set, only the listed results will be saved
+            if set, saves listed results
+            if not set, saves results that haven't been saved before
         """
         if dir is None:
             dir = pm.output_dir + '/raw'
 
+        if list:
+            to_save = list
+        else:
+            to_save = self.__to_save__
+
         for key,val in self.__dict__.items():
-            if list is None or key in list:
+            if key in to_save:
                 if isinstance(val,Results):
                     val.save(pm, dir)
                 else:
                     outname = "{}/{}.db".format(dir,key)
                     pm.sprint("Saving {} to {}".format(key,outname),0)
                     f = open(outname, 'wb')
-                    pickle.dump(val,f,protocol=4) # protocol=4 incase the pickle file is large (<4GB)
+                    pickle.dump(val,f,protocol=4) # protocol=4 for large files (<4GB)
                     f.close()
                     #np.savetxt(outname, val)
-
+                if key not in self.__saved__:
+                    self.__saved__.append(key)
 
     def save_hdf5(self, pm, dir=None, list=None, f=None):
         """Save results to HDF5 database.
