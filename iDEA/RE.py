@@ -888,11 +888,15 @@ def main(parameters, approx):
     v_xc[0,:] = v_hxc[0,:] - v_h[0,:]
 
     # Correct the asymptotic form of v_xc and v_ks
-    if(file_exist == False):
-        correction, correction_error = xc_correction(pm, v_xc[0,:], x_points)
-        v_ks[0,:] -= correction
-        v_xc[0,:] -= correction
-        energies_ks[:] -= correction
+    correction, correction_error = xc_correction(pm, v_xc[0,:], x_points)
+    v_ks[0,:] -= correction
+    v_xc[0,:] -= correction
+    energies_ks[:] -= correction
+
+    # calculate the IP
+    IP = -energies_ks[pm.sys.NE-1]
+    string = 'RE: ionization potential = {0:.3f} +/- {1:.4f}'.format(IP, correction_error)
+    pm.sprint(string, 1, newline=True)
 
     # Calculate the exchange-correlation energy
     E_xc = calculate_xc_energy(pm, approx, density_ks[0,:], v_h[0,:],
@@ -907,6 +911,7 @@ def main(parameters, approx):
     results.add(v_h[0,:],'gs_{}_vh'.format(approxre))
     results.add(v_xc[0,:],'gs_{}_vxc'.format(approxre))
     results.add(E_xc,'gs_{}_Exc'.format(approxre))
+    results.add(IP,'gs_{}_IP'.format(approxre))
     if(pm.re.save_eig):
         results.add(wavefunctions_ks.T,'gs_{}_eigf'.format(approxre))
         results.add(energies_ks,'gs_{}_eigv'.format(approxre))
