@@ -10,6 +10,7 @@ Things Todo
  #. Rewrite MLP
  #. Documentation for MLP, HYB
  #. Make all code uniform + Large code tests
+ #. Replace trapezium rule with rectangle rule in all codes
 
 Bugs
 ====
