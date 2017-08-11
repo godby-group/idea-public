@@ -25,12 +25,6 @@ Installing iDEA
 
    pip install -e .[doc]
 
-   # add current working directory to PYTHONPATH
-   echo "export PYTHONPATH=\$PYTHONPATH:`pwd`" >> ~/.bashrc
-   # add scripts directory to your PATH
-   echo "export PATH=\$PATH:`pwd`/../scripts" >> ~/.bashrc
-   source ~/.bashrc
-
 iDEA includes some Fortran extensions, which are built automatically the first
 time you run it. If the default options for the compiler, libraries etc.  do
 not work for your platform, you will need to adapt the options for one of the
