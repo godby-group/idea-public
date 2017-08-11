@@ -4,6 +4,7 @@
 *.swp
 *.pyc
 *.save
+iDEA/*.c
 /dev*/ 
 /doc/apidoc/*.rst
 /doc/_build/*

@@ -23,7 +23,8 @@ Installing iDEA
    git clone USERNAME@rwgu4.its.york.ac.uk:/shared/storage/physrwg/trunk/iDEAL/ my_idea
    cd my_idea
 
-   pip install -e .[doc]
+   # install iDEA for your unix user, including documentation extension
+   pip install --user -e .[doc]
 
 iDEA includes some Fortran extensions, which are built automatically the first
 time you run it. If the default options for the compiler, libraries etc.  do
