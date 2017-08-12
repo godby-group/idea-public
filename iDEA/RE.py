@@ -332,7 +332,7 @@ def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
     wavefunctions_ks, energies_ks, density_ks = (solve_gsks_equations(
             pm, hamiltonian))
     density_difference = abs(density_approx-density_ks)
-    density_error = np.trapz(density_difference, dx=pm.sys.deltax)
+    density_error = np.sum(density_difference)*pm.sys.deltax
     string = 'RE: initial guess density error = {}'.format(density_error)
     pm.sprint(string, 1, newline=True)
 
@@ -353,7 +353,7 @@ def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
 
         # Calculate the error in the ground-state Kohn-Sham density
         density_difference = abs(density_approx-density_ks)
-        density_error = np.trapz(density_difference, dx=pm.sys.deltax)
+        density_error = np.sum(density_difference)*pm.sys.deltax
         string = 'RE: density error = {}'.format(density_error)
         pm.sprint(string, 1, newline=False)
 
@@ -503,8 +503,8 @@ def calculate_time_dependence(pm, A_initial, momentum, A_ks, damping,
 
         # Calculate the error in the Kohn-Sham current density
         current_density_difference = abs(current_density_approx-current_density_ks)
-        current_density_error = np.trapz(current_density_difference,
-                                dx=pm.sys.deltax)
+        current_density_error = np.sum(current_density_difference)*pm.sys.deltax
+
         if(iterations == 0):
             current_density_error_min = np.copy(current_density_error)
 
@@ -540,13 +540,12 @@ def calculate_time_dependence(pm, A_initial, momentum, A_ks, damping,
     current_density_ks = calculate_current_density(pm, density_ks)
 
     # Calculate the error in the Kohn-Sham charge density
-    density_error = np.sum(abs(density_approx[:]-density_ks[1,:])
-                    )*pm.sys.deltax
+    density_difference = abs(density_approx-density_ks)
+    density_error = np.sum(density_difference)*pm.sys.deltax
 
     # Calculate the error in the Kohn-Sham current density
     current_density_difference = abs(current_density_approx-current_density_ks)
-    current_density_error = np.trapz(current_density_difference,
-                            dx=pm.sys.deltax)
+    current_density_error = np.sum(current_density_difference)*pm.sys.deltax
 
     return (A_ks, density_ks[1,:], current_density_ks, wavefunctions_ks,
            density_error, current_density_error)
@@ -887,13 +886,14 @@ def main(parameters, approx):
     v_h[0,:] = calculate_hartree_potential(pm, density_ks[0,:])
     v_xc[0,:] = v_hxc[0,:] - v_h[0,:]
 
-    # Correct the asymptotic form of v_xc and v_ks
+    # Correct the asymptotic form of v_xc 
     correction, correction_error = xc_correction(pm, v_xc[0,:], x_points)
     v_ks[0,:] -= correction
+    v_hxc[0,:] -= correction
     v_xc[0,:] -= correction
     energies_ks[:] -= correction
 
-    # calculate the IP
+    # Calculate the ionization potential 
     IP = -energies_ks[pm.sys.NE-1]
     string = 'RE: ionization potential = {0:.3f} +/- {1:.4f}'.format(IP, correction_error)
     pm.sprint(string, 1, newline=True)

@@ -503,41 +503,6 @@ def qho_approx(pm, n):
     return eigenstate
 
 
-def wavefunction_converter(pm, wavefunction, td):
-    r"""Turns the array of compressed indices into separated indices.
-
-    .. math:: 
-
-    parameters
-    ----------
-    pm : object
-        Parameters object
-    wavefunction : array_like
-        1D array of the wavefunction, indexed as 
-        wavefunction[space_index_1_2_3]
-    td : integer
-        0 for imaginary time, 1 for real time
-
-    returns array_like
-        3D array of the wavefunction, indexed as 
-        wavefunction_3D[space_index_1,space_index_2_space_index_3]
-    """
-    # 3D array to store wavefunction
-    if(td == 0):
-        wavefunction_3D = np.zeros((pm.sys.grid,pm.sys.grid,pm.sys.grid), 
-                          dtype=np.float)
-    elif(td == 1):
-        wavefunction_3D = np.zeros((pm.sys.grid,pm.sys.grid,pm.sys.grid), 
-                          dtype=np.cfloat)
-
-    # Assign elements
-    for jkl in range(pm.sys.grid**3):
-        j, k, l = inverse_single_index(pm, jkl)
-        wavefunction_3D[j,k,l] = wavefunction[jkl]
-
-    return wavefunction_3D
-
-
 def calculate_energy(pm, wavefunction_reduced, wavefunction_reduced_old):
     r"""Calculates the energy of the system.
 
@@ -842,7 +807,8 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
         elf = 0 
 
     # Save the ground-state
-    wavefunction_3D = wavefunction_converter(pm, wavefunction, 1)
+    wavefunction_3D = wavefunction.reshape(pm.sys.grid, pm.sys.grid, 
+                      pm.sys.grid)
     density[0,:] = calculate_density(pm, wavefunction_3D)
  
     # Reduce the wavefunction
@@ -873,7 +839,8 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
         wavefunction = expansion_matrix*wavefunction_reduced
        
         # Calculate the density (and ELF)
-        wavefunction_3D = wavefunction_converter(pm, wavefunction, 1)
+        wavefunction_3D = wavefunction.reshape(pm.sys.grid, pm.sys.grid, 
+                          pm.sys.grid)
         density[i,:] = calculate_density(pm, wavefunction_3D)
         if(pm.ext.elf_td == 1):
             elf[i,:] = ELF.main(pm, wavefunction_3D, density=density[i,:])
@@ -953,7 +920,8 @@ def main(parameters):
                            expansion_matrix) 
  
     # Calculate ground-state density
-    wavefunction_3D = wavefunction_converter(pm, wavefunction, 0)
+    wavefunction_3D = wavefunction.reshape(pm.sys.grid, pm.sys.grid, 
+                      pm.sys.grid)
     density = calculate_density(pm, wavefunction_3D)
    
     # Save ground-state density, energy and external potential (optionally
@@ -997,7 +965,8 @@ def main(parameters):
                                    eigenstates_array=eigenstates_array[0:j+1,:])
 
             # Calculate the excited-state density
-            wavefunction_3D = wavefunction_converter(pm, wavefunction, 0)
+            wavefunction_3D = wavefunction.reshape(pm.sys.grid, pm.sys.grid, 
+                              pm.sys.grid)
             density = calculate_density(pm, wavefunction_3D)
 
             # Save the excited-state density and energy (optionally the

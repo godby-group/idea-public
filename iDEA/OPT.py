@@ -146,7 +146,7 @@ def calculate_density_error(pm, density, target_density):
         density_error
     """
     density_difference = abs(density-target_density)
-    density_error = np.trapz(density_difference, dx=pm.sys.deltax)
+    density_error = np.sum(density_difference)*pm.sys.deltax
 
     return density_error
 
@@ -369,8 +369,12 @@ def main(parameters, approx, target_density_array=None,
             del C_reduced
 
             # Calculate the electron density
-            wavefunction_ND = EXT.wavefunction_converter(pm, wavefunction, 0)
-            density = EXT.calculate_density(pm, wavefunction_ND)
+            if(pm.sys.NE == 2):
+                wavefunction_2D = wavefunction.reshape(pm.sys.grid, pm.sys.grid)
+                density = EXT.calculate_density(pm, wavefunction_2D)
+            elif(pm.sys.NE == 3):
+                wavefunction_3D = wavefunction.reshape(pm.sys.grid, pm.sys.grid, pm.sys.grid)
+                density = EXT.calculate_density(pm, wavefunction_3D)
             if(run == 1):
                 density_best = np.copy(density)
 
