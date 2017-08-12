@@ -5,6 +5,7 @@
 *.pyc
 *.save
 iDEA/*.c
+build/
 /dev*/ 
 /doc/apidoc/*.rst
 /doc/_build/*

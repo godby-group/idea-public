@@ -36,7 +36,5 @@ setup(
     extras_require = {
     'doc':  ['sphinx>=1.4', 'numpydoc', 'jupyter','nbsphinx'],
     },
-    ext_modules = cythonize([
-        "{}/construct_response_function.pyx".format(package_name),
-    ]),
+    ext_modules = cythonize("{}/*.pyx".format(package_name)),
 )
