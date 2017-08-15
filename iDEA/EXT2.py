@@ -28,56 +28,6 @@ from . import ELF
 from . import results as rs
 
 
-def single_index(pm, j, k):
-    r"""Takes every permutation of the two electron indices and creates a 
-    single unique index.
-
-    .. math:: 
-   
-        jk = k + (j \times grid)
-    
-    parameters
-    ----------
-    pm : object
-        Parameters object
-    j : integer
-        1st electron index
-    k : integer
-        2nd electron index
-
-    returns integer 
-        Single unique index, jk
-    """
-    jk = k + j*pm.sys.grid
-
-    return jk
-
-
-def inverse_single_index(pm, jk):
-    r"""Inverses the single_index operation. Takes the single index and returns
-    the two separate electron indices.
-
-    .. math::
-
-        &k = jk \ \text{mod} \ grid \\
-        &j = \dfrac{jk-k}{grid} 
-
-    parameters
-    ----------
-    pm : object
-        Parameters object
-    jk : integer
-        Single unique index
-
-    returns integers
-        1st electron index, j. 2nd electron index, k.
-    """
-    k = jk % pm.sys.grid
-    j = (jk - k)//pm.sys.grid
-
-    return j, k
-
-
 def construct_antisymmetry_matrices(pm):
     r"""Constructs the reduction and expansion matrices that are used to 
     exploit the exchange antisymmetry of the wavefunction.

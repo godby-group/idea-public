@@ -27,60 +27,6 @@ from . import construct_antisymmetry_coo3 as antisymmetry_coo
 from . import construct_wavefunction3 as wavefunction3
 
 
-def single_index(pm, j, k, l):
-    r"""Takes every permutation of the three electron indices and creates a
-    single unique index.
-
-    .. math:: 
-   
-        jkl = l + (k \times grid) + (j \times grid^{2})
-    
-    parameters
-    ----------
-    pm : object
-        Parameters object
-    j : integer
-        1st electron index
-    k : integer
-        2nd electron index
-    l : integer
-        3rd electron index
-
-    returns integer 
-        Single unique index, jkl
-    """
-    jkl = l + k*pm.sys.grid + j*pm.sys.grid**2
-
-    return jkl
-
-
-def inverse_single_index(pm, jkl):
-    r"""Inverses the single_index operation. Takes the single index and returns
-    the three separate electron indices.
-
-    .. math::
-
-        &l = jkl \ \text{mod} \ grid \\
-        &k = \dfrac{jkl-l \ \text{mod} \ grid^{2}}{grid} \\
-        &j = \dfrac{jkl-l-(k \times grid)}{grid^{2}} 
-
-    parameters
-    ----------
-    pm : object
-        Parameters object
-    jkl : integer
-        Single unique index
-
-    returns integers
-        1st electron index, j. 2nd electron index, k. 3rd electron index, l.
-    """
-    l = jkl % pm.sys.grid
-    k = ((jkl - l)%(pm.sys.grid**2)) // pm.sys.grid
-    j = (jkl - l - k*pm.sys.grid) // pm.sys.grid**2
-
-    return j, k, l
-
-
 def construct_antisymmetry_matrices(pm):
     r"""Constructs the reduction and expansion matrices that are used to
     exploit the exchange antisymmetry of the wavefunction.
