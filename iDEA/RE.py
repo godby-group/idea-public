@@ -824,7 +824,7 @@ def calculate_xc_energy(pm, approx, density_ks, v_h, v_xc, energies_ks):
     try:
         name = 'gs_{}_E'.format(approx)
         energy_approx = rs.Results.read(name, pm)
-        E_xc = energy_approx - np.sum(energies_ks)
+        E_xc = energy_approx - np.sum(energies_ks[:pm.sys.NE])
         for j in range(pm.sys.grid):
             E_xc += (density_ks[j])*(0.5*v_h[j] + v_xc[j])*pm.sys.deltax
     except:
