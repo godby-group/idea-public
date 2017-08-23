@@ -42,7 +42,7 @@ class SpaceGrid(object):
        self.v_int = np.zeros((pm.sys.grid,pm.sys.grid),dtype='float')
        for i in range(pm.sys.grid):
           for k in range(pm.sys.grid):
-             self.v_int[i,k] = 1.0/(abs(self.grid[i]-self.grid[k])+pm.sys.acon)
+             self.v_int[i,k] = pm.sys.interaction_strength/(abs(self.grid[i]-self.grid[k])+pm.sys.acon)
 
        stencil_first_derivative = pm.re.stencil
        if stencil_first_derivative == 5:
