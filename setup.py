@@ -16,10 +16,9 @@ arch = platform.system()
 class clean_inplace(clean):
     """Clean shared libararies"""
 
-    # Calls the default run command, then deletes the build area
-    # (equivalent to "setup clean --all").
+    # Calls the default run command, then deletes .so files
     def run(self):
-        #clean.run(self)
+        clean.run(self)
         files=os.listdir(package_name)
 
         if arch == 'Linux':
