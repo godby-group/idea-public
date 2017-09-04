@@ -16,14 +16,13 @@ Installing iDEA
 
 .. code-block:: bash
 
-   git clone USERNAME@rwgu4.its.york.ac.uk:/shared/storage/physrwg/trunk/iDEAL/ my_idea
+   git clone USERNAME@rwgu4.its.york.ac.uk:/shared/storage/physrwg/trunk/iDEAL iDEAL
 
    # install iDEA for your unix user, including documentation extension
-   cd my_idea
+   cd iDEAL
    pip install --user -e .[doc]
 
    # compile Cython modules
-   cd ..
    python setup.py build_ext --inplace
 
 Updating iDEA
