@@ -13,7 +13,7 @@ import scipy.sparse as sps
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
 from scipy.optimize import curve_fit
-from . import RE_Utilities
+from . import RE_cython
 from . import results as rs
 
 
@@ -713,10 +713,8 @@ def calculate_current_density(pm, density_ks):
         1D array of the Kohn-Sham electron current density, at time t+dt,
         indexed as current_density_ks[space_index]
     """
-    current_density_ks = np.zeros(pm.sys.grid, dtype=np.float, order='F')
-    current_density_ks = RE_Utilities.continuity_eqn(current_density_ks,
-                         density_ks[1,:], density_ks[0,:], pm.sys.deltax,
-                         pm.sys.deltat, pm.sys.grid)
+    current_density_ks = np.zeros(pm.sys.grid, dtype=np.float)
+    current_density_ks = RE_cython.continuity_eqn(pm, density_ks[1,:], density_ks[0,:])
 
     return current_density_ks
 

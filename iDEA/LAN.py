@@ -13,7 +13,7 @@ import scipy.sparse as sps
 import scipy.special as spec
 import scipy.sparse.linalg as spsla
 
-from . import RE_Utilities
+from . import RE_cython
 from . import results as rs
 
 # Function to read input
@@ -87,8 +87,8 @@ def SolveKSE(V,Psi,j,frac1,frac2,z_change):
 
 # Function to calculate the current density
 def CalculateCurrentDensity(n,upper_bound,j):
-   J = np.zeros(pm.sys.grid, dtype=np.float, order='F')
-   J=RE_Utilities.continuity_eqn(J, n[j,:], n[j-1,:], pm.sys.deltax, pm.sys.deltat, pm.sys.grid)
+   J = np.zeros(pm.sys.grid, dtype=np.float)
+   J=RE_cython.continuity_eqn(pm, n[j,:], n[j-1,:])
    if(pm.sys.im == 0):
        J=ExtrapolateCD(J,j,n,upper_bound)
    return J

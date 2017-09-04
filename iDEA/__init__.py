@@ -8,28 +8,4 @@ flexibility in bridging the gap between model systems and ab initio
 descriptions.
 """
 from __future__ import print_function
-make_fortran = True
 
-if make_fortran:
-    # make Fortran libraries
-    import os
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    import subprocess
-    # note: this could be made more clever to
-    #   automatically detect different environments
-    #msg = subprocess.check_output(["make"], cwd=dir_path)
-    
-    # First check whether anything needs to be made (needed to print a message
-    # *only* if we are actually making something)
-    p = subprocess.Popen(["make","--just-print"], cwd=dir_path, 
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, err = p.communicate()
-    if out.find(b"Nothing to be done") != -1:
-        pass
-    else:
-        print("Compiling Fortran libraries...")
-        p = subprocess.Popen(["make"], cwd=dir_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = p.communicate()
-        if err:
-            print(err)
-            raise ImportError("Error while compiling Fortran libraries. Try typing 'make' in iDEA subdirectory.".format(err))

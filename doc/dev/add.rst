@@ -49,7 +49,7 @@ At the **very minimum**
     .. code-block:: bash
 
        # run this in the base directory
-       python -m unittest discover
+       python -m unittest iDEA/test*.py
 
 
  2. Check that the documentation builds fine:

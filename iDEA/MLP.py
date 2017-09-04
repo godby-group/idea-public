@@ -21,7 +21,7 @@ import copy as copy
 import scipy.sparse as sps
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
-from . import RE_Utilities
+from . import RE_cython
 from . import LDA
 from . import results as rs
 
@@ -112,8 +112,8 @@ def getc_h(den):
 
 # Function to calculate the current density
 def CalculateCurrentDensity(n,j):
-   J = np.zeros(pm.sys.grid, dtype=np.float, order='F')
-   J = RE_Utilities.continuity_eqn(J, n[j,:], n[j-1,:], pm.sys.deltax, pm.sys.deltat, pm.sys.grid)
+   J = np.zeros(pm.sys.grid, dtype=np.float)
+   J = RE_cython.continuity_eqn(pm, n[j,:], n[j-1,:])
    if(pm.sys.im == 0):
       J = ExtrapolateCD(J,j,n,(int((pm.sys.grid-1)/2.0)))
    return J

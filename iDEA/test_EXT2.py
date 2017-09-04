@@ -22,11 +22,11 @@ class TestHarmonicOscillator(unittest.TestCase):
         pm.run.verbosity = 'low'
 
         # It might still be possible to speed this up
-        pm.sys.NE = 2                  #: Number of electrons
-        pm.sys.grid = 61               #: Number of grid points (must be odd)
-        pm.sys.xmax = 7.5              #: Size of the system
-        pm.sys.acon = 1.0              #: Smoothing of the Coloumb interaction
-        pm.sys.interaction_strength = 1#: Scales the strength of the Coulomb interaction
+        pm.sys.NE = 2                     #: Number of electrons
+        pm.sys.grid = 61                  #: Number of grid points (must be odd)
+        pm.sys.xmax = 7.5                 #: Size of the system
+        pm.sys.acon = 1.0                 #: Smoothing of the Coloumb interaction
+        pm.sys.interaction_strength = 1.0 #: Scales the strength of the Coulomb interaction
         def v_ext(x):
             """Initial external potential"""
             return 0.5*(0.25**2)*(x**2)
