@@ -31,6 +31,12 @@ Updating iDEA
    # Pull all changes from central git repository
    git pull
 
+   # Remove the compiled cython modules 
+   python setup.py clean
+
+   # Recompile the cython modules
+   python setup.py build_ext --inplace
+
 .. _generate-documentation:
 
 Generating the documentation
