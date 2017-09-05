@@ -32,7 +32,7 @@ Updating iDEA
    git pull
 
    # Remove the compiled cython modules 
-   python setup.py clean
+   python setup.py clean --all
 
    # Recompile the cython modules
    python setup.py build_ext --inplace
