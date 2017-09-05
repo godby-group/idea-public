@@ -8,22 +8,20 @@ Installation requirements
  * `Python <http://www.python.org>`_ 2.7 or later
  * `numpy <http://www.numpy.org>`_ 1.10 or later
  * `scipy <http://www.scipy.org>`_ 0.17 or later
- * `Cython <http://cython.org>`_ 0.25.2 or later
- * *(optional)* `matplotlib <http://matplotlib.org/>`_ 1.4.3 or later for post-processing
+ * `Cython <http://cython.org>`_ 0.22 or later
+ * *(optional)* `matplotlib <http://matplotlib.org/>`_ 1.4 or later for post-processing
 
 Installing iDEA
 ----------------
 
 .. code-block:: bash
-
+   
+   # Clone from the central repository
    git clone USERNAME@rwgu4.its.york.ac.uk:/shared/storage/physrwg/trunk/iDEAL iDEAL
 
-   # install iDEA for your unix user, including documentation extension
+   # Install iDEA for your unix user, including documentation extension
    cd iDEAL
    pip install --user -e .[doc]
-
-   # compile Cython modules
-   python setup.py build_ext --inplace
 
 Updating iDEA
 -------------
