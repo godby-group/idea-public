@@ -19,7 +19,7 @@ iDEA
    * :ref:`modindex`
    * :ref:`search`
     
-The iDEA code (interacting Dynamic Electrons Approach) is a Python-Fortran
+The iDEA code (interacting Dynamic Electrons Approach) is a Python-Cython
 software suite developed in Rex Godby's group at the University of York since
 2010. It has a central role in a number of research projects related to
 many-particle quantum mechanics for electrons in matter.

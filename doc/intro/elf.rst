@@ -1,2 +1,2 @@
-iDEA ELF
-========
+iDEA ELF (Electron Localisation Function)
+=========================================

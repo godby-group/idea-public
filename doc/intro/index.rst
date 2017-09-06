@@ -8,10 +8,15 @@ modules of iDEA are implemented.
 .. toctree::
 
    idea
-   mb
+   ext
    re
    lda
+   hf
+   hyb
+   non
    mlp
+   lan
    elf
+   opt
    mbpt
 

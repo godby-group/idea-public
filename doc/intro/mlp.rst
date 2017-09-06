@@ -1,2 +1,2 @@
-iDEA MLP
-========
+iDEA MLP (Mixed Localisation Potential)
+=======================================

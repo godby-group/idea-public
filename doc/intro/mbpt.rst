@@ -1,5 +1,5 @@
-iDEA MBPT
-=========
+iDEA MBPT (Many Body Perturbaton Theory)
+========================================
 
 .. [Rojas1995] Rojas HN, Godby RW, Needs RJ (1995) Space-Time Method for Ab Initio Calculations of Self-Energies and Dielectric Response Functions of Solids. Phys Rev Lett 74:1827–1830. doi: 10.1103/PhysRevLett.74.1827
 
