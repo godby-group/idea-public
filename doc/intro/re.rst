@@ -8,7 +8,7 @@ The ground-state KS potential :math:`V_{\mathrm{KS}}(x,0)` is calculated by star
 
 .. math:: V_{\mathrm{KS}}(x,0) \rightarrow V_{\mathrm{KS}}(x,0) + \mu [n_{\mathrm{KS}}(x,0)^{p} - n(x,0)^{p}],
 
-where :math:`n_{\mathrm{KS}}(x,0)` is the KS electron density, and :math:`\mu` and :math:`p` are convergence parameters. The correct :math:`V_{\mathrm{KS}}(x,0)` is found when :math:`n_{\mathrm{KS}}(x,0) = n(x,0)`.
+where :math:`n_{\mathrm{KS}}(x,0)` is the ground-state KS electron density, and :math:`\mu` and :math:`p` are convergence parameters. The correct :math:`V_{\mathrm{KS}}(x,0)` is found when :math:`n_{\mathrm{KS}}(x,0) = n(x,0)`.
 
 Time-dependent Kohn-Sham potential
 ----------------------------------
