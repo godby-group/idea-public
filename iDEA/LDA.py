@@ -24,7 +24,7 @@ import scipy.sparse as sps
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
 
-from . import RE_Utilities
+from . import RE_cython
 from . import results as rs
 from . import mix
 from . import minimize
@@ -204,19 +204,22 @@ def hartree_energy(pm, V_H, density):
 ###############################################
 exc_lda = {}  # parameters for \varepsilon_{xc}(n)
 exc_lda[1] = {
-   'a' :  -1.06281487909,
-   'b' :  2.27062628232,
-   'c' :  -4.45558352638,
-   'd' :  5.66520585399,
-   'e' :  -3.91916844427,
-   'f' :  1.10964769998,
-   'g' :  0.716398992513,
+   'a' :  -1.22015237105,
+   'b' :  3.68379869508,
+   'c' :  -11.2544116799,
+   'd' :  23.1694459076,
+   'e' :  -26.2993138321,
+   'f' :  12.2821546751,
+   'g' :  0.748763421006,
 }
 exc_lda[2] =  {
-   'a' :  -0.74,
-   'b' :  0.68,
-   'c' :  -0.38,
-   'd' :  0.604,
+   'a' :  -1.09745306605,
+   'b' :  2.88550648624,
+   'c' :  -7.75624825681,
+   'd' :  14.2768408722,
+   'e' : -14.7954437323,
+   'f' : 6.42250118148,
+   'g' : 0.712989331516
 }
 exc_lda[3] =  {
    'a' :  -0.77,
@@ -227,7 +230,7 @@ exc_lda[3] =  {
 
 vxc_lda = {}  # parameters for V_{xc}(n)
 for n in [1,2,3]:
-    if(n == 1):
+    if(n == 1 or n == 2):
         eps = exc_lda[n]
         a = eps['a']
         b = eps['b']
@@ -265,13 +268,13 @@ for n in [1,2,3]:
 #########################################################
 ex_lda = {} # parameters for \varepsilon_{x}(n)
 ex_lda['heg'] = {
-   'a' : -1.01341402357, 
-   'b' : 2.14791479607,
-   'c' : -4.14283261299,
-   'd' : 5.15525867946,
-   'e' : -3.49560006439,
-   'f' : 0.972478875104,
-   'g' : 0.705538574677,
+   'a' : -1.15111280322, 
+   'b' : 3.34399995728,
+   'c' : -9.70787906356,
+   'd' : 19.0880351582,
+   'e' : -20.8961904627,
+   'f' : 9.48614266406,
+   'g' : 0.735861727146,
 }
 
 ec_lda = {} # parameters for \varepsilon_{c}(n)
@@ -321,11 +324,11 @@ def EXC(pm, n):
    """
    NE = pm.lda.NE
 
-   if(NE == 1):
+   if(NE == 1 or NE == 2):
        p = exc_lda[NE]
        e_xc = (p['a'] + p['b'] * n + p['c'] * n**2 + p['d'] * n**3 + p['e'] * \
               n**4 + p['f'] * n**5) * n**p['g']
-   elif((NE == 2) or (NE == 3)):
+   elif(NE == 3):
        p = exc_lda[NE]
        e_xc = (p['a'] + p['b'] * n + p['c'] * n**2) * n**p['d']
    else:
@@ -362,11 +365,11 @@ def VXC(pm, Den):
    """
    NE = pm.lda.NE
 
-   if(NE == 1):
+   if(NE == 1 or NE == 2):
        p = vxc_lda[NE]
        V_xc = (p['a'] + p['b'] * Den + p['c'] * Den**2 + p['d'] * Den**3 + \
               p['e'] * Den**4 + p['f'] * Den**5) * Den**p['g']
-   elif((NE == 2) or (NE == 3)):
+   elif(NE == 3):
        p = vxc_lda[NE]
        V_xc = (p['a'] + p['b'] * Den + p['c'] * Den**2) * Den**p['d']
    else: 
@@ -519,8 +522,6 @@ def calculate_current_density(pm, density):
     .. math::
 
         \frac{\partial n}{\partial t} + \nabla \cdot j = 0
-       
-    Note: This function requires RE_Utilities.so
 
     parameters
     ----------
@@ -535,16 +536,14 @@ def calculate_current_density(pm, density):
         current_density[time_index,space_index]
     """
     pm.sprint('', 1, newline=True)
-    current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float, 
-                      order='F')
+    current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
     string = 'LDA: calculating current density'
     pm.sprint(string, 1, newline=True)
     for i in range(1, pm.sys.imax):
          string = 'LDA: t = {:.5f}'.format(i*pm.sys.deltat)
          pm.sprint(string, 1, newline=False)
-         J = np.zeros(pm.sys.grid, dtype=np.float, order='F')
-         J = RE_Utilities.continuity_eqn(J, density[i,:], density[i-1,:], 
-             pm.sys.deltax, pm.sys.deltat, pm.sys.grid)
+         J = np.zeros(pm.sys.grid, dtype=np.float)
+         J = RE_cython.continuity_eqn(pm, density[i,:], density[i-1,:])
          current_density[i,:] = J[:]
     pm.sprint('', 1, newline=True)
 
@@ -735,7 +734,7 @@ def main(parameters):
       v_ks_t = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
       v_xc_t = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
       current = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
-      n_t = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float',order='F')
+      n_t = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
       v_ks_t[0,:] = v_ks[:]
       n_t[0,:] = n[:]
       for i in range(pm.sys.grid): 

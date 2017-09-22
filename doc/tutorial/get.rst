@@ -8,30 +8,20 @@ Installation requirements
  * `Python <http://www.python.org>`_ 2.7 or later
  * `numpy <http://www.numpy.org>`_ 1.10 or later
  * `scipy <http://www.scipy.org>`_ 0.17 or later
- * Fortran90 compiler, such as `gfortran <https://gcc.gnu.org/fortran/>`_ 5 or
-   later, `ifort <https://software.intel.com/en-us/fortran-compilers>`_ 14 or
-   later
- * *(optional)* `Intel MKL  <https://software.intel.com/en-us/intel-mkl>`_ 11.3
-   or later for parallel execution
- * *(optional)* `matplotlib <http://matplotlib.org/>`_ 1.4.3 or later for post-processing
+ * `Cython <http://cython.org>`_ 0.22 or later
+ * *(optional)* `matplotlib <http://matplotlib.org/>`_ 1.4 or later for post-processing
 
 Installing iDEA
 ----------------
 
 .. code-block:: bash
+   
+   # Clone from the central repository
+   git clone USERNAME@rwgu4.its.york.ac.uk:/shared/storage/physrwg/trunk/iDEAL iDEAL
 
-   git clone USERNAME@rwgu4.its.york.ac.uk:/shared/storage/physrwg/trunk/iDEAL/ my_idea
-   cd my_idea
-
-   # install iDEA for your unix user, including documentation extension
+   # Install iDEA for your unix user, including documentation extension
+   cd iDEAL
    pip install --user -e .[doc]
-
-iDEA includes some Fortran extensions, which are built automatically the first
-time you run it. If the default options for the compiler, libraries etc.  do
-not work for your platform, you will need to adapt the options for one of the
-available architectures in :code:`iDEA/arch/<your architecture>.mk`. Then
-:code:`export ARCH=<your architecture>` in order to tell iDEA to use this
-architecture file.
 
 Updating iDEA
 -------------
@@ -40,6 +30,12 @@ Updating iDEA
 
    # Pull all changes from central git repository
    git pull
+
+   # Remove the compiled cython modules 
+   python setup.py clean --all
+
+   # Recompile the cython modules
+   python setup.py build_ext --inplace
 
 .. _generate-documentation:
 

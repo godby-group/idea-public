@@ -7,6 +7,35 @@ info_dict = {}
 with open(convert_path('{}/info.py'.format(package_name))) as f:
     exec(f.read(), info_dict)
 
+from distutils.command.clean import clean
+import os
+import platform
+
+arch = platform.system()
+
+class clean_inplace(clean):
+    """Clean shared libararies"""
+
+    # Calls the default run command, then deletes .so files
+    def run(self):
+        clean.run(self)
+        files=os.listdir(package_name)
+
+        if arch == 'Linux':
+            ext = ".so"
+        elif arch == 'Darwin':
+            ext = '.dSYM'
+        elif arch == 'Windows':
+            ext = '.dll'
+        else:
+            ext = '.so'
+
+        for f in files:
+            if f.endswith(ext):
+                path = os.path.join(package_name,f)
+                print("Removing {}".format(path))
+                os.remove(path)
+
 
 setup(
     name='iDEA',
@@ -37,4 +66,8 @@ setup(
     'doc':  ['sphinx>=1.4', 'numpydoc', 'jupyter','nbsphinx'],
     },
     ext_modules = cythonize("{}/*.pyx".format(package_name)),
+    cmdclass = {'clean': clean_inplace},
 )
+
+
+

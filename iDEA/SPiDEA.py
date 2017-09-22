@@ -15,7 +15,7 @@ import numpy as np
 import scipy as sp
 import scipy.sparse as sps
 import scipy.sparse.linalg as spsla
-from . import RE_Utilities
+from . import RE_cython
 from . import results as rs
 
 
@@ -213,8 +213,6 @@ def calculate_current_density(pm, densities):
     .. math::
 
         \frac{\partial n}{\partial t} + \nabla \cdot j = 0
-       
-    Note: This function requires RE_Utilities.so
 
     parameters
     ----------
@@ -229,16 +227,14 @@ def calculate_current_density(pm, densities):
         current_density[time_index,space_index]
     """
     pm.sprint('', 1, newline=True)
-    current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float, 
-                      order='F')
+    current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
     string = 'EXT: calculating current density'
     pm.sprint(string, 1, newline=True)
     for i in range(1, pm.sys.imax):
          string = 'EXT: t = {:.5f}'.format(i*pm.sys.deltat)
          pm.sprint(string, 1, newline=False)
-         J = np.zeros(pm.sys.grid, dtype=np.float, order='F')
-         J = RE_Utilities.continuity_eqn(J, densities[i,:], densities[i-1,:], 
-             pm.sys.deltax, pm.sys.deltat, pm.sys.grid) 
+         J = np.zeros(pm.sys.grid, dtype=np.float)
+         J = RE_cython.continuity_eqn(pm, densities[i,:], densities[i-1,:]) 
          current_density[i,:] = J[:]
     pm.sprint('', 1, newline=True)
 
@@ -314,7 +310,7 @@ def main(parameters):
         string = 'EXT: imaginary time, t = {}, convergence = {}'\
                     .format(i*pm.ext.ideltat, wavefunction_convergence)
         pm.sprint(string, 1, newline=False)
-        if(wavefunction_convergence < pm.ext.itol*10.0):
+        if(wavefunction_convergence < pm.ext.itol):
             i = pm.ext.iimax
             string = 'EXT: ground-state converged' 
             pm.sprint(string, 1, newline=True)
@@ -350,8 +346,7 @@ def main(parameters):
         C = construct_C(pm, H, True)
 
         # Construct time-dependent density array and save the ground-state
-        densities = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float, 
-                    order='F')
+        densities = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
         densities[0,:] = density
 
         # Convert wavefunction array to complex

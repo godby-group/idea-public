@@ -42,7 +42,7 @@ class SpaceGrid(object):
        self.v_int = np.zeros((pm.sys.grid,pm.sys.grid),dtype='float')
        for i in range(pm.sys.grid):
           for k in range(pm.sys.grid):
-             self.v_int[i,k] = 1.0/(abs(self.grid[i]-self.grid[k])+pm.sys.acon)
+             self.v_int[i,k] = pm.sys.interaction_strength/(abs(self.grid[i]-self.grid[k])+pm.sys.acon)
 
        stencil_first_derivative = pm.re.stencil
        if stencil_first_derivative == 5:
@@ -321,7 +321,7 @@ class Input(object):
         re.stencil = 5                       #: Discretisation of 1st derivative (5 or 7)
         re.mu = 1.0                          #: 1st convergence parameter in the ground-state reverse-engineering algorithm
         re.p = 0.05                          #: 2nd convergence parameter in the ground-state reverse-engineering algorithm
-        re.gs_density_tolerance = 1e-9       #: Tolerance of the error in the ground-state density
+        re.gs_density_tolerance = 1e-10      #: Tolerance of the error in the ground-state density
         re.starting_guess = 'extre'          #: Starting guess of groud-state Vks (if not available will start with Vxt)
         re.nu = 1.0                          #: Convergence parameter in the time-dependent reverse-engineering algorithm
         re.rtol_solver = 1e-12               #: Tolerance of linear solver in real time propagation (Recommended: 1e-12)
@@ -334,7 +334,7 @@ class Input(object):
         ### OPT parameters
         self.opt = InputSection()
         opt = self.opt
-        opt.tol = 1e-3                       #: Tolerance of the error in the density
+        opt.tol = 1e-4                       #: Tolerance of the error in the density
         opt.mu = 1.0                         #: 1st convergence parameter
         opt.p = 0.05                         #: 2nd convergence parameter
 

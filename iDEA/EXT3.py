@@ -18,13 +18,12 @@ import scipy.misc as spmisc
 import scipy.special as spec
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
+
+from . import RE_cython
+from . import EXT_cython
 from . import NON	
 from . import ELF 
 from . import results as rs
-from . import RE_Utilities
-from . import construct_hamiltonian_coo3 as hamiltonian_coo
-from . import construct_antisymmetry_coo3 as antisymmetry_coo
-from . import construct_wavefunction3 as wavefunction3
 
 
 def construct_antisymmetry_matrices(pm):
@@ -43,22 +42,22 @@ def construct_antisymmetry_matrices(pm):
     """
     # Number of elements in the reduced wavefunction
     coo_size = int(np.prod(list(range(pm.sys.grid,pm.sys.grid+3)))\
-            /spmisc.factorial(3))
+               /spmisc.factorial(3))
 
     # COOrdinate holding arrays for the reduction matrix
-    coo_1 = np.zeros((coo_size), dtype=int, order='F')
+    coo_1 = np.zeros((coo_size), dtype=int)
     coo_2 = np.copy(coo_1)
-    coo_data_1 = np.zeros((coo_size), dtype=np.float, order='F')
+    coo_data_1 = np.ones((coo_size), dtype=np.float)
 
     # COOrdinate holding arrays for the expansion matrix
-    coo_3 = np.zeros((pm.sys.grid**3), dtype=int, order='F')
+    coo_3 = np.zeros((pm.sys.grid**3), dtype=int)
     coo_4 = np.copy(coo_3)
-    coo_data_2 = np.zeros((pm.sys.grid**3), dtype=np.float, order='F')
+    coo_data_2 = np.zeros((pm.sys.grid**3), dtype=np.float)
 
     # Populate the COOrdinate holding arrays with the coordinates and data
-    coo_1, coo_2, coo_3, coo_4, coo_data_1, coo_data_2 = (antisymmetry_coo.
-                       construct_antisymmetry_coo(coo_1, coo_2, coo_3, coo_4,
-                       coo_data_1, coo_data_2, pm.sys.grid, coo_size))
+    coo_1, coo_2 = EXT_cython.reduction_three(coo_1, coo_2, pm.sys.grid)
+    coo_3, coo_4, coo_data_2 = EXT_cython.expansion_three(coo_3, coo_4, 
+                               coo_data_2, pm.sys.grid)
 
     # Convert the holding arrays into COOrdinate sparse matrices
     reduction_matrix = sps.coo_matrix((coo_data_1,(coo_1,coo_2)), shape=(
@@ -73,8 +72,7 @@ def construct_antisymmetry_matrices(pm):
     return reduction_matrix, expansion_matrix
 
 
-def construct_A_reduced(pm, reduction_matrix, expansion_matrix, v_ext,
-                        v_coulomb, td):
+def construct_A_reduced(pm, reduction_matrix, expansion_matrix, td):
     r"""Constructs the reduced form of the sparse matrix A.
 
     .. math:: 
@@ -95,11 +93,6 @@ def construct_A_reduced(pm, reduction_matrix, expansion_matrix, v_ext,
     expansion_matrix : sparse_matrix
         Sparse_matrix used to expand the reduced wavefunction (insert 
         indistinct elements) to get back the full wavefunction
-    v_ext : array_like
-        1D array of the external potential, indexed as 
-        v_ext[space_index] 
-    v_coulomb : array_like
-        1D array of the Coulomb potential, indexed as v_coulomb[space_index]
     td : integer
         0 for imaginary time, 1 for real time
 
@@ -107,44 +100,33 @@ def construct_A_reduced(pm, reduction_matrix, expansion_matrix, v_ext,
         Reduced form of the sparse matrix A, used when solving the equation 
         Ax=b
     """
-    # Define parameter r
-    if(td == 0):
-        r = pm.ext.ideltat/(4.0*pm.sys.deltax**2)
-    elif(td == 1):
-        r = pm.sys.deltat/(4.0*pm.sys.deltax**2)
+    # Estimate the number of non-zero elements in the Hamiltonian matrix
+    coo_size = int((3*pm.sys.stencil-2)*(pm.sys.grid**3))
 
-    # Constant that appears in the main diagonal of the Hamiltonian
-    constant = 2.0*(pm.sys.deltax**2)*r
-
-    # Construct array of the band elements of the single-particle kinetic
-    # energy matrix that will be passed to construct_hamiltonian_coo()
-    band_elements = construct_band_elements(pm, r, td)
-
-    # Estimate the number of non-zero elements that will be in the matrix form
-    # of the system's Hamiltonian, then initialize the COOrdinate sparse matrix
-    # holding arrays with this shape
-    max_size = hamiltonian_max_size(pm)
-    coo_1 = np.zeros((max_size), dtype=int, order='F')
+    # COOrdinate holding arrays for the Hamiltonian matrix
+    coo_1 = np.zeros((coo_size), dtype=int)
     coo_2 = np.copy(coo_1)
-    coo_data = np.zeros((max_size), dtype=np.float, order='F')
+    coo_data = np.zeros((coo_size), dtype=np.float)
 
     # Pass the holding arrays and band elements to the Hamiltonian constructor, 
     # and populate the holding arrays with the coordinates and data
-    coo_1, coo_2, coo_data = hamiltonian_coo.construct_hamiltonian_coo(coo_1, 
-                             coo_2, coo_data, constant, v_ext, v_coulomb,
-                             pm.sys.interaction_strength, band_elements, 
-                             pm.sys.grid)
+    coo_1, coo_2, coo_data = EXT_cython.hamiltonian_three(pm, coo_1, coo_2, coo_data, td)
 
     # Convert the holding arrays into a COOrdinate sparse matrix
-    if(td== 0):
-        A = sps.coo_matrix((coo_data,(coo_1,coo_2)), shape=(pm.sys.grid**3,
-            pm.sys.grid**3), dtype=np.float)
+    if(td == 0):
+        prefactor = pm.ext.ideltat/2.0
+        A = prefactor*sps.coo_matrix((coo_data,(coo_1,coo_2)), shape=(
+            pm.sys.grid**3, pm.sys.grid**3), dtype=np.float)
+        A += sps.identity(pm.sys.grid**3, dtype=np.float)
     elif(td == 1):
         coo_data = coo_data.astype(np.cfloat)
-        coo_data = coo_data*1.0j
-        A = sps.coo_matrix((coo_data,(coo_1,coo_2)), shape=(pm.sys.grid**3,
+        prefactor = 1.0j*pm.sys.deltat/2.0
+        A = prefactor*sps.coo_matrix((coo_data,(coo_1,coo_2)), shape=(pm.sys.grid**3,
             pm.sys.grid**3), dtype=np.cfloat)
         A += sps.identity(pm.sys.grid**3, dtype=np.cfloat)
+        if(pm.sys.im == 1):
+            imag_pot = EXT_cython.imag_pot_three(pm)
+            A += prefactor*sps.spdiags(imag_pot, 0, pm.sys.grid**3, pm.sys.grid**3)
 
     # Convert into compressed sparse column (csc) form for efficient arithemtic
     A = sps.csc_matrix(A)
@@ -155,104 +137,7 @@ def construct_A_reduced(pm, reduction_matrix, expansion_matrix, v_ext,
     return A_reduced
 
 
-def construct_band_elements(pm, r, td):
-    r"""Calculates the band elements of the single-particle kinetic energy 
-    matrix. These are then passed to the Hamiltonian constructor 
-    construct_hamiltonian_coo(). For example, the single-particle kinetic
-    energy matrix with a bandwidth of 2 (3-point stencil) on a 6-point grid:
-
-    .. math::
-
-        K = -\frac{1}{2} \frac{d^2}{dx^2} \approx -\frac{1}{2} 
-        \begin{pmatrix}
-        -2 & 1 & 0 & 0 & 0 & 0 \\
-        1 & -2 & 1 & 0 & 0 & 0 \\
-        0 & 1 & -2 & 1 & 0 & 0 \\
-        0 & 0 & 1 & -2 & 1 & 0 \\
-        0 & 0 & 0 & 1 & -2 & 1 \\
-        0 & 0 & 0 & 0 & 1 & -2 
-        \end{pmatrix}
-        \frac{1}{\delta x^2}
-
-    Since :math:`A = I + \dfrac{\delta \tau}{2}H` and :math:`K_{tot} = K_{1} + K_{2} + K_{3}`, 
-    band_elements :math:`= [1+\frac{3 \delta \tau}{2 \delta x^2}, -\frac{\delta \tau}{4\delta x^2}]`
-    Note: This does not include the potential energy contribution.   
-
-    parameters
-    ----------
-    pm : object
-        Parameters object
-    r : complex float
-        Parameter in the equation Ax=b
-    td : integer
-        0 for imaginary time, 1 for real time
-
-    returns array_like 
-        1D array of the band_elements elements, indexed as band_elements[band] 
-    """   
-    # Number of single-particle bands 
-    bandwidth = (pm.sys.stencil+1) // 2
-
-    # Array to store the band elements  
-    band_elements = np.zeros(bandwidth, dtype=np.float, order='F')
-
-    # Define the band elements 
-    if(bandwidth == 2):
-        band_elements[0] = 6.0*r
-        band_elements[1] = -r
-    elif(bandwidth == 3):
-        band_elements[0] = 7.5*r
-        band_elements[1] = -4.0*r/3.0
-        band_elements[2] = r/12.0
-    elif(bandwidth == 4):
-        band_elements[0] = 49.0*r/6.0
-        band_elements[1] = -3.0*r/2.0
-        band_elements[2] = 3.0*r/20.0
-        band_elements[3] = -r/90.0
-
-    # Add the identity matrix to the main diagonal
-    if(td == 0):
-        band_elements[0] += 1.0
-
-    return band_elements
-
-
-def hamiltonian_max_size(pm):
-    r"""Estimates the number of non-zero elements in the Hamiltonian matrix 
-    created by construct_hamiltonian_coo(). This accounts for the main diagonal 
-    (x**3) and the off-diagonals for all three electrons (6x**3, 12x**3 or 
-    18x**3 depending on the stencil used). This will overestimate the number of
-    elements, resulting in an array size larger than the total number of
-    elements. These are truncated at the point of creation in the
-    scipy.sparse.coo_matrix() constructor. For example, with a 3-point stencil:
-
-    .. math:: 
-    
-        \textrm{max\_size} = x^3 + 6x^3 = 7x^3
-
-    parameters
-    ----------
-    pm : object
-        Parameters object 
-
-    returns integer
-        Estimate of the number of non-zero elements in the Hamiltonian matrix
-    """
-    if(pm.sys.grid < pm.sys.stencil):
-        raise ValueError("Insufficient spatial grid points.")
-    if(pm.sys.stencil == 3):
-        max_size = 7*pm.sys.grid**3
-    elif(pm.sys.stencil == 5):
-        max_size = 13*pm.sys.grid**3
-    elif(pm.sys.stencil == 7):
-        max_size = 19*pm.sys.grid**3
-    else:
-       raise ValueError("pm.sys.stencil must be either 3, 5 or 7.") 
-
-    return max_size
-
-
-def initial_wavefunction(pm, wavefunction_reduced, v_ext, ground_state=True):
+def initial_wavefunction(pm, ground_state=True):
     r"""Generates the initial wavefunction for the Crank-Nicholson imaginary 
     time propagation.
 
@@ -269,11 +154,6 @@ def initial_wavefunction(pm, wavefunction_reduced, v_ext, ground_state=True):
     ----------
     pm : object
         Parameters object
-    wavefunction_reduced : array_like
-        1D array of the reduced wavefunction, indexed as 
-        wavefunction_reduced[space_index_1_2_3]
-    v_ext : array_like
-        1D array of the external potential, indexed as v_ext[space_index]
     ground_state : bool
         - True: Construct a Slater determinant of either the three lowest 
                 non-interacting eigenstates of the system, the three lowest
@@ -289,7 +169,7 @@ def initial_wavefunction(pm, wavefunction_reduced, v_ext, ground_state=True):
         wavefunction_reduced[space_index_1_2_3]
     """
     # Single-particle eigenstates
-    eigenstate_1 = np.zeros(pm.sys.grid, dtype=np.float, order='F')
+    eigenstate_1 = np.zeros(pm.sys.grid, dtype=np.float)
     eigenstate_2 = np.copy(eigenstate_1)
     eigenstate_3 = np.copy(eigenstate_1)
 
@@ -375,9 +255,8 @@ def initial_wavefunction(pm, wavefunction_reduced, v_ext, ground_state=True):
     nonzero_2 = np.count_nonzero(eigenstate_2)
     nonzero_3 = np.count_nonzero(eigenstate_3)
     if(nonzero_1 != 0 and nonzero_2 != 0 and nonzero_3 != 0):
-        wavefunction_reduced = wavefunction3.construct_wavefunction(
-                               eigenstate_1, eigenstate_2, eigenstate_3, 
-                               wavefunction_reduced, pm.sys.grid)
+        wavefunction_reduced = EXT_cython.wavefunction_three(eigenstate_1, 
+                               eigenstate_2, eigenstate_3)
 
     return wavefunction_reduced
 
@@ -432,7 +311,7 @@ def qho_approx(pm, n):
         1D array of the nth eigenstate, indexed as eigenstate[space_index]
     """
     # Single-particle eigenstate
-    eigenstate = np.zeros(pm.sys.grid, dtype=np.float, order='F')
+    eigenstate = np.zeros(pm.sys.grid, dtype=np.float)
 
     # Constants
     factorial = np.arange(0,n+1,1)
@@ -525,16 +404,14 @@ def calculate_current_density(pm, density):
         current_density[time_index,space_index]
     """
     pm.sprint('', 1, newline=True)
-    current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float, 
-                      order='F')
+    current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
     string = 'EXT: calculating current density'
     pm.sprint(string, 1, newline=True)
     for i in range(1, pm.sys.imax):
          string = 'EXT: t = {:.5f}'.format(i*pm.sys.deltat)
          pm.sprint(string, 1, newline=False)
-         J = np.zeros(pm.sys.grid, dtype=np.float, order='F')
-         J = RE_Utilities.continuity_eqn(J, density[i,:], density[i-1,:], 
-             pm.sys.deltax, pm.sys.deltat, pm.sys.grid)
+         J = np.zeros(pm.sys.grid, dtype=np.float)
+         J = RE_cython.continuity_eqn(pm, density[i,:], density[i-1,:])
          current_density[i,:] = J[:]
     pm.sprint('', 1, newline=True)
 
@@ -676,7 +553,7 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced,
             string = 'EXT: t = {:.5f}, convergence = {}' \
                     .format(i*pm.ext.ideltat, wavefunction_convergence)
             pm.sprint(string, 1, newline=False)
-        if(wavefunction_convergence < pm.ext.itol*10.0):
+        if(wavefunction_convergence < pm.ext.itol):
             i = pm.ext.iimax
             pm.sprint('', 1, newline=True)
             if(eigenstates_array is None):
@@ -746,7 +623,7 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
         indexed as current_density[time_index,space_index]
     """
     # Array initialisations
-    density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float, order='F')
+    density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
     if(pm.ext.elf_td == 1):
         elf = np.copy(density)
     else:
@@ -810,7 +687,7 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
             string = '----------------------------------------------------' + \
                      '----------'
             pm.sprint(string, 0, newline=True)
-  
+    
     # Calculate the current density
     current_density = calculate_current_density(pm, density)
 
@@ -832,34 +709,23 @@ def main(parameters):
     returns object
         Results object
     """       
-    pm = parameters
-    pm.setup_space()
-    
-    # Array initialisations 
+    # Array initialisations
+    pm = parameters 
     string = 'EXT: constructing arrays'
     pm.sprint(string, 1, newline=True)
-    wavefunction = np.zeros(pm.sys.grid**3, dtype=np.float)
-    x_points = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
-    v_ext = pm.sys.v_ext(x_points)
-    v_pert = pm.sys.v_pert(x_points)
-    x_points_tmp = np.linspace(0.0,2.0*pm.sys.xmax,pm.sys.grid)
-    v_coulomb = 1.0/(pm.sys.acon + x_points_tmp)
+    pm.setup_space()
 
     # Construct the reduction and expansion matrices
     reduction_matrix, expansion_matrix = construct_antisymmetry_matrices(pm)
 
     # Construct the reduced form of the sparse matrices A and C
-    A_reduced = construct_A_reduced(pm, reduction_matrix, expansion_matrix,
-                v_ext, v_coulomb, 0)
+    A_reduced = construct_A_reduced(pm, reduction_matrix, expansion_matrix, 0)
     C_reduced = -A_reduced + 2.0*reduction_matrix*sps.identity(pm.sys.grid**3,
                 dtype=np.float)*expansion_matrix
 
     # Generate the initial wavefunction
-    wavefunction_reduced = np.zeros(reduction_matrix.shape[0], dtype=np.float, 
-                           order='F')
-    wavefunction_reduced = initial_wavefunction(pm, wavefunction_reduced, 
-                           v_ext)
- 
+    wavefunction_reduced = initial_wavefunction(pm)
+
     # Propagate through imaginary time
     energy, wavefunction = solve_imaginary_time(pm, A_reduced, C_reduced,
                            wavefunction_reduced, reduction_matrix,
@@ -875,7 +741,7 @@ def main(parameters):
     results = rs.Results()
     results.add(density,'gs_ext_den')
     results.add(energy,'gs_ext_E')
-    results.add(v_ext,'gs_ext_vxt')
+    results.add(pm.space.v_ext,'gs_ext_vxt')
     if(pm.ext.psi_gs == 1):
         wavefunction_reduced = reduction_matrix*wavefunction
         results.add(wavefunction_reduced,'gs_ext_psi')
@@ -901,7 +767,7 @@ def main(parameters):
 
             # Generate the initial wavefunction
             wavefunction_reduced = initial_wavefunction(pm, 
-                                   wavefunction_reduced, v_ext, 
+                                   wavefunction_reduced, 
                                    ground_state=False)
           
             # Propagate through imaginary time
@@ -939,13 +805,9 @@ def main(parameters):
         string = 'EXT: constructing arrays'
         pm.sprint(string, 1, newline=True)
         wavefunction = wavefunction.astype(np.cfloat)
-        if(pm.sys.im == 1):
-            v_ext = v_ext.astype(np.cfloat)
-        v_ext += v_pert
 
         # Construct the reduced form of the sparse matrices A and C 
-        A_reduced = construct_A_reduced(pm, reduction_matrix, expansion_matrix,
-                    v_ext, v_coulomb, 1)
+        A_reduced = construct_A_reduced(pm, reduction_matrix, expansion_matrix, 1)
         C_reduced = -A_reduced + 2.0*reduction_matrix*sps.identity(
                     pm.sys.grid**3, dtype=np.cfloat)*expansion_matrix
 
@@ -962,7 +824,7 @@ def main(parameters):
         # (and ELF)
         results.add(density,'td_ext_den')
         results.add(current_density,'td_ext_cur')
-        results.add(v_ext,'td_ext_vxt')
+        results.add(pm.space.v_ext+pm.space.v_pert,'td_ext_vxt')
         if(pm.ext.elf_td == 1):
             results.add(elf,'td_ext_elf')
         if(pm.run.save):

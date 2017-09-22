@@ -12,7 +12,7 @@ import scipy as sp
 import scipy.sparse as sps
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
-from . import RE_Utilities
+from . import RE_cython
 from . import results as rs
 
 
@@ -123,8 +123,6 @@ def calculate_current_density(pm, density):
     .. math::
 
         \frac{\partial n}{\partial t} + \nabla \cdot j = 0
-       
-    Note: This function requires RE_Utilities.so
 
     parameters
     ----------
@@ -139,16 +137,14 @@ def calculate_current_density(pm, density):
         current_density[time_index,space_index]
     """
     pm.sprint('', 1, newline=True)
-    current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float, 
-                      order='F')
+    current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
     string = 'EXT: calculating current density'
     pm.sprint(string, 1, newline=True)
     for i in range(1, pm.sys.imax):
          string = 'EXT: t = {:.5f}'.format(i*pm.sys.deltat)
          pm.sprint(string, 1, newline=False)
-         J = np.zeros(pm.sys.grid, dtype=np.float, order='F')
-         J = RE_Utilities.continuity_eqn(J, density[i,:], density[i-1,:],
-             pm.sys.deltax, pm.sys.deltat, pm.sys.grid)
+         J = np.zeros(pm.sys.grid, dtype=np.float)
+         J = RE_cython.continuity_eqn(pm, density[i,:], density[i-1,:])
          current_density[i,:] = J[:]
     pm.sprint('', 1, newline=True)
 
@@ -246,8 +242,7 @@ def main(parameters):
         C = 2.0*sps.identity(pm.sys.grid) - A
 
         # Construct the time-dependent density array 
-        density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float, 
-                  order='F')
+        density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
 
         # Save the ground-state
         wavefunction = wavefunctions[:,0].astype(np.cfloat)

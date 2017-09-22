@@ -49,7 +49,7 @@ At the **very minimum**
     .. code-block:: bash
 
        # run this in the base directory
-       python -m unittest discover
+       python -m unittest iDEA/test*.py
 
 
  2. Check that the documentation builds fine:
@@ -72,7 +72,7 @@ To check whether your code is properly covered by the unit tests, use the
 .. code-block:: bash
 
    # run this in the base directory
-   coverage run -m unittest discover  # tests coverage
+   coverage run -m iDEA/test*.py  # tests coverage
    coverage html  # generates report in doc/coverage/index.html                 
 
 

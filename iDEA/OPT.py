@@ -9,9 +9,10 @@ import scipy as sp
 import scipy.sparse as sps
 import scipy.linalg as spla
 from . import results as rs
+from . import EXT_cython
 
 
-def construct_target_density(pm, approx, x_points, target_density_array=None, 
+def construct_target_density(pm, approx, target_density_array=None, 
                              target_density_function=None):
     r"""Construct the target electron density, either from an input array, a 
     specified function or an input file.
@@ -22,8 +23,6 @@ def construct_target_density(pm, approx, x_points, target_density_array=None,
         Parameters object 
     approx : string
         The approximation that is being used
-    x_points : array_like
-        1D array containing the spatial grid points
     target_density_array : array_like
         1D array of the target electron density
     target_density_function : function
@@ -36,91 +35,12 @@ def construct_target_density(pm, approx, x_points, target_density_array=None,
     if(target_density_array is not None):
         return target_density_array
     elif(target_density_function is not None):
+        x_points = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
         return target_density_function(x_points)
     else:
         name = 'gs_{}_den'.format(approx)
         results = rs.Results()
         return results.read(name, pm)
-
-
-def construct_first_derivative(pm):
-    r"""Constructs the first derivative operator as a matrix. The matrix is 
-    constructed using a five-point or seven-point stencil. This yields an NxN
-    band matrix (where N is the number of grid points). For example with N=6
-    and a five-point stencil:
-   
-    .. math::
-
-        \frac{d}{dx}=
-        \frac{1}{12} \begin{pmatrix}
-        0 & 8 & -1 & 0 & 0 & 0 \\
-        -8 & 0 & 8 & -1 & 0 & 0 \\
-        1 & -8 & 0 & 8 & -1 & 0 \\
-        0 & 1 & -8 & 0 & 8 & -1 \\
-        0 & 0 & 1 & -8 & 0 & 8 \\
-        0 & 0 & 0 & 1 & -8 & 0 
-        \end{pmatrix}
-        \frac{1}{\delta x}
-
-    parameters
-    ----------
-    pm : object
-        Parameters object
-
-    returns sparse_matrix
-        First derivative matrix
-    """
-    # Band elements
-    fd = pm.space.first_derivative
-
-    # Band indices
-    fdi = pm.space.first_derivative_indices
-
-    # Construct sparse matrix
-    first_derivative = sps.diags(fd, fdi, shape=(pm.sys.grid,pm.sys.grid), 
-                       format='csc')
-
-    return first_derivative
-
-
-def construct_second_derivative(pm):
-    r"""Constructs the second derivative operator as a matrix. The matrix is 
-    constructed using a three-point, five-point or seven-point stencil. This
-    yields an NxN band matrix (where N is the number of grid points). For 
-    example with N=6 and a three-point stencil:
-   
-    .. math::
-
-        \frac{d^2}{dx^2}=
-        \begin{pmatrix}
-        -2 & 1 & 0 & 0 & 0 & 0 \\
-        1 & -2 & 1 & 0 & 0 & 0 \\
-        0 & 1 & -2 & 1 & 0 & 0 \\
-        0 & 0 & 1 & -2 & 1 & 0 \\
-        0 & 0 & 0 & 1 & -2 & 1 \\
-        0 & 0 & 0 & 0 & 1 & -2 
-        \end{pmatrix}
-        \frac{1}{\delta x^2}
-
-    parameters
-    ----------
-    pm : object
-        Parameters object
-
-    returns sparse_matrix
-        Second derivative matrix
-    """
-    # Band elements
-    sd = pm.space.second_derivative
-
-    # Band indices
-    sdi = pm.space.second_derivative_indices
-
-    # Construct sparse matrix
-    second_derivative = sps.diags(sd, sdi, shape=(pm.sys.grid,pm.sys.grid), 
-                        format='csc')
-
-    return second_derivative
     
 
 def calculate_density_error(pm, density, target_density):
@@ -201,7 +121,10 @@ def main(parameters, approx, target_density_array=None,
     returns object
         Results object 
     """
-    pm = parameters
+    # Array initialisations
+    pm = parameters 
+    string = 'OPT: constructing arrays'
+    pm.sprint(string, 1, newline=True)
     pm.setup_space()
 
     # If the system contains one electron
@@ -210,24 +133,14 @@ def main(parameters, approx, target_density_array=None,
         # Import EXT1
         from . import EXT1 as EXT
 
-        # Array initialisations 
-        x_points = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
-        target_density = construct_target_density(pm, approx, x_points, 
+        # Construct the target density 
+        target_density = construct_target_density(pm, approx, 
                          target_density_array, target_density_function)
-
-        # Construct the first and second derivative matrices
-        first_derivative = construct_first_derivative(pm)
-        second_derivative = construct_second_derivative(pm)
-
-        # Use the single orbital approximation (SOA) to calculate the external
-        # potential
-        v_ext = ((second_derivative*target_density)/(4.0*target_density) 
-                - ((first_derivative*target_density)**2)/(8.0*target_density**2))
 
         # Initial value of parameters 
         density_error = pm.opt.tol + 1.0
-        density_error_old = np.copy(density_error) + 1.0
-        v_ext_best = np.copy(v_ext)
+        density_error_old = np.copy(density_error) 
+        v_ext_best = np.copy(pm.space.v_ext)
         run = 1
 
         # Calculate the external potential
@@ -245,16 +158,12 @@ def main(parameters, approx, target_density_array=None,
                      '-----------'
             pm.sprint(string, 1, newline=True)
 
-            # Shift the external potential so that v_ext(x=0) = 0
-            shift = v_ext[int((pm.sys.grid-1)/2)]
-            v_ext[:] -= shift
-
             # Construct the kinetic energy matrix
             K = EXT.construct_K(pm)
 
             # Construct the Hamiltonian matrix
             H = np.copy(K)
-            H[0,:] += v_ext[:]
+            H[0,:] += pm.space.v_ext[:]
 
             # Solve the Schrodinger equation
             energy, wavefunction = spla.eig_banded(H, lower=True, select='i',
@@ -281,23 +190,19 @@ def main(parameters, approx, target_density_array=None,
 
             # Ensure stable convergence 
             if(density_error < density_error_old):
-                v_ext_best[:] = v_ext[:]
+                v_ext_best[:] = pm.space.v_ext[:]
                 density_best[:] = density[:]
-                if(abs(density_error - density_error_old)<1e-8):
-                    pm.opt.mu = 0.5*pm.opt.mu
+                if(abs(density_error - density_error_old) < 1e-8):
+                    break
             else:
                 pm.opt.mu = 0.5*pm.opt.mu
 
-            if(pm.opt.mu < 1e-15):
-                break
-
             # Correct the external potential 
-            deltav_ext = calculate_deltav_ext(pm, density, target_density)
-            v_ext[:] = v_ext_best[:]
-            v_ext += deltav_ext
+            deltav_ext = calculate_deltav_ext(pm, density_best, target_density)
+            pm.space.v_ext[:] = v_ext_best[:] + deltav_ext[:]
  
             # Iterate
-            density_error_old = density_error
+            density_error_old = np.copy(density_error)
             run = run + 1
 
     # If the system contains two or three electrons
@@ -309,29 +214,21 @@ def main(parameters, approx, target_density_array=None,
         elif(pm.sys.NE == 3):
             from . import EXT3 as EXT
 
-        # Array initialisations 
-        wavefunction = np.zeros(pm.sys.grid**pm.sys.NE, dtype=np.float)
-        x_points = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
-        v_ext = pm.sys.v_ext(x_points) 
-        target_density = construct_target_density(pm, approx, x_points, 
+        # Construct the target density 
+        target_density = construct_target_density(pm, approx, 
                          target_density_array, target_density_function)
-        x_points_tmp = np.linspace(0.0,2.0*pm.sys.xmax,pm.sys.grid)
-        v_coulomb = 1.0/(pm.sys.acon + x_points_tmp)
 
         # Construct the reduction and expansion matrices
         reduction_matrix, expansion_matrix = (
                 EXT.construct_antisymmetry_matrices(pm)) 
 
         # Generate the initial wavefunction
-        wavefunction_reduced = np.zeros(reduction_matrix.shape[0], 
-                               dtype=np.float, order='F')
-        wavefunction_reduced = EXT.initial_wavefunction(pm, 
-                               wavefunction_reduced, v_ext)
+        wavefunction_reduced = EXT.initial_wavefunction(pm)
 
         # Initial value of parameters 
         density_error = pm.opt.tol + 1.0
-        density_error_old = np.copy(density_error) + 1.0
-        v_ext_best = np.copy(v_ext)
+        density_error_old = np.copy(density_error)
+        v_ext_best = np.copy(pm.space.v_ext)
         run = 1
 
         # Calculate the external potential
@@ -349,13 +246,9 @@ def main(parameters, approx, target_density_array=None,
                      '-----------'
             pm.sprint(string, 1, newline=True)
 
-            # Shift the external potential so that v_ext(x=0) = 0
-            shift = v_ext[int((pm.sys.grid-1)/2)]
-            v_ext[:] -= shift
-
             # Construct the reduced form of the sparse matrices A and C 
             A_reduced = EXT.construct_A_reduced(pm, reduction_matrix, 
-                        expansion_matrix, v_ext, v_coulomb, 0)
+                        expansion_matrix, 0)
             C_reduced = -A_reduced + 2.0*reduction_matrix*sps.identity(
                         pm.sys.grid**pm.sys.NE, dtype=np.float)*expansion_matrix
 
@@ -363,10 +256,6 @@ def main(parameters, approx, target_density_array=None,
             energy, wavefunction = EXT.solve_imaginary_time(pm, A_reduced, 
                                    C_reduced, wavefunction_reduced, 
                                    reduction_matrix, expansion_matrix)
-      
-            # Dispose of the reduced matrices
-            del A_reduced
-            del C_reduced
 
             # Calculate the electron density
             if(pm.sys.NE == 2):
@@ -387,26 +276,22 @@ def main(parameters, approx, target_density_array=None,
 
             # Ensure stable convergence 
             if(density_error < density_error_old):
-                v_ext_best[:] = v_ext[:]
+                v_ext_best[:] = pm.space.v_ext[:]
                 density_best[:] = density[:]
-                if(abs(density_error - density_error_old)<1e-8):
-                    pm.opt.mu = 0.5*pm.opt.mu
+                if(abs(density_error - density_error_old) < 1e-8):
+                    break
             else:
                 pm.opt.mu = 0.5*pm.opt.mu
 
-            if(pm.opt.mu < 1e-15):
-                break
-
             # Correct the external potential 
-            deltav_ext = calculate_deltav_ext(pm, density, target_density)
-            v_ext[:] = v_ext_best[:]
-            v_ext += deltav_ext
+            deltav_ext = calculate_deltav_ext(pm, density_best, target_density)
+            pm.space.v_ext[:] = v_ext_best[:] + deltav_ext[:]
 
             # Set the initial wavefunction equal to the current wavefunction
             wavefunction_reduced = reduction_matrix*wavefunction
  
             # Iterate
-            density_error_old = density_error
+            density_error_old = np.copy(density_error)
             run = run + 1 
                   
     # Print to screen 
@@ -418,6 +303,11 @@ def main(parameters, approx, target_density_array=None,
                  'best guess to file.'
         pm.sprint(string, 1, newline=True)
     pm.sprint('', 1, newline=True)
+
+    # Shift the external potential so that v_ext(x=0) = 0
+    shift = v_ext_best[int((pm.sys.grid-1)/2)]
+    v_ext_best[:] -= shift
+    energy -= pm.sys.NE*shift
  
     # Save external potential, density, target density and energy 
     approxopt = approx + 'opt'
