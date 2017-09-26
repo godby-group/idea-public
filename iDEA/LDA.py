@@ -3,10 +3,10 @@
 Uses the [adiabatic] local density approximations ([A]LDA) to calculate the
 [time-dependent] electron density [and current] for a system of N electrons.
 
-Computes approximations to VKS, VH, VXC using the LDA self-consistently. 
+Computes approximations to V_KS, V_H, V_xc using the LDA self-consistently. 
 For ground state calculations the code outputs the LDA orbitals and energies of
 the system, the ground-state charge density and the Kohn-Sham potential. 
-For time dependent calculation the code also outputs the time-dependent charge
+For time dependent calculations the code also outputs the time-dependent charge
 and current densities and the time-dependent Kohn-Sham potential. 
 
 Note: Uses the LDAs developed in [Entwistle2016]_ for finite slab systems, or
@@ -31,7 +31,8 @@ from . import minimize
 
 
 def groundstate(pm, H):
-   r"""Calculates the oribitals and ground state density for the system for a given potential
+   r"""Calculates the oribitals and ground-state density for the system for a 
+   given potential.
 
     .. math:: H \psi_{i} = E_{i} \psi_{i}
                        
@@ -59,6 +60,7 @@ def groundstate(pm, H):
 
    return n,eigf,e
 
+
 def electron_density(pm, orbitals):
     r"""Compute density for given orbitals
 
@@ -74,7 +76,9 @@ def electron_density(pm, orbitals):
     """
     occupied = orbitals[:, :pm.sys.NE]
     n = np.sum(occupied*occupied.conj(), axis=1)
+
     return n
+
 
 def ks_potential(pm, n):
     r"""Compute Kohn-Sham potential from density
@@ -90,7 +94,9 @@ def ks_potential(pm, n):
       kohn-sham potential
     """
     v_ks = pm.space.v_ext + hartree_potential(pm,n) + VXC(pm,n)
+
     return v_ks
+
 
 def banded_to_full(H):
     r"""Convert band matrix to full matrix
@@ -138,7 +144,6 @@ def kinetic(pm):
     return T
 
 
-
 def hamiltonian(pm, v_KS=None, wfs=None):
     r"""Compute LDA Hamiltonian
 
@@ -180,6 +185,7 @@ def hartree_potential(pm, density):
    """
    return np.dot(pm.space.v_int,density)*pm.sys.deltax
 
+
 def hartree_energy(pm, V_H, density):
    r"""Computes Hartree energy for a given density
 
@@ -199,69 +205,59 @@ def hartree_energy(pm, V_H, density):
    """
    return 0.5 * np.dot(V_H,density)*pm.sys.deltax
 
+
 ###############################################
 # These are Mike's parameters for finite LDAs #
 ###############################################
 exc_lda = {}  # parameters for \varepsilon_{xc}(n)
 exc_lda[1] = {
-   'a' :  -1.22015237105,
-   'b' :  3.68379869508,
-   'c' :  -11.2544116799,
-   'd' :  23.1694459076,
-   'e' :  -26.2993138321,
-   'f' :  12.2821546751,
-   'g' :  0.748763421006,
+   'a' : -1.22015237105,
+   'b' : 3.68379869508,
+   'c' : -11.2544116799,
+   'd' : 23.1694459076,
+   'e' : -26.2993138321,
+   'f' : 12.2821546751,
+   'g' : 0.748763421006,
 }
 exc_lda[2] =  {
-   'a' :  -1.09745306605,
-   'b' :  2.88550648624,
-   'c' :  -7.75624825681,
-   'd' :  14.2768408722,
+   'a' : -1.09745306605,
+   'b' : 2.88550648624,
+   'c' : -7.75624825681,
+   'd' : 14.2768408722,
    'e' : -14.7954437323,
    'f' : 6.42250118148,
-   'g' : 0.712989331516
+   'g' : 0.712989331516,
 }
 exc_lda[3] =  {
-   'a' :  -0.77,
-   'b' :  0.79,
-   'c' :  -0.48,
-   'd' :  0.61,
+   'a' : -1.06385204877,
+   'b' : 2.70138512697,
+   'c' : -7.04311672986,
+   'd' : 12.5980846646,
+   'e' : -12.7282959379,
+   'f' : 5.40365397672,
+   'g' : 0.700801965667,
 }
 
 vxc_lda = {}  # parameters for V_{xc}(n)
 for n in [1,2,3]:
-    if(n == 1 or n == 2):
-        eps = exc_lda[n]
-        a = eps['a']
-        b = eps['b']
-        c = eps['c']
-        d = eps['d']
-        e = eps['e']
-        f = eps['f']
-        g = eps['g']
+    eps = exc_lda[n]
+    a = eps['a']
+    b = eps['b']
+    c = eps['c']
+    d = eps['d']
+    e = eps['e']
+    f = eps['f']
+    g = eps['g']
 
-        vxc_lda[n] = { 
-          'a' : (g+1)*a,
-          'b' : (g+2)*b,
-          'c' : (g+3)*c,
-          'd' : (g+4)*d,
-          'e' : (g+5)*e,
-          'f' : (g+6)*f,
-          'g' : g,
-        }
-    else:
-        eps = exc_lda[n]
-        a = eps['a']
-        b = eps['b']
-        c = eps['c']
-        d = eps['d']
-
-        vxc_lda[n] = { 
-          'a' : (d+1)*a,
-          'b' : (d+2)*b,
-          'c' : (d+3)*c,
-          'd' : d,
-        }
+    vxc_lda[n] = { 
+      'a' : (g+1)*a,
+      'b' : (g+2)*b,
+      'c' : (g+3)*c,
+      'd' : (g+4)*d,
+      'e' : (g+5)*e,
+      'f' : (g+6)*f,
+      'g' : g,
+    }
 
 #########################################################
 # These are Mike's/Michele's parameters for the HEG LDA #
@@ -279,13 +275,11 @@ ex_lda['heg'] = {
 
 ec_lda = {} # parameters for \varepsilon_{c}(n)
 ec_lda['heg'] = {
-   'a' :  0.000941520,
-   'b' :  0.1301,
-   'c' :  0.01601,
-   'd' :  0.0000310,
-   'e' :  0.00000131,
-   'alpha' :  0.627,
-   'beta' :  7.20,
+   'a' :  0.00166042096868,
+   'b' :  0.065638899567,
+   'c' :  0.0740628539892,
+   'd' :  0.00406836067366,
+   'e' :  0.000621193747143,
 }
 
 vx_lda = {} # parameters for V_{x}(n)
@@ -308,6 +302,7 @@ vx_lda['heg'] = {
    'g' : g,
 }
 
+
 def EXC(pm, n): 
    r"""Finite/HEG LDA approximation for the Exchange-Correlation energy
 
@@ -324,13 +319,10 @@ def EXC(pm, n):
    """
    NE = pm.lda.NE
 
-   if(NE == 1 or NE == 2):
+   if(NE != 'heg'):
        p = exc_lda[NE]
        e_xc = (p['a'] + p['b'] * n + p['c'] * n**2 + p['d'] * n**3 + p['e'] * \
               n**4 + p['f'] * n**5) * n**p['g']
-   elif(NE == 3):
-       p = exc_lda[NE]
-       e_xc = (p['a'] + p['b'] * n + p['c'] * n**2) * n**p['d']
    else:
        p = ex_lda[NE]
        q = ec_lda[NE]
@@ -341,10 +333,9 @@ def EXC(pm, n):
                e_x[j] = (p['a'] + p['b'] * n[j] + p['c'] * n[j]**2 + p['d'] * n[j]**3 + p['e'] * \
                         n[j]**4 + p['f'] * n[j]**5) * n[j]**p['g']
  
-               e_c[j] = -((q['a'] * (1.0/n[j]) + q['e'] * (1.0/(n[j]**2)))/(1.0 + q['b'] * \
-                        (1.0/n[j]) + q['c'] * (1.0/(n[j]**2)) + q['d'] * (1.0/(n[j]**3)))) * \
-                        np.log(1.0 + q['alpha'] * (1.0/n[j]) + q['beta'] * (1.0/(n[j]**2))) \
-                        /(4.0*q['alpha'])
+               r_s = 0.5/n[j]
+               e_c[j] = -(q['a']*r_s + q['e']*(r_s**2))/(1.0 + q['b']*r_s + \
+                        q['c']*(r_s**2) + q['d']*(r_s**3))
 
        e_xc = e_x + e_c
 
@@ -352,8 +343,9 @@ def EXC(pm, n):
 
    return E_xc_LDA
 
+
 def VXC(pm, Den): 
-   r"""Finite/HEG LDA approximation for the Exchange-Correlation potential
+   r"""Finite/HEG LDA approximation for the exchange-correlation potential
 
    parameters
    ----------
@@ -365,13 +357,10 @@ def VXC(pm, Den):
    """
    NE = pm.lda.NE
 
-   if(NE == 1 or NE == 2):
+   if(NE != 'heg'):
        p = vxc_lda[NE]
        V_xc = (p['a'] + p['b'] * Den + p['c'] * Den**2 + p['d'] * Den**3 + \
               p['e'] * Den**4 + p['f'] * Den**5) * Den**p['g']
-   elif(NE == 3):
-       p = vxc_lda[NE]
-       V_xc = (p['a'] + p['b'] * Den + p['c'] * Den**2) * Den**p['d']
    else: 
        p = vx_lda[NE]
        q = ec_lda[NE]
@@ -380,27 +369,19 @@ def VXC(pm, Den):
        
        for j in range(pm.sys.grid):
            if(Den[j] != 0.0):
-               V_x[j] = (p['a'] + p['b'] * Den[j] + p['c'] * Den[j]**2 + p['d'] * Den[j]**3 + \
-                        p['e'] * Den[j]**4 + p['f'] * Den[j]**5) * Den[j]**p['g']
+               V_x[j] = (p['a'] + p['b']*Den[j] + p['c']*Den[j]**2 + \
+                        p['d']*Den[j]**3 + p['e']*Den[j]**4 + \
+                        p['f']*Den[j]**5)*Den[j]**p['g']
 
-               term_1 = -(q['a'] * (1.0/Den[j]) + q['e'] * (1.0/(Den[j]**2)))
-               term_2 = 1.0 + q['b'] * (1.0/Den[j]) + q['c'] * \
-                        (1.0/(Den[j]**2)) + q['d'] * (1.0/(Den[j]**3))
-               term_3 = np.log(1.0 + q['alpha'] * (1.0/Den[j]) + q['beta'] * \
-                        (1.0/(Den[j]**2))) 
-               term_4 = 4*q['alpha']
-               term_5 = q['alpha'] * (1.0/Den[j]) + 2.0*q['beta'] * (1.0/(Den[j]**2))
-               term_6 = q['a'] * (1.0/Den[j]) + q['e'] * (1.0/(Den[j]**2))
-               term_7 = 1.0 + q['alpha'] * (1.0/Den[j]) + q['beta'] * (1.0/(Den[j]**2))
-               term_8 = q['a'] * (1.0/(Den[j]**2)) + 2.0*q['e'] * (1.0/(Den[j]**3))
-               term_9 = q['b'] * (1.0/(Den[j]**2)) + 2.0*q['c'] * \
-                        (1.0/(Den[j]**3)) + 3.0*q['d'] * (1.0/(Den[j]**4))
-               term_10 = term_2**2
+               r_s = 0.5/Den[j]
+               term_1 = -(q['a']*r_s + q['e']*(r_s**2))/(1.0 + q['b']*r_s + \
+                        q['c']*(r_s**2) + q['d']*(r_s**3))
+               term_2 = q['a']*(q['c']*(r_s**2) + 2.0*q['d']*(r_s**3) - 1.0) + \
+                        q['e']*r_s*(-q['b']*r_s + q['d']*(r_s**3) - 2.0) 
+               term_3 = 2.0*r_s*((q['b']*r_s + q['c']*(r_s**2) + \
+                        q['d']*(r_s**3) + 1.0)**2)
        
-               V_c[j] = (term_1/term_2)* (term_3/term_4) + Den[j] * \
-                        (term_5/term_4)* (term_6/term_2)/term_7 + Den[j] * \
-                        (term_3/term_4)* (term_8/term_2) - Den[j] * \
-                        (term_3/term_4)* (term_9/term_10) * (term_6)
+               V_c[j] = term_1 + (term_2/term_3)
 
        V_xc = V_x + V_c
 
@@ -453,6 +434,7 @@ def total_energy_eigv(pm, eigv, eigf=None, n=None, V_H=None, V_xc=None):
    E_LDA += EXC(pm, n)
 
    return E_LDA.real
+
 
 def total_energy_eigf(pm, eigf, n=None, V_H=None):
    r"""Calculates the total energy of the self-consistent LDA density                 
