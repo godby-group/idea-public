@@ -692,6 +692,7 @@ def main(parameters):
    v_xc = VXC(pm, n)
    v_ks = v_ext + v_xc + v_h
    LDA_E = total_energy_eigf(pm, waves, n=n)
+   E_xc = EXC(pm, n)
    pm.sprint('LDA: ground-state energy: {}'.format(LDA_E),1)
    
    results = rs.Results()
@@ -700,6 +701,7 @@ def main(parameters):
    results.add(v_xc[:], 'gs_lda{}_vxc'.format(pm.lda.NE))
    results.add(v_ks[:], 'gs_lda{}_vks'.format(pm.lda.NE))
    results.add(LDA_E, 'gs_lda{}_E'.format(pm.lda.NE))
+   results.add(E_xc, 'gs_lda{}_Exc'.format(pm.lda.NE))
 
    if pm.lda.save_eig:
        results.add(waves.T,'gs_lda{}_eigf'.format(pm.lda.NE))
