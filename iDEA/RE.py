@@ -338,13 +338,14 @@ def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
 
     # Solve the ground-state Kohn-Sham equations and iteratively correct v_ks
     iterations = 0
-    while(pm.re.mu > 1e-15 and density_error > pm.re.gs_density_tolerance):
+    mu = pm.re.mu
+    while(mu > 1e-15 and density_error > pm.re.gs_density_tolerance):
 
         # Save the last iteration
         density_error_old = density_error
 
         # Iteratively correct v_ks within the Hamiltonian matrix
-        hamiltonian[0,:] += pm.re.mu*(density_ks[:]**pm.re.p -
+        hamiltonian[0,:] += mu*(density_ks[:]**pm.re.p -
                             density_approx[:]**pm.re.p)
 
         # Solve the ground-state Kohn-Sham equations
@@ -360,7 +361,7 @@ def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
         # Ensure stable convergence
         error_change = density_error - density_error_old
         if((error_change > 0.0) or (abs(error_change)<1e-15)):
-            pm.re.mu /= 2.0
+            mu /= 2.0
 
         iterations +=1
 
@@ -884,16 +885,21 @@ def main(parameters, approx):
     v_h[0,:] = calculate_hartree_potential(pm, density_ks[0,:])
     v_xc[0,:] = v_hxc[0,:] - v_h[0,:]
 
-    # Correct the asymptotic form of v_xc 
+    # Correct the asymptotic form of v_xc
     correction, correction_error = xc_correction(pm, v_xc[0,:], x_points)
     v_ks[0,:] -= correction
     v_hxc[0,:] -= correction
     v_xc[0,:] -= correction
     energies_ks[:] -= correction
 
-    # Calculate the ionization potential 
+    # Calculate the ionization potential
     IP = -energies_ks[pm.sys.NE-1]
     string = 'RE: ionization potential = {0:.3f} +/- {1:.4f}'.format(IP, correction_error)
+    pm.sprint(string, 1, newline=True)
+
+    # Calculate the KS gap
+    ks_gap = energies_ks[pm.sys.NE] - energies_ks[pm.sys.NE-1]
+    string = 'RE: Kohn-Sham gap = {0:.3f}'.format(ks_gap)
     pm.sprint(string, 1, newline=True)
 
     # Calculate the exchange-correlation energy
@@ -910,6 +916,7 @@ def main(parameters, approx):
     results.add(v_xc[0,:],'gs_{}_vxc'.format(approxre))
     results.add(E_xc,'gs_{}_Exc'.format(approxre))
     results.add(IP,'gs_{}_IP'.format(approxre))
+    results.add(ks_gap,'gs_{}_ksgap'.format(approxre))
     if(pm.re.save_eig):
         results.add(wavefunctions_ks.T,'gs_{}_eigf'.format(approxre))
         results.add(energies_ks,'gs_{}_eigv'.format(approxre))
