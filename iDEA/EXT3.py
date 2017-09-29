@@ -766,9 +766,7 @@ def main(parameters):
             eigenstates_array[j,:] = wavefunction_reduced[:]
 
             # Generate the initial wavefunction
-            wavefunction_reduced = initial_wavefunction(pm, 
-                                   wavefunction_reduced, 
-                                   ground_state=False)
+            wavefunction_reduced = initial_wavefunction(pm, ground_state=False)
           
             # Propagate through imaginary time
             energy, wavefunction = solve_imaginary_time(pm, A_reduced,
