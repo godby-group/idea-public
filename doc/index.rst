@@ -14,11 +14,11 @@ iDEA
 
 .. Indices and tables
    ==================
-   
+
    * :ref:`genindex`
    * :ref:`modindex`
    * :ref:`search`
-    
+
 The iDEA code (interacting Dynamic Electrons Approach) is a Python-Cython
 software suite developed in Rex Godby's group at the University of York since
 2010. It has a central role in a number of research projects related to
@@ -37,6 +37,7 @@ iDEA's main features are:
 * Implementation of various approximate functionals (established and novel) for
   comparison
 * Established and novel localisation measures
-* Many-body perturbation theory
+* Many-body perturbation theory with implementation of various approximate
+  vertex corrections for comparison
 
 iDEA Contributors: |idea_contributors|

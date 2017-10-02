@@ -7,7 +7,7 @@ The HF code solves the Hartree-Fock equation to approximately calculate the grou
 Calculating the ground-state
 ----------------------------
 
-To compute the Hartree-Fock density of a system we fist begin with the non-interacting orbitals, as computed from the single-particle Schröedinger equation
+To compute the Hartree-Fock density of a system we first begin with the non-interacting orbitals, as computed from the single-particle Schrödinger equation
 
 .. math:: \{ \phi_{i},E_{i} \},
 
@@ -15,7 +15,7 @@ and from these the density from these orbitals :math:`n(x)`.
 
 We then calculate the non-local exchange potential (Fock matrix) from these orbitals
 
-.. math:: F(x,x') = \sum_{k} \psi_{k}(x) U(x,x') \psi_{k}(x'),
+.. math:: F(x,x') = \sum_{k} \phi_{k}(x) U(x,x') \phi^{*}_{k}(x'),
 
 and the Hartree potential from the density:
 
@@ -34,3 +34,17 @@ From these orbitals we then repeat all of the above steps until the density reac
 
 Time-dependence
 ---------------
+In order to evolve the Hartree-Fock density in time due to a perturbation we begin with the ground-state Hartree-Fock orbitals
+as calculated above:
+
+.. math:: \{ \phi_{i}\left( t=0\right),E_{i} \left( t=0\right) \},
+
+from these we build the Time-dependence Hartree-Fock Hamiltonian:
+
+.. math:: H(x,x') = K(x,x') + V_{ext}(x)\delta(x-x') + V_{ptrb}(x)\delta(x-x') + V_{H}(x)\delta(x-x') + F(x,x')
+
+and using this Hamiltonian we use the Crank-Nicholson method to evolve the orbitals by one time-step:
+
+.. math:: \{ \phi_{i}\left(t\right),E_{i} \left(t\right) \} \rightarrow \{ \phi_{i}\left(t=t+\Delta t\right),E_{i} \left(t=t+\Delta t\right) \}.
+
+This precess repeats until the total time is reached, this gives us the time-dependent Hartree-Fock orbitals and density of the system.

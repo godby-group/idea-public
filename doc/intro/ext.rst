@@ -19,7 +19,7 @@ Calculating excited states
 
 An arbitrary wavefunction is constructed and then propagated through imaginary time. Providing the ground-state is projected out at each imaginary time step, the limiting value is the first excited-state of the system:
 
-.. math:: \lim_{\tau \to \infty} \Psi (x_{1}, x_{2}, \dots, x_{N}, \tau) = \psi_{1}. 
+.. math:: \lim_{\tau \to \infty} \Psi (x_{1}, x_{2}, \dots, x_{N}, \tau) = \psi_{1}.
 
 We can repeat for as many excited states as we wish using the following algorithm:
 
@@ -36,4 +36,3 @@ One-electron systems
 --------------------
 
 EXT also works for systems of 1 electron. Unlike for 2 or 3 electron systems, the ground-state and excited-states are calculated using an eigensolver. When a perturbation is applied to the system, its evolution is calculated by propagating the ground-state wavefunction through real time using the Crank-Nicholson method (like in the 2 or 3 electron systems).
- 
