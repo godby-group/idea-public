@@ -33,11 +33,11 @@ def read_input_density(pm, approx):
         approximation, indexed as density_approx[time_index,space_index]
     """
     if(pm.run.time_dependence == True):
-        density_approx = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
+        density_approx = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float)
         name = 'td_{}_den'.format(approx)
         density_approx[:,:] = rs.Results.read(name, pm)
     else:
-        density_approx = np.zeros((1,pm.sys.grid), dtype=np.float)
+        density_approx = np.zeros((1,pm.space.npt), dtype=np.float)
         name = 'gs_{}_den'.format(approx)
         density_approx[0,:] = rs.Results.read(name, pm)
 
@@ -59,7 +59,7 @@ def read_input_current_density(pm, approx):
         2D array of the electron current density from the approximation,
         indexed as current_density_approx[time_index,space_index]
     """
-    current_density_approx = np.zeros((pm.sys.imax,pm.sys.grid),
+    current_density_approx = np.zeros((pm.sys.imax,pm.space.npt),
                              dtype=np.float)
     name = 'td_{}_cur'.format(approx)
     current_density_approx[:,:] = rs.Results.read(name, pm)
@@ -98,19 +98,19 @@ def construct_kinetic_energy(pm):
     """
     sd = pm.space.second_derivative_band
     nbnd = len(sd)
-    kinetic_energy = np.zeros((nbnd, pm.sys.grid), dtype=np.float)
+    kinetic_energy = np.zeros((nbnd, pm.space.npt), dtype=np.float)
 
     for i in range(nbnd):
-        kinetic_energy[i,:] = -0.5 * sd[i]
+        kinetic_energy[i,:] = -0.5*sd[i]
 
     return kinetic_energy
 
 
 def construct_momentum(pm):
-    r"""Stores the lower band elements of the momentum matrix.
-    The momentum matrix is constructed using a five-point
-    or seven-point stencil. This yields an NxN band matrix (where N is the
-    number of grid points). For example with N=6 and a five-point stencil:
+    r"""Stores the band elements of the momentum matrix in lower form.
+    The momentum matrix is constructed using a five-point or seven-point 
+    stencil. This yields an NxN band matrix (where N is the number of grid
+    points). For example with N=6 and a five-point stencil:
 
     .. math::
 
@@ -151,7 +151,7 @@ def construct_damping(pm):
 
     .. math::
 
-        f_{\mathrm{damping}}(x) = e^{-\alpha x^{2}}
+        f_{\mathrm{damping}}(x) = e^{-10^{-12}(\beta x)^{\sigma}}
 
     parameters
     ----------
@@ -163,13 +163,13 @@ def construct_damping(pm):
         damping[frequency_index]
     """
     # Only valid for x>=0
-    damping_length = int((pm.sys.grid+1)/2)
+    damping_length = int((pm.space.npt+1)/2)
     damping = np.zeros(damping_length, dtype=np.float)
 
-    # Exponential damping term
+    # Damping term
     for j in range(damping_length):
-        x = j*pm.sys.deltax
-        damping[j] = np.exp(-pm.re.damping*(x**2.0))
+        x = j*pm.space.delta
+        damping[j] = np.exp(-(1.0e-12)*(pm.re.filter_beta**pm.re.filter_sigma))
 
     return damping
 
@@ -198,22 +198,22 @@ def construct_A_initial(pm, kinetic_energy, v_ks):
         The sparse matrix A at t=0, A_initial, used when solving the equation
         Ax=b
     """
-    A_initial = np.zeros((pm.sys.grid, pm.sys.grid), dtype=np.cfloat)
+    A_initial = np.zeros((pm.space.npt,pm.space.npt), dtype=np.cfloat)
     nbnd = kinetic_energy.shape[0]
     prefactor = 0.5j*pm.sys.deltat
 
     # Assign the main-diagonal elements
-    for j in range(pm.sys.grid):
+    for j in range(pm.space.npt):
         A_initial[j,j] = prefactor*(kinetic_energy[0,j] + v_ks[j])
 
         # Assign the off-diagonal elements
         for k in range(1, nbnd):
-            if((j+k) < pm.sys.grid):
+            if((j+k) < pm.space.npt):
                 A_initial[j,j+k] = prefactor*kinetic_energy[k,j]
                 A_initial[j+k,j] = prefactor*kinetic_energy[k,j]
 
     # Add the identity matrix
-    A_initial += sps.identity(pm.sys.grid, dtype=np.cfloat)
+    A_initial += sps.identity(pm.space.npt, dtype=np.cfloat)
 
     return A_initial
 
@@ -251,12 +251,12 @@ def construct_A(pm, A_initial, A_ks, momentum):
     prefactor = 0.25j*pm.sys.deltat
 
     # Assign the main diagonal elements
-    for j in range(pm.sys.grid):
+    for j in range(pm.space.npt):
         A[j,j] += prefactor*(A_ks[j]**2)
 
         # Assign the off-diagonal elements
         for k in range(1, nbnd):
-            if((j+k) < pm.sys.grid):
+            if((j+k) < pm.space.npt):
                 A[j+k,j] -= prefactor*(momentum[k]*A_ks[j])
                 A[j,j+k] += prefactor*(A_ks[j]*momentum[k])
             if((j-k) >= 0):
@@ -310,9 +310,9 @@ def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
     string = 'RE: calculating the ground-state Kohn-Sham potential for the' + \
              ' {} density'.format(approx)
     pm.sprint(string, 1, newline=True)
-    v_ks = np.zeros(pm.sys.grid, dtype=np.float)
+    v_ks = np.zeros(pm.space.npt, dtype=np.float)
     try:
-        # using the exact Vks as a starting guess results in much quicker
+        # Using the exact Vks as a starting guess results in much quicker
         # convergence in most systems.
         name = 'gs_{}_vks'.format(pm.re.starting_guess)
         v_ks[:] = rs.Results.read(name, pm)
@@ -332,14 +332,14 @@ def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
     wavefunctions_ks, energies_ks, density_ks = (solve_gsks_equations(
             pm, hamiltonian))
     density_difference = abs(density_approx-density_ks)
-    density_error = np.sum(density_difference)*pm.sys.deltax
+    density_error = np.sum(density_difference)*pm.space.delta
     string = 'RE: initial guess density error = {}'.format(density_error)
     pm.sprint(string, 1, newline=True)
 
     # Solve the ground-state Kohn-Sham equations and iteratively correct v_ks
     iterations = 0
     mu = pm.re.mu
-    while(mu > 1e-15 and density_error > pm.re.gs_density_tolerance):
+    while(mu > 1e-15):
 
         # Save the last iteration
         density_error_old = density_error
@@ -354,7 +354,7 @@ def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
 
         # Calculate the error in the ground-state Kohn-Sham density
         density_difference = abs(density_approx-density_ks)
-        density_error = np.sum(density_difference)*pm.sys.deltax
+        density_error = np.sum(density_difference)*pm.space.delta
         string = 'RE: density error = {}'.format(density_error)
         pm.sprint(string, 1, newline=False)
 
@@ -372,7 +372,7 @@ def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
     pm.sprint(string, 1, newline=True)
     string = '    error = {}'.format(density_error)
     pm.sprint(string, 1, newline=True)
-    if density_error > pm.re.gs_density_tolerance:
+    if (density_error > pm.re.gs_density_tolerance):
         string = 'RE: WARNING: density error above tolerance of {}!'.format(pm.re.gs_density_tolerance)
         pm.sprint(string, 2, newline=True)
 
@@ -411,8 +411,8 @@ def solve_gsks_equations(pm, hamiltonian):
 
     # Normalise the wavefunctions
     for j in range(pm.sys.NE):
-        normalisation = np.linalg.norm(wavefunctions_ks[:,j])*pm.sys.deltax**0.5
-        wavefunctions_ks[:,j] /= normalisation
+        norm = np.linalg.norm(wavefunctions_ks[:,j])*pm.space.delta**0.5
+        wavefunctions_ks[:,j] /= norm
 
     # Calculate the electron density
     density_ks = np.sum(wavefunctions_ks[:,:pm.sys.NE]**2, axis=1, dtype=np.float)
@@ -432,7 +432,7 @@ def calculate_time_dependence(pm, A_initial, momentum, A_ks, damping,
 
         A_{\mathrm{KS}}(x,t) \rightarrow A_{\mathrm{KS}}(x,t) +
         \nu\bigg[\frac{j_{\mathrm{KS}}(x,t)-j_{\mathrm{approx}}(x,t)}
-        {n_{\mathrm{approx}}(x,t)}\bigg]
+        {n_{\mathrm{approx}}(x,t) + a}\bigg]
 
     parameters
     ----------
@@ -500,11 +500,11 @@ def calculate_time_dependence(pm, A_initial, momentum, A_ks, damping,
 
         # Calculate the error in the Kohn-Sham charge density
         density_error = np.sum(abs(density_approx[:]-density_ks[1,:])
-                        )*pm.sys.deltax
+                        )*pm.space.delta
 
         # Calculate the error in the Kohn-Sham current density
         current_density_difference = abs(current_density_approx-current_density_ks)
-        current_density_error = np.sum(current_density_difference)*pm.sys.deltax
+        current_density_error = np.sum(current_density_difference)*pm.space.delta
 
         if(iterations == 0):
             current_density_error_min = np.copy(current_density_error)
@@ -515,11 +515,11 @@ def calculate_time_dependence(pm, A_initial, momentum, A_ks, damping,
             current_density_error_min = np.copy(current_density_error)
 
         # Iteratively correct A_ks
-        A_ks[:] += pm.re.nu*((current_density_ks[:] - current_density_approx[:]
-                   )/density_approx[:])
+        A_ks[:] += pm.re.nu*(current_density_ks[:] - current_density_approx[:]
+                   )/(density_approx[:] + pm.re.a)
 
         # Filter out noise in A_ks
-        if(pm.re.damping != 0):
+        if(pm.re.damping):
             A_ks = filter_noise(pm, A_ks, damping)
 
         # Reset the Kohn-Sham eigenfunctions
@@ -542,11 +542,11 @@ def calculate_time_dependence(pm, A_initial, momentum, A_ks, damping,
 
     # Calculate the error in the Kohn-Sham charge density
     density_difference = abs(density_approx-density_ks)
-    density_error = np.sum(density_difference)*pm.sys.deltax
+    density_error = np.sum(density_difference)*pm.space.delta
 
     # Calculate the error in the Kohn-Sham current density
     current_density_difference = abs(current_density_approx-current_density_ks)
-    current_density_error = np.sum(current_density_difference)*pm.sys.deltax
+    current_density_error = np.sum(current_density_difference)*pm.space.delta
 
     return (A_ks, density_ks[1,:], current_density_ks, wavefunctions_ks,
            density_error, current_density_error)
@@ -578,7 +578,7 @@ def solve_tdks_equations(pm, A, wavefunctions_ks):
         wavefunctions_ks[space_index,eigenfunction]
     """
     # Construct the sparse matrix C
-    C = 2.0*sps.identity(pm.sys.grid, dtype=np.cfloat) - A
+    C = 2.0*sps.identity(pm.space.npt, dtype=np.cfloat) - A
 
     # Loop over each electron
     for j in range(pm.sys.NE):
@@ -589,6 +589,11 @@ def solve_tdks_equations(pm, A, wavefunctions_ks):
         # Solve Ax=b
         wavefunctions_ks[:,j], info = spsla.cg(A,b,x0=wavefunctions_ks[:,j],
                                       tol=pm.re.rtol_solver)
+
+        # Normalise each wavefunction
+        if(pm.sys.im == 0):
+            norm = np.linalg.norm(wavefunctions_ks[:,j])*pm.sys.deltax**0.5
+            wavefunctions_ks[:,j] /= norm
 
     # Calculate the electron density
     density_ks = np.sum(abs(wavefunctions_ks[:,:pm.sys.NE])**2, axis=1, dtype=np.float)
@@ -657,13 +662,13 @@ def remove_gauge(pm, A_ks, v_ks, v_ks_gs):
         indexed as v_ks[space_index]
     """
     # Change gauge to calculate the full Kohn-Sham (scalar) potential
-    for j in range(pm.sys.grid):
+    for j in range(pm.space.npt):
         for k in range(j):
-            v_ks[:] += (A_ks[1,k] - A_ks[0,k])*(pm.sys.deltax/pm.sys.deltat)
+            v_ks[:] += (A_ks[1,k] - A_ks[0,k])*(pm.space.delta/pm.sys.deltat)
 
     # Shift the Kohn-Sham potential to match the ground-state Kohn-Sham
     # potential at the centre of the system
-    shift = v_ks_gs[int((pm.sys.grid-1)/2)] - v_ks[int((pm.sys.grid-1)/2)]
+    shift = v_ks_gs[int((pm.space.npt-1)/2)] - v_ks[int((pm.space.npt-1)/2)]
     v_ks[:] += shift
 
     return v_ks[:]
@@ -689,7 +694,7 @@ def calculate_hartree_potential(pm, density):
         as v_h[space_index]
     """
 
-    return np.dot(pm.space.v_int,density)*pm.sys.deltax
+    return np.dot(pm.space.v_int,density)*pm.space.delta
 
 
 def calculate_current_density(pm, density_ks):
@@ -714,13 +719,13 @@ def calculate_current_density(pm, density_ks):
         1D array of the Kohn-Sham electron current density, at time t+dt,
         indexed as current_density_ks[space_index]
     """
-    current_density_ks = np.zeros(pm.sys.grid, dtype=np.float)
+    current_density_ks = np.zeros(pm.space.npt, dtype=np.float)
     current_density_ks = RE_cython.continuity_eqn(pm, density_ks[1,:], density_ks[0,:])
 
     return current_density_ks
 
 
-def xc_correction(pm, v_xc, x_points):
+def xc_correction(pm, v_xc):
     r"""Calculates an approximation to the constant that needs to be added to
     the exchange-correlation potential so that it asymptotically approaches
     zero at large :math:`|x|`. The approximate error (standard deviation) on the
@@ -738,8 +743,6 @@ def xc_correction(pm, v_xc, x_points):
     v_xc : array_like
         1D array of the ground-state exchange-correlation potential, indexed as
         v_xc[space_index]
-    x_points : array_like
-        1D array of the spatial grid
 
     returns float and float
         An approximation to the constant that needs to be added to the
@@ -747,11 +750,12 @@ def xc_correction(pm, v_xc, x_points):
         deviation) on the constant.
     """
     # The range over which the fit will be applied
-    x_min = int(0.05*pm.sys.grid)
-    x_max = int(0.15*pm.sys.grid)
+    x_min = int(0.05*pm.space.npt)
+    x_max = int(0.15*pm.space.npt)
 
     # Calculate the fit and determine the correction to v_xc and its error
-    fit, variance = curve_fit(xc_fit, x_points[x_min:x_max], v_xc[x_min:x_max])
+    fit, variance = curve_fit(xc_fit, pm.space.grid[x_min:x_max], 
+                    v_xc[x_min:x_max])
     correction = fit[0]
     correction_error = variance[0,0]**0.5
 
@@ -764,7 +768,7 @@ def xc_correction(pm, v_xc, x_points):
     return correction, correction_error
 
 
-def xc_fit(x_points, correction):
+def xc_fit(grid, correction):
     r"""Applies a fit to the exchange-correlation potential over a specified
     range near the edge of the system's grid to determine the correction that
     needs to be applied to give the correct asymptotic behaviour at large :math:`|x|`
@@ -775,7 +779,7 @@ def xc_fit(x_points, correction):
 
     parameters
     ----------
-    x_points : array_like
+    grid : array_like
         1D array of the spatial grid over a specified range near the edge of
         the system
     correction : float
@@ -786,7 +790,7 @@ def xc_fit(x_points, correction):
         A fit to the exchange-correlation potential over the specified range
     """
 
-    return 1.0/x_points + correction
+    return 1.0/grid + correction
 
 
 def calculate_xc_energy(pm, approx, density_ks, v_h, v_xc, energies_ks):
@@ -824,8 +828,8 @@ def calculate_xc_energy(pm, approx, density_ks, v_h, v_xc, energies_ks):
         name = 'gs_{}_E'.format(approx)
         energy_approx = rs.Results.read(name, pm)
         E_xc = energy_approx - np.sum(energies_ks[:pm.sys.NE])
-        for j in range(pm.sys.grid):
-            E_xc += (density_ks[j])*(0.5*v_h[j] + v_xc[j])*pm.sys.deltax
+        for j in range(pm.space.npt):
+            E_xc += (density_ks[j])*(0.5*v_h[j] + v_xc[j])*pm.space.delta
     except:
         E_xc = 0.0
         string = 'RE: the exchange-correlation energy could not be ' + \
@@ -858,13 +862,12 @@ def main(parameters, approx):
     # Array initialisations
     string = 'RE: constructing arrays'
     pm.sprint(string, 1, newline=True)
-    x_points = pm.space.grid
     v_ext = pm.space.v_ext
     kinetic_energy = construct_kinetic_energy(pm)
     if(pm.run.time_dependence == True):
-        density_ks = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
+        density_ks = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float)
     else:
-        density_ks = np.zeros((1,pm.sys.grid), dtype=np.float)
+        density_ks = np.zeros((1,pm.space.npt), dtype=np.float)
     v_ks = np.copy(density_ks)
     v_hxc = np.copy(density_ks)
     v_h = np.copy(density_ks)
@@ -886,7 +889,7 @@ def main(parameters, approx):
     v_xc[0,:] = v_hxc[0,:] - v_h[0,:]
 
     # Correct the asymptotic form of v_xc
-    correction, correction_error = xc_correction(pm, v_xc[0,:], x_points)
+    correction, correction_error = xc_correction(pm, v_xc[0,:])
     v_ks[0,:] -= correction
     v_hxc[0,:] -= correction
     v_xc[0,:] -= correction
@@ -936,8 +939,8 @@ def main(parameters, approx):
             v_xc = v_xc.astype(np.cfloat)
         v_ext += pm.space.v_pert
         v_ks[1:,:] += (v_ks[0,:] + pm.space.v_pert)
-        A_ks = np.zeros((2,pm.sys.grid), dtype=np.float)
-        current_density_ks = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
+        A_ks = np.zeros((2,pm.space.npt), dtype=np.float)
+        current_density_ks = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float)
         momentum = construct_momentum(pm)
         damping = construct_damping(pm)
         A_initial = construct_A_initial(pm, kinetic_energy, v_ks[1,:])

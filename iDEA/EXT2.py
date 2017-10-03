@@ -41,7 +41,7 @@ def construct_antisymmetry_matrices(pm):
         (insert indistinct elements) to get back the full wavefunction.
     """
     # Number of elements in the reduced wavefunction
-    coo_size = int(np.prod(list(range(pm.sys.grid,pm.sys.grid+2))) \
+    coo_size = int(np.prod(list(range(pm.space.npt,pm.space.npt+2))) \
                /spmisc.factorial(2))
 
     # COOrdinate holding arrays for the reduction matrix
@@ -50,20 +50,20 @@ def construct_antisymmetry_matrices(pm):
     coo_data_1 = np.ones((coo_size), dtype=np.float)
     
     # COOrdinate holding arrays for the expansion matrix 
-    coo_3 = np.zeros((pm.sys.grid**2), dtype=int)
+    coo_3 = np.zeros((pm.space.npt**2), dtype=int)
     coo_4 = np.copy(coo_3)
-    coo_data_2 = np.zeros((pm.sys.grid**2), dtype=np.float)  
+    coo_data_2 = np.zeros((pm.space.npt**2), dtype=np.float)  
 
     # Populate the COOrdinate holding arrays with the coordinates and data
-    coo_1, coo_2 = EXT_cython.reduction_two(coo_1, coo_2, pm.sys.grid)
+    coo_1, coo_2 = EXT_cython.reduction_two(coo_1, coo_2, pm.space.npt)
     coo_3, coo_4, coo_data_2 = EXT_cython.expansion_two(coo_3, coo_4, 
-                               coo_data_2, pm.sys.grid)
+                               coo_data_2, pm.space.npt)
 
     # Convert the holding arrays into COOrdinate sparse matrices
     reduction_matrix = sps.coo_matrix((coo_data_1,(coo_1,coo_2)), shape=(
-                       coo_size,pm.sys.grid**2), dtype=np.float)
+                       coo_size,pm.space.npt**2), dtype=np.float)
     expansion_matrix = sps.coo_matrix((coo_data_2,(coo_3,coo_4)), shape=(
-                       pm.sys.grid**2,coo_size), dtype=np.float)
+                       pm.space.npt**2,coo_size), dtype=np.float)
 
     # Convert into compressed sparse row (csr) form for efficient arithemtic
     reduction_matrix = sps.csr_matrix(reduction_matrix)
@@ -101,7 +101,7 @@ def construct_A_reduced(pm, reduction_matrix, expansion_matrix, td):
         Ax=b
     """
     # Estimate the number of non-zero elements in the Hamiltonian matrix
-    coo_size = int((2*pm.sys.stencil-1)*(pm.sys.grid**2))
+    coo_size = int((2*pm.sys.stencil-1)*(pm.space.npt**2))
 
     # COOrdinate holding arrays for the Hamiltonian matrix
     coo_1 = np.zeros((coo_size), dtype=int)
@@ -116,17 +116,17 @@ def construct_A_reduced(pm, reduction_matrix, expansion_matrix, td):
     if(td == 0):
         prefactor = pm.ext.ideltat/2.0
         A = prefactor*sps.coo_matrix((coo_data,(coo_1,coo_2)), shape=(
-            pm.sys.grid**2, pm.sys.grid**2), dtype=np.float)
-        A += sps.identity(pm.sys.grid**2, dtype=np.float)
+            pm.space.npt**2, pm.space.npt**2), dtype=np.float)
+        A += sps.identity(pm.space.npt**2, dtype=np.float)
     elif(td == 1):
         coo_data = coo_data.astype(np.cfloat)
         prefactor = 1.0j*pm.sys.deltat/2.0
-        A = prefactor*sps.coo_matrix((coo_data,(coo_1,coo_2)), shape=(pm.sys.grid**2,
-            pm.sys.grid**2), dtype=np.cfloat)
-        A += sps.identity(pm.sys.grid**2, dtype=np.cfloat)
+        A = prefactor*sps.coo_matrix((coo_data,(coo_1,coo_2)), shape=(pm.space.npt**2,
+            pm.space.npt**2), dtype=np.cfloat)
+        A += sps.identity(pm.space.npt**2, dtype=np.cfloat)
         if(pm.sys.im == 1):
             imag_pot = EXT_cython.imag_pot_two(pm)
-            A += prefactor*sps.spdiags(imag_pot, 0, pm.sys.grid**2, pm.sys.grid**2)
+            A += prefactor*sps.spdiags(imag_pot, 0, pm.space.npt**2, pm.space.npt**2)
             
     # Convert into compressed sparse column (csc) form for efficient arithemtic
     A = sps.csc_matrix(A)
@@ -165,7 +165,7 @@ def initial_wavefunction(pm, ground_state=True):
         wavefunction_reduced[space_index_1_2]
     """
     # Single-particle eigenstates
-    eigenstate_1 = np.zeros(pm.sys.grid, dtype=np.float)
+    eigenstate_1 = np.zeros(pm.space.npt, dtype=np.float)
     eigenstate_2 = np.copy(eigenstate_1)
 
     # If calculating the ground-state wavefunction
@@ -297,7 +297,7 @@ def qho_approx(pm, n):
         1D array of the nth eigenstate, indexed as eigenstate[space_index]
     """
     # Single-particle eigenstate
-    eigenstate = np.zeros(pm.sys.grid, dtype=np.float)
+    eigenstate = np.zeros(pm.space.npt, dtype=np.float)
 
     # Constants
     factorial = np.arange(0,n+1,1)
@@ -306,8 +306,8 @@ def qho_approx(pm, n):
     scale_factor = 7.0/pm.sys.xmax
 
     # Assign elements
-    for j in range(pm.sys.grid):
-        x = -pm.sys.xmax + j*pm.sys.deltax
+    for j in range(pm.space.npt):
+        x = -pm.sys.xmax + j*pm.space.delta
         eigenstate[j] = (norm*(spec.hermite(n)(scale_factor*(x+1.0)))*(0.25)*
                         np.exp(-0.5*((scale_factor*(x+1.0))**2))) 
 
@@ -363,7 +363,7 @@ def calculate_density(pm, wavefunction_2D):
     """
     mod_wavefunction_2D = np.absolute(wavefunction_2D)**2
     density = 2.0*np.sum(mod_wavefunction_2D, axis=1, dtype=np.float)*(
-              pm.sys.deltax)
+              pm.space.delta)
 
     return density 
 
@@ -389,14 +389,14 @@ def calculate_current_density(pm, density):
         current_density[time_index,space_index]
     """
     pm.sprint('', 1, newline=True)
-    current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float, 
+    current_density = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float, 
                       order='F')
     string = 'EXT: calculating current density'
     pm.sprint(string, 1, newline=True)
     for i in range(1, pm.sys.imax):
          string = 'EXT: t = {:.5f}'.format(i*pm.sys.deltat)
          pm.sprint(string, 1, newline=False)
-         J = np.zeros(pm.sys.grid, dtype=np.float, order='F')
+         J = np.zeros(pm.space.npt, dtype=np.float, order='F')
          J = RE_cython.continuity_eqn(pm, density[i,:], density[i-1,:])
          current_density[i,:] = J[:]
     pm.sprint('', 1, newline=True)
@@ -438,7 +438,7 @@ def gram_schmidt(pm, wavefunction_reduced, eigenstates_array, excited_state):
     # Project out the eigenstates   
     for j in range(excited_state):
         vj = eigenstates_array[j,:]
-        wavefunction_reduced -= (np.vdot(v0,vj))*vj*pm.sys.deltax**2
+        wavefunction_reduced -= (np.vdot(v0,vj))*vj*pm.space.delta**2
     
     return wavefunction_reduced
 
@@ -521,7 +521,7 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced,
                                    eigenstates_array, excited_state) 
 
         # Normalise the reduced wavefunction
-        norm = np.linalg.norm(wavefunction_reduced)*pm.sys.deltax
+        norm = np.linalg.norm(wavefunction_reduced)*pm.space.delta
         wavefunction_reduced[:] = wavefunction_reduced[:]/norm
            
         # Stop timing the iteration
@@ -567,7 +567,7 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced,
 
     # Expand the wavefunction and normalise
     wavefunction = expansion_matrix*wavefunction_reduced
-    norm = np.linalg.norm(wavefunction)*pm.sys.deltax
+    norm = np.linalg.norm(wavefunction)*pm.space.delta
     wavefunction[:] = wavefunction[:]/norm
 
     return energy, wavefunction
@@ -608,14 +608,14 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
         indexed as current_density[time_index,space_index].
     """
     # Array initialisations
-    density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float, order='F')
+    density = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float, order='F')
     if(pm.ext.elf_td == 1):
         elf = np.copy(density)
     else:
         elf = 0 
 
     # Save the ground-state
-    wavefunction_2D = wavefunction.reshape(pm.sys.grid, pm.sys.grid)
+    wavefunction_2D = wavefunction.reshape(pm.space.npt, pm.space.npt)
     density[0,:] = calculate_density(pm, wavefunction_2D)
  
     # Reduce the wavefunction
@@ -642,11 +642,14 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
                                      x0=wavefunction_reduced,
                                      tol=pm.ext.rtol_solver)
 
-        # Expand the wavefunction
+        # Expand the wavefunction and normalise
         wavefunction = expansion_matrix*wavefunction_reduced
-
+        norm = np.linalg.norm(wavefunction)*pm.space.delta
+        if(pm.sys.im == 0):
+            wavefunction[:] /= norm
+            
         # Calculate the density (and ELF)
-        wavefunction_2D = wavefunction.reshape(pm.sys.grid, pm.sys.grid)
+        wavefunction_2D = wavefunction.reshape(pm.space.npt, pm.space.npt)
         density[i,:] = calculate_density(pm, wavefunction_2D)
         if(pm.ext.elf_td == 1):
             elf[i,:] = ELF.main(pm, wavefunction_2D, density=density[i,:])
@@ -664,7 +667,6 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
             string = 'residual: {:.5f}'.format(np.linalg.norm(
                      A_reduced*wavefunction_reduced - b_reduced))
             pm.sprint(string, 0, newline=True)
-            norm = np.linalg.norm(wavefunction)*pm.sys.deltax
             string = 'normalisation: {:.5f}'.format(norm**2)
             pm.sprint(string, 0, newline=True)
             string = '----------------------------------------------------' + \
@@ -703,7 +705,7 @@ def main(parameters):
 
     # Construct the reduced form of the sparse matrices A and C 
     A_reduced = construct_A_reduced(pm, reduction_matrix, expansion_matrix, 0)
-    C_reduced = -A_reduced + 2.0*reduction_matrix*sps.identity(pm.sys.grid**2,
+    C_reduced = -A_reduced + 2.0*reduction_matrix*sps.identity(pm.space.npt**2,
                 dtype=np.float)*expansion_matrix
 
     # Generate the initial wavefunction
@@ -715,7 +717,7 @@ def main(parameters):
                            expansion_matrix) 
  
     # Calculate the ground-state density
-    wavefunction_2D = wavefunction.reshape(pm.sys.grid, pm.sys.grid)
+    wavefunction_2D = wavefunction.reshape(pm.space.npt, pm.space.npt)
     density = calculate_density(pm, wavefunction_2D)
    
     # Save the ground-state density, energy and external potential (optionally 
@@ -757,7 +759,7 @@ def main(parameters):
                                    eigenstates_array=eigenstates_array[0:j+1,:])
  
             # Calculate the excited-state density
-            wavefunction_2D = wavefunction.reshape(pm.sys.grid, pm.sys.grid)
+            wavefunction_2D = wavefunction.reshape(pm.space.npt, pm.space.npt)
             density = calculate_density(pm, wavefunction_2D)
 
             # Save the excited-state density and energy (optionally the
@@ -788,7 +790,7 @@ def main(parameters):
         # Construct the reduced form of the sparse matrices A and C 
         A_reduced = construct_A_reduced(pm, reduction_matrix, expansion_matrix, 1)
         C_reduced = -A_reduced + 2.0*reduction_matrix*sps.identity(
-                    pm.sys.grid**2, dtype=np.cfloat)*expansion_matrix
+                    pm.space.npt**2, dtype=np.cfloat)*expansion_matrix
   
         # Propagate the ground-state wavefunction through real time
         density, current_density, elf = solve_real_time(pm, A_reduced, 
