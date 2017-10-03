@@ -30,6 +30,8 @@ We can then find the eigenvalues and eigenfunctions of this Hamiltonian to obtai
 .. math:: H\phi_{i} = \phi_{i}E_{i}.
 
 From these orbitals we then repeat all of the above steps until the density reaches self-consistency.
+We can either specify a mixing parameter for the code to use.
+Or, it can find the optimal alpha using the generalised Kooperman's constraint (more details in upcoming paper)
 
 
 Time-dependence
