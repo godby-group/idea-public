@@ -19,6 +19,5 @@ Feature requests
 ================
  #. Possibly improve citation handling in documentation by adding bibtex
  #. Write iDEA manual
- #. Add refined LDA into code
  #. Add qsGW to Gw code
  #. Add self-screening correction to GW code

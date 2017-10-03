@@ -1,5 +1,30 @@
 Changelog
 =========
+* **v2.3.0** (2017-10-03)
+
+  * Docs and website updated
+  * RE: Improved TDRE
+  * RE: Outputs IPs and HOMO-LUMO gap
+  * LDA: code outputs Exc
+    for converging tricky systems (Pulay is now the default)
+  * LDA: Fixed bug in HEG correlation potential
+  * LDA:  Updated LDAs (1e,2e,3e,heg) added to the code
+  * Jupyter notebooks added
+  * HYB: Added TD-hybrid code
+  * F2Py Fortran replaced with Cython
+  * RE: fixed extrapolaton bug in RE
+  * RE: Can now choose starting point for gsRE algorithm.
+    Added exit condition if tolerance is met
+    Added warning if tolerance is not met
+    Renamed a few parameters to seperate gs and td
+    Added unit test:
+    RE an non-interacting 2 electron harmonic well
+    starting from LDA_vks. passes if gives back non-interacting density.
+  * MBPT: Can save scGW values of S,G,P ect
+  * OPT: Modified the algorithm in the OPT code
+  * Added hybrid code
+
+
  * **v2.2.0** (2017-07-07)
 
    * HF: fixed convention used in Fock operator & 10x speedup from faster
@@ -16,11 +41,11 @@ Changelog
      Another 3x by improved construction of arrays and matrices.
      Gram-Schmidt algorithm implemented to allow calculation of excited states.
      Option to save wavefunctions.
-   * EXT2/3: Initial wave function can now be constructed from HF, LDA or NON 
+   * EXT2/3: Initial wave function can now be constructed from HF, LDA or NON
      orbitals (harmonic oscillator remains the default).
      Alternatively, an EXT wave function can be given from a previous run.
-   * RE: Now looks for an exact KS potential to start from. 
-   * MBPT: Can now save 
+   * RE: Now looks for an exact KS potential to start from.
+   * MBPT: Can now save
      the "many-body self-energy" iGW + V_h0 - V_h (+ Hedin shift) (S),
      the "GW self-energy" iGW (Sxc) as well as the exchange-only
      (Sx) and correlation-only parts (Sc).
@@ -52,7 +77,7 @@ Changelog
      that can be read on many OS's and programming languages)
    * EXT1: drop-in replacement for SPiDEA for 1e runs.
      Solves 1e Schroedinger equation via eigensolver (no imaginary time).
-     Excited states can be calculated. The ground state can be perturbed and 
+     Excited states can be calculated. The ground state can be perturbed and
      propagated through real time via Crank-Nicholson.
    * ELF: option to take density, if known
    * MKL dependency has been removed completely.
@@ -65,7 +90,7 @@ Changelog
      python version needs to be specified in the "architecture" file in arch/
    * automatic test of unit test coverage via "coverage" python module
      (see documentation)
-   * ViDEO: now uses matplotlib for plotting   
+   * ViDEO: now uses matplotlib for plotting
      (except for animations, which haven't been modified)
    * orbitals for LDA, NON and HF are now save by default
    * Order of runs has changed: EXT is run after the various approximations,
@@ -90,7 +115,7 @@ Changelog
    * added scripts/plot_3d.py to plot space-time quantities (MBPT)
    * EXT2: fixed bug in time-dependence, now uses arrays instead of
      lists
-   * When importing iDEA, Fortran libraries are recompiled automatically, 
+   * When importing iDEA, Fortran libraries are recompiled automatically,
      if out of date
    * MBPT: Hedin shift now aware of orbital (re-)ordering
    * EXT2 & EXT3: Reduction and expansion matrices now constructed in Fortran
@@ -121,15 +146,15 @@ Changelog
 
    * Enables multiple runs of iDEA from one python script (e.g. to
      perform convergence tests). The parameters file is no longer imported by
-     every part of iDEA, it is imported once and then passed on. 
-     
+     every part of iDEA, it is imported once and then passed on.
+
    * iDEA is now structured like a regular python package.
-  
+
    * You can now process results from iDEA calculations directly in a python
      script. All codes return a "results" object that contains computed
      quantities (e.g. results.NON.gs_non_den for the ground state density of
      the non-interacting system)
-  
+
    * Documentation web site http://www.cmt.york.ac.uk/group_info/group/ideav2/
      uses sphinx to generate the website directly from the simple "restructured
      text" format. The source .rst files used to generate the web page are part
@@ -138,10 +163,10 @@ Changelog
      The documentation web site includes an API documentation that is
      automatically generated from the iDEA code, where the code follows python
      standards.
-  
+
    * Simple unit test for NON added. In order to add unit tests for your parts
      of the code, simply follow this example (or ask for advice).
-  
+
    * While iDEA can be run in the same way as before (preparing a parameters.py
      file and running "python iDEA.py"), there are now other possibilities.
      "examples" directory has ex01, ex02, ex03 demonstrating different ways of
@@ -152,7 +177,7 @@ Changelog
 
    - EXT2 matrix construction optimised using f2py
    - MBPT code now uses offset grid
-   - MLP is now time-dependent 
+   - MLP is now time-dependent
 
  * **v1.8.1** (2016-08-09)
 
@@ -209,7 +234,7 @@ Changelog
  * **v1.3.2** (2016-03-08)
 
    - Made the calculation of the current density much more efficient.
-   - Add the calculation of the current density to 3-electron many body, 
+   - Add the calculation of the current density to 3-electron many body,
      non-interacting approximation and the LDA.
 
  * **v1.3.1** (2016-02-28)
@@ -229,4 +254,3 @@ Changelog
 
    - MLP approximation added (constant f, 2 electron, time independent)
  * **v1.1.0** (2016-01-03)
-
