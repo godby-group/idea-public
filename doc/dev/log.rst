@@ -1,28 +1,28 @@
 Changelog
 =========
-* **v2.3.0** (2017-10-03)
+ * **v2.3.0** (2017-10-03)
 
-  * Docs and website updated
-  * RE: Improved TDRE
-  * RE: Outputs IPs and HOMO-LUMO gap
-  * LDA: code outputs Exc
-    for converging tricky systems (Pulay is now the default)
-  * LDA: Fixed bug in HEG correlation potential
-  * LDA:  Updated LDAs (1e,2e,3e,heg) added to the code
-  * Jupyter notebooks added
-  * HYB: Added TD-hybrid code
-  * F2Py Fortran replaced with Cython
-  * RE: fixed extrapolaton bug in RE
-  * RE: Can now choose starting point for gsRE algorithm.
-    Added exit condition if tolerance is met
-    Added warning if tolerance is not met
-    Renamed a few parameters to seperate gs and td
-    Added unit test:
-    RE an non-interacting 2 electron harmonic well
-    starting from LDA_vks. passes if gives back non-interacting density.
-  * MBPT: Can save scGW values of S,G,P ect
-  * OPT: Modified the algorithm in the OPT code
-  * Added hybrid code
+   * Docs and website updated
+   * RE: Improved TDRE
+   * RE: Outputs IPs and HOMO-LUMO gap
+   * LDA: code outputs Exc
+     for converging tricky systems (Pulay is now the default)
+   * LDA: Fixed bug in HEG correlation potential
+   * LDA:  Updated LDAs (1e,2e,3e,heg) added to the code
+   * Jupyter notebooks added
+   * HYB: Added TD-hybrid code
+   * F2Py Fortran replaced with Cython
+   * RE: fixed extrapolaton bug in RE
+   * RE: Can now choose starting point for gsRE algorithm.
+     Added exit condition if tolerance is met
+     Added warning if tolerance is not met
+     Renamed a few parameters to seperate gs and td
+     Added unit test:
+     RE an non-interacting 2 electron harmonic well
+     starting from LDA_vks. passes if gives back non-interacting density.
+   * MBPT: Can save scGW values of S,G,P ect
+   * OPT: Modified the algorithm in the OPT code
+   * Added hybrid code
 
 
  * **v2.2.0** (2017-07-07)
