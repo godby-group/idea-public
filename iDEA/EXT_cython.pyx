@@ -352,7 +352,7 @@ def hamiltonian_two(object pm, np.int64_t[:] coo_1, np.int64_t[:] coo_2, double 
     """
     # Variable declarations
     cdef int i, j, k, jk, band
-    cdef int grid = pm.sys.grid
+    cdef int grid = pm.space.npt
     cdef double[:] ke_bands = -0.5*pm.space.second_derivative_band
     cdef int bandwidth = ke_bands.shape[0]
     cdef double[:] v_ext = pm.space.v_ext
@@ -573,7 +573,7 @@ def hamiltonian_three(object pm, np.int64_t[:] coo_1, np.int64_t[:] coo_2, doubl
     """
     # Variable declarations
     cdef int i, j, k, l, jkl, band
-    cdef int grid = pm.sys.grid
+    cdef int grid = pm.space.npt
     cdef double[:] ke_bands = -0.5*pm.space.second_derivative_band
     cdef int bandwidth = ke_bands.shape[0]
     cdef double[:] v_ext = pm.space.v_ext
@@ -947,7 +947,7 @@ def imag_pot_two(pm):
     """
     # Variable declarations
     cdef int i, j, k
-    cdef int grid = pm.sys.grid
+    cdef int grid = pm.space.npt
     cdef double complex [:] v_pert = pm.space.v_pert
     cdef double complex [:] imag_pot = np.zeros((grid**2), dtype=np.cfloat)
 
@@ -980,7 +980,7 @@ def imag_pot_three(pm):
     """
     # Variable declarations
     cdef int i, j, k, l
-    cdef int grid = pm.sys.grid
+    cdef int grid = pm.space.npt
     cdef double complex [:] v_pert = pm.space.v_pert
     cdef double complex [:] imag_pot = np.zeros((grid**3), dtype=np.cfloat)
 
@@ -1016,7 +1016,7 @@ def change_pot_two(pm, double[:] deltav_ext):
     """
     # Variable declarations
     cdef int i, j, k
-    cdef int grid = pm.sys.grid
+    cdef int grid = pm.space.npt
     cdef double [:] deltaH = np.zeros((grid**2), dtype=np.cfloat)
 
     # Loop over each element 
@@ -1050,7 +1050,7 @@ def change_pot_three(pm, double[:] deltav_ext):
     """
     # Variable declarations
     cdef int i, j, k, l
-    cdef int grid = pm.sys.grid
+    cdef int grid = pm.space.npt
     cdef double [:] deltaH = np.zeros((grid**3), dtype=np.cfloat)
 
     # Loop over each element 

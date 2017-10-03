@@ -26,8 +26,8 @@ def continuity_eqn(object pm, double[:] density_new, double[:] density_old):
     """
     # Variable declarations
     cdef int j, k
-    cdef int grid = pm.sys.grid
-    cdef double deltax = pm.sys.deltax
+    cdef int grid = pm.space.npt
+    cdef double deltax = pm.space.delta
     cdef double deltat = pm.sys.deltat
     cdef double prefactor 
     cdef double[:] current_density = np.zeros(pm.sys.grid, dtype=np.float)
