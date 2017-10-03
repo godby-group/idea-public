@@ -1,7 +1,7 @@
-"""Computes ground-state charge density in the Hartree-Fock approximation. 
+"""Computes ground-state charge density in the Hartree-Fock approximation.
 
 The code outputs the ground-state charge density, the energy of the system and
-the Hartree-Fock orbitals. 
+the Hartree-Fock orbitals.
 Can perform adiabatic time-dependent Hartree-Fock calculations.
 """
 from __future__ import division
@@ -40,9 +40,9 @@ def fock(pm, eigf):
    r"""Constructs Fock operator from a set of orbitals
 
     .. math:: F(x,x') = \sum_{k} \psi_{k}(x) U(x,x') \psi_{k}(x')
- 
+
     where U(x,x') denotes the appropriate Coulomb interaction.
-                       
+
    parameters
    ----------
    eigf : array_like
@@ -112,10 +112,10 @@ def hamiltonian(pm, wfs, perturb=False):
     if perturb:
       V += pm.space.v_pert
     V = sps.diags(V, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex)
-    
+
     # construct H
     H = (K+V).toarray()
-    
+
     # add fock matrix
     if pm.hf.fock == 1:
        H = H + fock(pm,wfs) * pm.sys.deltax
@@ -127,7 +127,7 @@ def groundstate(pm, H):
 
     .. math:: H = K + V + F \\
               H \psi_{i} = E_{i} \psi_{i}
-                       
+
    parameters
    ----------
    H: array_like
@@ -142,12 +142,12 @@ def groundstate(pm, H):
    eigv: array_like
      orbital energies
 
-   """		
-      
+   """
+
    # solve eigen equation
    eigv, eigf = spla.eigh(H)
    eigf = eigf/ np.sqrt(pm.sys.deltax)
-   
+
    # calculate density
    n = electron_density(pm,eigf)
 
@@ -167,8 +167,8 @@ def total_energy(pm, eigf, eigv):
         eigenvalues
 
    returns float
-   """		
-   
+   """
+
 
    E_HF = 0
    E_HF += np.sum(eigv[:pm.sys.NE])
@@ -184,13 +184,13 @@ def total_energy(pm, eigf, eigv):
       orb = eigf[:,k]
       E_HF -= 0.5 * np.dot(orb.conj().T, np.dot(F, orb)) * pm.sys.deltax**2
    return E_HF.real
-   
+
 
 def calculate_current_density(pm, density):
-    r"""Calculates the current density from the time-dependent 
+    r"""Calculates the current density from the time-dependent
     (and ground-state) electron density by solving the continuity equation.
 
-    .. math:: 
+    .. math::
 
         \frac{\partial n}{\partial t} + \nabla \cdot j = 0
 
@@ -199,11 +199,11 @@ def calculate_current_density(pm, density):
     pm : object
         Parameters object
     density : array_like
-        2D array of the time-dependent density, indexed as       
+        2D array of the time-dependent density, indexed as
         density[time_index,space_index]
 
     returns array_like
-        2D array of the current density, indexed as 
+        2D array of the current density, indexed as
         current_density[time_index,space_index]
     """
     pm.sprint('', 1, newline=True)
@@ -223,7 +223,7 @@ def calculate_current_density(pm, density):
 
 def crank_nicolson_step(pm, waves, H):
    r"""Solves Crank Nicolson Equation
- 
+
    .. math::
 
         \left(\mathbb{1} + i\frac{dt}{2}\right) \Psi(x,t+dt) = \left(\mathbb{1} - i \frac{dt}{2} H\right) \Psi(x,t)
@@ -237,7 +237,7 @@ def crank_nicolson_step(pm, waves, H):
 
    returns array_like
       Time dependent current density indexed as current_density[time_index][space_index]
- 
+
    """
    dH = 0.5J * pm.sys.deltat * H
    identity = np.eye(pm.sys.grid, dtype=np.complex)
@@ -250,7 +250,7 @@ def crank_nicolson_step(pm, waves, H):
    waves_new = spla.solve(A,RHS)
 
    return waves_new
- 
+
 
 def main(parameters):
    r"""Performs Hartree-fock calculation
@@ -271,35 +271,35 @@ def main(parameters):
    waves = np.zeros((pm.sys.grid,pm.sys.NE))
    H = hamiltonian(pm, waves)
    den,eigf,eigv = groundstate(pm, H)
-   
+
    # Calculate ground state density
    converged = False
    iteration = 1
    while (not converged):
       # Calculate new potentials form new orbitals
       H_new = hamiltonian(pm, eigf)
-    
+
       # Stability mixing
-      H_new = (1-pm.hf.nu)*H + pm.hf.nu*H_new 
-      
+      H_new = (1-pm.hf.nu)*H + pm.hf.nu*H_new
+
       # Diagonalise Hamiltonian
       den_new, eigf, eigv = groundstate(pm, H_new)
-      
+
       dn = np.sum(np.abs(den-den_new))*pm.sys.deltax
       converged = dn < pm.hf.con
       E_HF = total_energy(pm, eigf, eigv)
       s = 'HF: E = {:+.8f} Ha, dn = {:+.3e}, iter = {}'\
           .format(E_HF, dn, iteration)
       pm.sprint(s, 1, newline=False)
- 
+
       iteration += 1
       H = H_new
       den = den_new
    pm.sprint()
-   
+
    # Calculate ground state energy
    pm.sprint('HF: hartree-fock energy = {}'.format(E_HF.real), 1, newline=True)
-   
+
    results = rs.Results()
    results.add(E_HF,'gs_hf_E')
    results.add(den,'gs_hf_den')
@@ -324,7 +324,7 @@ def main(parameters):
 
          waves = crank_nicolson_step(pm, waves, H)
          S = np.dot(waves.T.conj(), waves) * pm.sys.deltax
-         orthogonal = np.allclose(S, np.eye(pm.sys.NE, dtype=np.complex),atol=1e-6) 
+         orthogonal = np.allclose(S, np.eye(pm.sys.NE, dtype=np.complex),atol=1e-6)
          if not orthogonal:
              pm.sprint("HF: Warning: Orthonormality of orbitals violated at iteration {}".format(i+1))
 
@@ -345,5 +345,5 @@ def main(parameters):
       if pm.run.save:
          l = ['td_hf_den','td_hf_cur']
          results.save(pm, list=l)
- 
+
    return results

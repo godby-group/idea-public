@@ -12,6 +12,26 @@ import iDEA.NON
 
 
 def hamiltonian(pm, eigf, density, alpha, perturb=False):
+   r"""Compute HF Hamiltonian
+
+   Computes HYB Hamiltonian from a given set of single-particle states.
+
+   .. math:: H(x,x') = K(x,x') + V_{ext}(x)\delta(x-x') + V_{H}(x)\delta(x-x') + \alpha*F(x,x') + (1-\alpha)V_{xc}^{LDA}
+
+   parameters
+   ----------
+   eigf  array_like
+      single-particle states
+   density  array_like
+      electron density
+   alpha  float
+      HF-LDA mixing parameter (1 = all HF, 0 = all LDA)
+   perturb: bool
+      If True, add perturbation to external potential (for time-dep. runs)
+
+   returns array_like
+      Hamiltonian matrix
+    """
 
    # construct kinetic energy
    sd = pm.space.second_derivative
@@ -44,6 +64,20 @@ def hamiltonian(pm, eigf, density, alpha, perturb=False):
 
 
 def calc_with_alpha(pm, alpha, occupations):
+   r"""Calculate with given alpha
+
+   Perform hybrid calculation with given alpha
+
+   parameters
+   ----------
+   alpha  float
+      HF-LDA mixing parameter (1 = all HF, 0 = all LDA)
+   occupations: array_like
+      orbital occupations
+
+   returns density, eigf, eigv, E
+      Hybrid Density, orbitals and total energy
+    """
 
    # Initialise self-consistency
    counter = 0
@@ -100,6 +134,8 @@ def calc_with_alpha(pm, alpha, occupations):
 
 
 def save_results(pm, results, density, E, eigf, eigv, alpha):
+   r"""Saves results to pickle files
+   """
    results.add(density,'gs_hyb{}_den'.format(alpha).replace('.','_'))
    results.add(E,'gs_hyb{}_E'.format(alpha).replace('.','_'))
    if pm.non.save_eig:
@@ -110,6 +146,19 @@ def save_results(pm, results, density, E, eigf, eigv, alpha):
 
 
 def optimal_alpha(pm, results, alphas, occupations):
+   r"""Calculate optimal alpha
+
+   Calculate over range of alphas to determine optimal alpha
+
+   parameters
+   ----------
+   results  Results Object
+      object to add results to
+   alphas: array_like
+      range of alphas to use
+   occupations: array_like
+      orbital occupations
+   """
 
    pm.sprint('HYB: Finding optimal value of alpha', 1, newline=True)
 
@@ -134,6 +183,19 @@ def optimal_alpha(pm, results, alphas, occupations):
 
 
 def n_run(pm, results, alphas, occupations):
+   r"""Calculate for :math:`N` electron run
+
+   Calculate total energy and HOMO eigenvalue of N electron system
+
+   parameters
+   ----------
+   results  Results Object
+      object to add results to
+   alphas: array_like
+      range of alphas to use
+   occupations: array_like
+      orbital occupations
+   """
    energies  = np.array([])
    eigsHOMO  = np.array([])
    for alpha in alphas:
@@ -145,6 +207,19 @@ def n_run(pm, results, alphas, occupations):
 
 
 def n_minus_one_run(pm, results, alphas, occupations):
+   r"""Calculate for :math:`N-1` electron run
+
+   Calculate total energy and LUMO eigenvalue of :math:`N-1` electron system
+
+   parameters
+   ----------
+   results  Results Object
+      object to add results to
+   alphas: array_like
+      range of alphas to use
+   occupations: array_like
+      orbital occupations
+    """
    energies  = np.array([])
    eigsLUMO  = np.array([])
    for alpha in alphas:
@@ -155,6 +230,16 @@ def n_minus_one_run(pm, results, alphas, occupations):
 
 
 def main(parameters):
+   r"""Performs Hybrid calculation
+
+   parameters
+   ----------
+   parameters : object
+      Parameters object
+
+   returns object
+      Results object
+   """
    # Set up parameters
    pm = parameters
    pm.setup_space()
