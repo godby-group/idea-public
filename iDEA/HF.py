@@ -303,6 +303,7 @@ def main(parameters):
    results = rs.Results()
    results.add(E_HF,'gs_hf_E')
    results.add(den,'gs_hf_den')
+   results.add(fock(pm, eigf),'gs_hf_F')
 
    if pm.hf.save_eig:
        results.add(eigf.T, 'gs_hf_eigf')
