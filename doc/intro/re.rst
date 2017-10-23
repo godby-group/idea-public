@@ -14,6 +14,6 @@ Time-dependent Kohn-Sham potential
 ----------------------------------
 The time-dependent KS potential :math:`V_{\mathrm{KS}}(x,t)` is calculated by applying a temporary gauge transformation and iteratively correcting a time-dependent KS vector potential :math:`A_{\mathrm{KS}}(x,t)`  using the algorithm:
 
-.. math:: A_{\mathrm{KS}}(x,t) \rightarrow A_{\mathrm{KS}}(x,t) + \nu \bigg[ \frac{j_{\mathrm{KS}}(x,t) - j(x,t)}{n(x,t)} \bigg],
+.. math:: A_{\mathrm{KS}}(x,t) \rightarrow A_{\mathrm{KS}}(x,t) + \nu \bigg[ \frac{j_{\mathrm{KS}}(x,t) - j(x,t)}{n(x,t) + a} \bigg],
 
 where :math:`j(x,t)` is the current density of the interacting system and :math:`j_{\mathrm{KS}}(x,t)` is the current density of the KS system. Once the correct :math:`A_{\mathrm{KS}}(x,t)` is found, the gauge transformation is removed to calculate the full time-dependent KS potential as a scalar quantity. 
