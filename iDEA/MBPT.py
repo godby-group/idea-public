@@ -12,13 +12,11 @@ energies and, if desired, the Green function of the system.
 from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
-
 import copy
 import numpy as np
 import scipy as sp
 from . import results as rs
 from . import continuation
-
 from .fftwrap import fft_1d, ifft_1d
 
 class SpaceTimeGrid(object):
@@ -241,12 +239,17 @@ def main(parameters):
             save(Sxc, "Sxc_it")
             del Sxc
 
-
         pm.sprint('MBPT: updating S(iw)',0)
         # real for real orbitals...
         delta = np.zeros((st.x_npt, st.x_npt), dtype=np.complex)
         np.fill_diagonal(delta, H.vh / st.x_delta)
         delta -= h0.vhxc
+        if(pm.mbpt.ssc == True):
+            pm.sprint('MBPT: removing the self-screening error from sigma')
+            den = H.den * st.NE / (np.sum(H.den) * st.x_delta)
+            vssc = self_screening_correction(st, abs(den))
+            vssc_matrix = np.diag(vssc) / st.x_delta
+            delta += vssc_matrix
         if pm.mbpt.w == 'dynamical':
             # in the frequency domain we can put the exchange back
             # Note: here, we need the extrapolated G(it=0^-)
@@ -478,6 +481,7 @@ def hartree_potential(st, den=None, G=None):
     v_h = np.dot(st.coulomb_repulsion, den) * st.x_delta
     return v_h
 
+
 def exchange_potential(st, G=None, orbitals=None):
     r"""Calculate Fock exchange operator V_x(r,r')
 
@@ -508,6 +512,27 @@ def exchange_potential(st, G=None, orbitals=None):
         raise IOError("Need to provide either G or orbitals.")
 
     return v_x
+
+
+def self_screening_correction(st, den):
+    r"""Evaluates our self-screening correction functinal for a given density.
+
+    parameters
+    ----------
+    st : object
+      contains space-time parameters
+    den : array_like
+      density
+
+    Returns
+    -------
+    Vssc: array_like
+      self-screening correction potential
+    """
+    a = 4.09268097
+    b = 9.20608941
+    c = 0.53651521
+    return a*den*np.exp(-b*den**c)*(2.0-b*c*den**c)
 
 
 def non_interacting_green_function(orbitals, energies, st, zero='0-'):

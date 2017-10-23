@@ -298,6 +298,7 @@ class Input(object):
         mbpt.tau_npt = 800                   #: Number of imaginary time points (must be even)
         mbpt.norb = 25                       #: Number of orbitals to use
         mbpt.flavour = 'G0W0'                #: 'G0W0', 'GW', 'G0W', 'GW0'
+        mbpt.ssc = False                     #: Correct the self-screening error using our local vertex to the self-energy
         mbpt.den_tol = 1e-12                 #: density tolerance of self-consistent algorithm
         mbpt.max_iter = 100                  #: Maximum number of self-consistent algorithm
         mbpt.save_diag = ['sigma0_iw']       #: whether to save diagonal components of all space-time quantities
