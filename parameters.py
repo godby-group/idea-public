@@ -17,7 +17,7 @@ run.MLP = False                      #: Run MLP approximation
 run.HF = False                       #: Run Hartree-Fock approximation
 run.EXT = True                       #: Run Exact Many-Body calculation
 run.HYB = False                      #: Run Hybrid (HF-LDA) calculation
-run.MBPT = False                     #: Run Many-body pertubation theory
+run.MBPT = True                      #: Run Many-body pertubation theory
 run.LAN = False                      #: Run Landauer approximation
 
 
