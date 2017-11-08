@@ -298,6 +298,7 @@ class Input(object):
         mbpt.tau_npt = 800                   #: Number of imaginary time points (must be even)
         mbpt.norb = 25                       #: Number of orbitals to use
         mbpt.flavour = 'G0W0'                #: 'G0W0', 'GW', 'G0W', 'GW0'
+        mbpt.ssc = False                     #: Correct the self-screening error using our local vertex to the self-energy
         mbpt.den_tol = 1e-12                 #: density tolerance of self-consistent algorithm
         mbpt.max_iter = 100                  #: Maximum number of self-consistent algorithm
         mbpt.save_diag = ['sigma0_iw']       #: whether to save diagonal components of all space-time quantities
@@ -339,6 +340,17 @@ class Input(object):
         opt.tol = 1e-4                       #: Tolerance of the error in the density
         opt.mu = 1.0                         #: 1st convergence parameter
         opt.p = 0.05                         #: 2nd convergence parameter
+
+        ### Metrics parameters
+        self.met = InputSection()
+        met = self.met
+        met.type  = 'wavefunction'           #: Type of the metric to be calculated ("wavefunction" or "density") 
+        met.r_name_1 = 'run_name'            #: Run name of the first system (from run.name)
+        met.r_type_1 = 'non'                 #: Run type of the first system (from name of data file: eg. gs_non)
+        met.r_name_2 = 'run_name'            #: Run name of the second system
+        met.r_type_2 = 'ext'                 #: Run type of the second system
+        met.exact_1 = False                  #: Whether the first system is exact (not KS)
+        met.exact_2 = True                   #: Whether the second system is exact (not KS) 
 
 
     def check(self):
@@ -627,6 +639,9 @@ class Input(object):
         if(pm.mbpt.OPT == True):
               from . import OPT
               results.add(OPT.main(pm,'mbpt'), name='mbptopt')
+        if(pm.run.MET == True):
+              from . import MET
+              results.add(MET.main(pm), name='{0}_{1}_{2}_{3}'.format(pm.met.r_name_1,pm.met.r_type_1, pm.met.r_name_2, pm.met.r_type_2))
 
         # All jobs done
         if pm.run.save:

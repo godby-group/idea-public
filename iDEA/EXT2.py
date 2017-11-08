@@ -729,6 +729,9 @@ def main(parameters):
     if(pm.ext.psi_gs == 1):
         wavefunction_reduced = reduction_matrix*wavefunction
         results.add(wavefunction_reduced,'gs_ext_psi')
+    # Saves the full wavefunction
+    if(pm.ext.psi_gs_exp == 1):
+        results.add(wavefunction_2D,'gs_ext_psi_exp')
     if(pm.ext.elf_gs == 1):
         elf = ELF.main(pm, wavefunction_2D, density=density)
         results.add(elf,'gs_ext_elf')
