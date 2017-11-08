@@ -303,7 +303,7 @@ class Input(object):
         mbpt.max_iter = 100                  #: Maximum number of self-consistent algorithm
         mbpt.save_diag = ['sigma0_iw']       #: whether to save diagonal components of all space-time quantities
         mbpt.save_full = []                  #: which space-time quantities to save fully
-        mbpt.w = 'dynamical'                 #: whether to compute 'full' or 'dynamical' W
+        mbpt.screening = 'dynamic'           #: Use 'dynamic' (frequency dependent) or 'static' (frequency independent) screening. (Note: must use static if running time-dependent calculation)
         mbpt.hedin_shift = True              #: whether to perform Hedin shift
         mbpt.RE = False                      #: Reverse-engineer mbpt density
         mbpt.OPT = False                     #: Calculate the external potential for the MBPT density

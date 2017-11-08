@@ -17,7 +17,7 @@ run.MLP = False                      #: Run MLP approximation
 run.HF = False                       #: Run Hartree-Fock approximation
 run.EXT = True                       #: Run Exact Many-Body calculation
 run.HYB = False                      #: Run Hybrid (HF-LDA) calculation
-run.MBPT = True                      #: Run Many-body pertubation theory
+run.MBPT = False                     #: Run Many-body pertubation theory
 run.LAN = False                      #: Run Landauer approximation
 
 
@@ -26,7 +26,7 @@ sys = SystemSection()
 sys.NE = 2                           #: Number of electrons
 sys.grid = 201                       #: Number of grid points (must be odd)
 sys.stencil = 3                      #: Discretisation of 2nd derivative (3 or 5 or 7)
-sys.xmax = 10.0                      #: Size of the system
+sys.xmax = 20.0                      #: Size of the system
 sys.tmax = 1.0                       #: Total real time
 sys.imax = 1001                      #: Number of real time iterations (NB: deltat = tmax/(imax-1))
 sys.acon = 1.0                       #: Smoothing of the Coloumb interaction
@@ -37,7 +37,7 @@ sys.im = 0                           #: Use imaginary potentials (0: no, 1: yes)
 def v_ext(x):
     """Initial external potential
     """
-    return 0.5*(0.25**2)*(x**2)
+    return 0.5*0.25**2*x**2
 sys.v_ext = v_ext
 
 def v_pert(x):
@@ -150,13 +150,13 @@ mbpt.tau_max = 40.0                  #: Maximum value of imaginary time
 mbpt.tau_npt = 1001                  #: Number of imaginary time points
 mbpt.norb = 35                       #: Number of orbitals to use
 mbpt.flavour = 'GW'                  #: 'G0W0', 'GW0', 'GW'
+mbpt.screening = 'dynamic'           #: Use 'dynamic' (frequency dependent) or 'static' (frequency independent) screening. (Note: must use static if running time-dependent calculation)
+mbpt.hedin_shift = True              #: perform Hedin shift
 mbpt.ssc = False                     #: Correct the self-screening error using our local vertex to the self-energy
 mbpt.den_tol = 1e-06                 #: density tolerance of self-consistent algorithm
 mbpt.max_iter = 100                  #: Maximum iterations of self-consistent algorithm
 mbpt.save_full = []                  #: save space-time quantities (e.g. 'G0_iw', 'S1_it')
 mbpt.save_diag = []                  #: save diaginal components of space-time quantities
-mbpt.w = 'dynamical'                 #: compute 'full' W or 'dynamical' W-v
-mbpt.hedin_shift = True              #: perform Hedin shift
 mbpt.RE = False                      #: Reverse-engineer mbpt density
 mbpt.OPT = False                     #: Calculate the external potential for the MBPT density
 
