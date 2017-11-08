@@ -151,6 +151,7 @@ mbpt.tau_max = 40.0                  #: Maximum value of imaginary time
 mbpt.tau_npt = 1001                  #: Number of imaginary time points
 mbpt.norb = 35                       #: Number of orbitals to use
 mbpt.flavour = 'GW'                  #: 'G0W0', 'GW0', 'GW'
+mbpt.ssc = False                     #: Correct the self-screening error using our local vertex to the self-energy
 mbpt.den_tol = 1e-06                 #: density tolerance of self-consistent algorithm
 mbpt.max_iter = 100                  #: Maximum iterations of self-consistent algorithm
 mbpt.save_full = []                  #: save space-time quantities (e.g. 'G0_iw', 'S1_it')
