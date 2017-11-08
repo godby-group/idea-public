@@ -19,7 +19,7 @@ run.EXT = True                       #: Run Exact Many-Body calculation
 run.HYB = False                      #: Run Hybrid (HF-LDA) calculation
 run.MBPT = False                     #: Run Many-body pertubation theory
 run.LAN = False                      #: Run Landauer approximation
-
+run.MET = False                      #: Run metrics calculation
 
 ### System parameters
 sys = SystemSection()
@@ -80,6 +80,7 @@ ext.elf_gs = False                   #: Calculate ELF for the ground-state of th
 ext.elf_es = False                   #: Calculate ELF for the excited-states of the system
 ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
 ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
+ext.psi_gs_exp = False               #: Save the expanded ground-state wavefunction to file
 ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
 ext.initial_psi = 'qho'              #: Initial wavefunction ('qho' by default. 'non' can be selected. 'hf', 'lda1', 'lda2', 'lda3',
                                      #  'ldaheg' or 'ext' can be selected if the orbitals/wavefunction are available. An ext
@@ -188,3 +189,13 @@ opt = InputSection()
 opt.tol = 1e-4                       #: Tolerance of the error in the density
 opt.mu = 1.0                         #: 1st convergence parameter
 opt.p = 0.05                         #: 2nd convergence parameter
+
+### Metrics parameters
+met = InputSection()
+met.type  = 'wavefunction'           #: Type of the metric to be calculated ("wavefunction" or "density")
+met.r_name_1 = 'run_name'            #: Run name of the first system (from run.name)
+met.r_type_1 = 'non'                 #: Run type of the first system (from name of data file: eg. gs_non)
+met.r_name_2 = 'run_name'            #: Run name of the second system
+met.r_type_2 = 'ext'                 #: Run type of the second system
+met.exact_1 = False                  #: Whether the first system is exact (not KS)
+met.exact_2 = True                   #: Whether the second system is exact (not KS)
