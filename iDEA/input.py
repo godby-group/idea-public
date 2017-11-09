@@ -159,6 +159,7 @@ class Input(object):
         run.MBPT = False                     #: Run Many-body pertubation theory
         run.HYB = False                      #: Run Hybrid (HF-LDA) calculation
         run.LAN = False                      #: Run Landauer approximation
+        run.MET = False
 
 
         ### System parameters
@@ -344,13 +345,13 @@ class Input(object):
         ### Metrics parameters
         self.met = InputSection()
         met = self.met
-        met.type  = 'wavefunction'           #: Type of the metric to be calculated ("wavefunction" or "density") 
+        met.type  = 'wavefunction'           #: Type of the metric to be calculated ("wavefunction" or "density")
         met.r_name_1 = 'run_name'            #: Run name of the first system (from run.name)
         met.r_type_1 = 'non'                 #: Run type of the first system (from name of data file: eg. gs_non)
         met.r_name_2 = 'run_name'            #: Run name of the second system
         met.r_type_2 = 'ext'                 #: Run type of the second system
         met.exact_1 = False                  #: Whether the first system is exact (not KS)
-        met.exact_2 = True                   #: Whether the second system is exact (not KS) 
+        met.exact_2 = True                   #: Whether the second system is exact (not KS)
 
 
     def check(self):
