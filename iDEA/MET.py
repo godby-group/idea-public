@@ -1,8 +1,10 @@
-#==============================Metric code for iDEA============================#
-#-----------------------------Ewan Richardson-22/10/17-------------------------#
-# A code which generates ground state density and wavefunction metrics using the
-# iDEA code. Developed as part of my MPhys project.
-#-----------------------------------Libraries----------------------------------#
+"""Calculates the metric between two different wavefunctions or densities of a
+2 electron system with a given external potential. An example would be calculating
+the wavefunction metric for the exact and Hartree Fock. The metric would give a
+measure on how different these wavefunctions were. The wavefunction metric is defined
+within a range of 0 to :math:`\sqrt{N}` amd the density metric is defined within
+a range of 0 to :math:`2\sqrt{2}`.
+"""
 import parameters as pm
 from . import results as rs
 import numpy as np
@@ -10,24 +12,34 @@ import pickle
 from math import *
 import sys
 import copy
-#----------------------------------FUNCTIONS-----------------------------------#
-#--------------------------Loading in Data from iDEA---------------------------#
-def make_filename(pm):
-# Creates the filenames of the data used to generate metrics.
 
-# For density data:
+def make_filename(pm):
+    r"""Creates the file name for both data files containing the data needed to
+    create the metric, depending on what type of metric has been requested.
+
+    parameters
+    ----------
+    pm : object
+        Parameters object
+
+    returns data_file_1 and data_file_2
+        variables containing a string of the relevent data files needed to
+        create the desired metric.
+    """
+
+    # For density data:
     if (pm.met.type == "density"):
         data_file_1 = "gs_" + pm.met.r_type_1 + "_den"
         data_file_2 = "gs_" + pm.met.r_type_2 + "_den"
 
-# For wavefunction data:
+    # For wavefunction data:
     elif (pm.met.type == "wavefunction"):
 
-# For all wavefunctions except exact
+        # For all wavefunctions except exact
         data_file_1 = "gs_" + pm.met.r_type_1 + "_eigf"
         data_file_2 = "gs_" + pm.met.r_type_2 + "_eigf"
 
-# For exact wavefunctions:
+        # For exact wavefunctions:
         # data 1
         if (pm.met.exact_1 == True):
             data_file_1 = "gs_" + pm.met.r_type_1 + "_psi_exp"
@@ -35,7 +47,7 @@ def make_filename(pm):
         if (pm.met.exact_2 == True):
             data_file_2 = "gs_" + pm.met.r_type_2 + "_psi_exp"
 
-# Error checking:
+    # Error checking:
     else:
         sys.exit("met: Warning: metric type not properly defined. Either 'density' or"
                  " 'wavefunction'. Exiting.")
@@ -46,12 +58,23 @@ def make_filename(pm):
     return data_file_1,data_file_2
 
 def load_data(pm):
-# Loads data from selected files into a numpy array.
+    r"""Loads data_file_1 and data_file_2 into a numpy array using pickle.load().
+       It does this by opening the full filepath using the run name set by the
+       user as a parameter.
 
-# Function call to generate the filename:
+    parameters
+    ----------
+    pm : object
+        Parameters object
+
+    returns raw_data_1 and raw_data_2
+        numpy arrays containing the raw data required to create the metrics.
+    """
+
+    # Function call to generate the filename:
     data_file_1, data_file_2 = make_filename(pm)
 
-# Using pickle to load in the raw data for both runs:
+    # Using pickle to load in the raw data for both runs:
     with open("outputs/" + str(pm.met.r_name_1) + "/raw/" + str(data_file_1) \
               + ".db",'rb') as metric_file_1:
         raw_data_1 = pickle.load(metric_file_1)
@@ -61,17 +84,35 @@ def load_data(pm):
         raw_data_2 = pickle.load(metric_file_2)
 
     return raw_data_1,raw_data_2
-#----------------------Calculating the Slater Determinant----------------------#
-def slat_calc(pm,raw_data):
-# Calculate the wavefunctions, that are not exact, from a Slater determinant.
 
-# Gathering appropriate eigenfunctions (first two occupied states):
+def slat_calc(pm,raw_data):
+    r"""Calculates the slater determinant of the eigenfunctions (single particle
+    orbitals), which is the total wavefunction. It is the way of calculating a
+    wavefunctions for non-exact methods like HF and LDA, which is required for
+    calculating a wavefunction metric with data from these approximations. This
+    function is only necessary if it is the wavefunction metric that is being
+    calculated and is non exact, as the exact wavefunction is calculated in
+    EXT2.py.
+
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    raw_data : numpy array
+        the eigenfunctions of all states of the system. Only first two occupied
+        states are needed (raw_data[0] and raw_data[1]).
+
+    returns psi
+        numpy array containing the Slater determinant wavefunction.
+    """
+
+    # Gathering appropriate eigenfunctions (first two occupied states):
     phi_1 = raw_data[0]
     phi_2 = raw_data[1]
-# Zeroing determinant array:
-    det   = np.zeros((pm.sys.grid,pm.sys.grid))
+    # Zeroing determinant array:
+    det   = np.zeros((pm.sys.grid,pm.sys.grid),dtype=complex)
 
-# Calculating the determinant:
+    #Calculating the determinant:
     for i in range(pm.sys.grid):
         for j in range(pm.sys.grid):
             det[i,j] = phi_1[i]*phi_2[j] - phi_1[j]*phi_2[i]
@@ -81,17 +122,38 @@ def slat_calc(pm,raw_data):
 # out for slater determinant wavefunctions.
     psi = det
     return psi
-#------------------------------Preparing the Data------------------------------#
-def data_prep(pm,raw_data_1,raw_data_2):
-# This function does multiple things, depending on the type of data.
-# Wavefunction -     exact: normalising using Irene's convention
-# Wavefunction - non exact: calling Slater determinant calculation function
-#      Density -          : raw data is in correct form so no prep necessary
 
-# Setting up wavefunction data:
+def data_prep(pm,raw_data_1,raw_data_2):
+    r"""Prepares the data ready for the metric calculation, which is different
+    depending on the type of metric and the type of data. If either of the raw
+    data contain the exact wavefunction, it will be renormalised using a different
+    convention that is required for metrics: instead of being normalised to 1,
+    the wavefunction is normalised to :math:`N`. If the raw data is a non-exact
+    wavefunction, slat_calc() is called. If the raw data is the density, it is
+    already in the required form so this function does nothing to it.
+
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    raw_data_1 : numpy array
+        Contains either the exact wavefunction, the single_particle
+        eigenfunctions if its a non-exact method, or the density of the 1st
+        system.
+    raw_data_2 : numpy array
+        Contains either the exact wavefunction, the single_particle
+        eigenfunctions if its a non-exact method, or the density of the 2nd
+        system.
+
+    returns data_1 and data_2
+        The data required to calculate the metric, now ready to be plugged into
+        either the density or the wavefunction metric equation.
+    """
+
+    # Setting up wavefunction data:
     if (pm.met.type == "wavefunction"):
 
-# Checking whether data is exact:
+        # Checking whether data is exact:
         # 1st data - exact
         if (pm.met.exact_1 == True):
             data_1 = sqrt(2)*raw_data_1
@@ -109,14 +171,37 @@ def data_prep(pm,raw_data_1,raw_data_2):
             data_2 = slat_calc(pm,raw_data_2)
             pm.sprint("met: 2nd system: not exact")
 
-# Setting up density data:
+    # Setting up density data:
     elif (pm.met.type == "density"):
         data_1 = raw_data_1
         data_2 = raw_data_2
 
     return data_1,data_2
-#----------------------------Calculating the Metrics---------------------------#
+
 def mat_calc(pm,data_1,data_2):
+    r"""Calculates either the density or wavefunction metrics, depending on the
+    input data, using the defined metric equations.
+
+    .. math::
+
+            \text{wavefunction metric}: \ &D_{\psi}(\psi_1,\psi_2) = \sqrt{\int}(|\psi_1|^2+|\psi_2|^2)dx -2|\int\psi_{1}^{*}\psi_2 dx|\\
+            \text{density metric}: \ &D_{\ro}(\ro_1,\ro_2) = \int |\ro_1 -\ro_2|^2 \\ \\
+
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    data_1 : numpy array
+        Contains either the normalised exact wavefunction, the slater deterimant
+        wavefunction, or the density of the 1st system.
+    data_2 : numpy array
+        Contains either the normalised exact wavefunction, the slater deterimant
+        wavefunction, or the density of the 2nd system.
+
+    returns metric
+        The metric value for the two sets of data. This is a scalar between then
+        set bounds.
+    """
 
     metric = 0
     grid   = pm.sys.grid
@@ -135,16 +220,31 @@ def mat_calc(pm,data_1,data_2):
         metric = 0.5*sum(abs(data_1-data_2))*dx
 
     return metric
-#---------------------------------MAIN FUNCTION--------------------------------#
+
 def main(pm):
-# Contains all the function calls.
+    r"""Calculates the desired metric, with the input files being set as a
+    parameter. Calls the necessary functions defined above to do this.
+
+    parameters
+    ----------
+    parameters : object
+        Parameters object
+
+    returns object
+        Results object
+    """
+    #Check that number of electrons = 2 (only works for 2)
+    if (pm.sys.NE != 2):
+        pm.sprint("met: Warning: number of electrons not 2 (only works for 2)")
+
+    # Contains all the function calls.
     pm.sprint("met: metric type: {}".format(pm.met.type))
 
-# STEP 1 - load in raw data from iDEA:
+    # STEP 1 - load in raw data from iDEA:
     raw_data_1, raw_data_2 = load_data(pm)
-# STEP 2 - prepare data for metric calculation
+    # STEP 2 - prepare data for metric calculation
     data_1, data_2 = data_prep(pm,raw_data_1,raw_data_2)
-# Step 3 - calculate metric:
+    # Step 3 - calculate metric:
     pm.sprint("met: calculating metric...")
     metric = mat_calc(pm,data_1,data_2)
     pm.sprint("met: metric value:{}".format(metric))
