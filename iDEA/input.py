@@ -226,6 +226,7 @@ class Input(object):
         ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
         ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
         ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
+        ext.psi_gs_exp = False               #:
         ext.initial_psi = 'qho'              #: Initial wavefunction ('qho' by default. 'non' can be selected. 'hf', 'lda1', 'lda2', 'lda3',
                                              #  'ldaheg' or 'ext' can be selected if the orbitals/wavefunction are available. An ext
                                              #  wavefunction from another run can be used, but specify the run.name instead e.g. 'run_name'.
