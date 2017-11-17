@@ -11,7 +11,7 @@ import iDEA.HF
 import iDEA.NON
 
 
-def hamiltonian(pm, eigf, density, alpha, perturb=False):
+def hamiltonian(pm, eigf, density, alpha, occupations, perturb=False):
    r"""Compute HF Hamiltonian
 
    Computes HYB Hamiltonian from a given set of single-particle states.
@@ -49,11 +49,14 @@ def hamiltonian(pm, eigf, density, alpha, perturb=False):
    # construct LDA Vxc
    Vxc_LDA = iDEA.LDA.VXC(pm, density)
 
+   F = np.zeros((pm.sys.grid,pm.sys.grid), dtype='complex')
+
    # construct fock operator
    if alpha != 0.0:
-      F = iDEA.HF.fock(pm, eigf)*pm.sys.deltax
-   else:
-      F = np.zeros((pm.sys.grid, pm.sys.grid), dtype=np.complex)
+      for i in range(pm.sys.NE):
+         orb = copy.deepcopy(eigf[:,i])*np.sqrt(occupations[i])
+         F -= np.tensordot(orb.conj(), orb, axes=0)
+      F = F * pm.space.v_int*pm.sys.deltax
 
    # construct hybrid Vxc
    Vxc = alpha*F + (1-alpha)*np.diag(Vxc_LDA)
@@ -82,18 +85,22 @@ def calc_with_alpha(pm, alpha, occupations):
    # Initialise self-consistency
    counter = 0
    convergence = 1.0
-   H, Vh, Vxc_LDA, F = hamiltonian(pm, np.zeros((pm.sys.grid,pm.sys.grid)), np.zeros(pm.sys.grid), alpha)
+   H, Vh, Vxc_LDA, F = hamiltonian(pm, np.zeros((pm.sys.grid,pm.sys.grid)), np.zeros(pm.sys.grid), alpha, occupations)
    density, eigf, eigv = iDEA.HF.groundstate(pm, H)
    E = 0
+
+   # Convergence boolean:
+   converged = False
+
    # Perform self-consistency
-   while convergence > pm.hyb.tol and counter < pm.hyb.max_iter:
+   while (not converged) and counter < pm.hyb.max_iter:
 
       # keep copies to check convergance
       density_old = copy.deepcopy(density)
       H_old =  copy.deepcopy(H)
 
       # Construct hybrid hamiltonian
-      H, Vh, Vxc_LDA, F = hamiltonian(pm, eigf, density, alpha)
+      H, Vh, Vxc_LDA, F = hamiltonian(pm, eigf, density, alpha, occupations)
 
       # Mix for stability
       H = pm.hyb.mix*H + (1.0-pm.hyb.mix)*H_old
@@ -101,46 +108,58 @@ def calc_with_alpha(pm, alpha, occupations):
       # Solve single-particle SE
       density, eigf, eigv = iDEA.HF.groundstate(pm, H)
 
-      # Get a list of occupied wavefunctions:
-      occupied = eigf[:, :pm.sys.NE]
+      if (pm.sys.NE > 0):
+         # Get a list of occupied wavefunctions:
+         occupied = copy.deepcopy(eigf[:, :pm.sys.NE])
 
-      # scale HOMO orbital by its occupation
-      occupied[:, pm.sys.NE-1] = occupied[:, pm.sys.NE-1]*np.sqrt(pm.hyb.homo_occupation)
+         # scale HOMO orbital by its occupation - only this orbital can have fractional occupation
+         occupied[:,-1] = occupied[:,-1]*np.sqrt(occupations[-1])
 
-      # calculate density associated with occupied orbitals - this takes into account fractional occupation
-      density = np.sum(occupied*occupied.conj(), axis=1).real
+         # calculate density associated with occupied orbitals - this takes into account fractional occupation
+         density = np.sum(occupied*occupied.conj(), axis=1).real
 
       # Test for convergance
       convergence = sum(abs(density - density_old))
-      pm.sprint('HYB: computing GS density with alpha = {0}, convergence = {1}'.format(alpha, convergence), 1, newline=False)
+      converged = (convergence < pm.hyb.tol ) and counter > 20
+
+      pm.sprint('HYB: computing GS density with alpha = {:05.4f}, convergence = {:06.5e}'.format(alpha, convergence), 1, newline=False)
       counter += 1
 
       # Calculate the total energy
       E_SYS = 0.0
+
+      # Calculate system energy:
       for i in range(0, pm.sys.NE):
          E_SYS += eigv[i]*occupations[i]
-      E_H = 0.5*np.dot(Vh, density)*pm.sys.deltax
+      E_H = -0.5*np.dot(Vh, density)*pm.sys.deltax
       E_F = 0.0
-      for k in range(pm.sys.NE):
-         orb = eigf[:,k]
-         E_F -= 0.5 * np.dot(orb.conj().T, np.dot(F, orb)) * pm.sys.deltax * occupations[k]
-      pm.lda.NE = 3
-      E_LDA = iDEA.LDA.EXC(pm, density) - (np.dot(density, Vxc_LDA)*pm.sys.deltax)
-      E = (E_SYS - E_H + alpha*E_F + (1.0 - alpha)*E_LDA).real
 
-   pm.sprint('', 1, newline=True)
+      # Calculate exchange energy:
+      for k in range(pm.sys.NE):
+         orb = copy.deepcopy(eigf[:,k]) * np.sqrt(occupations[k])
+         E_F -= 0.5 * np.dot(orb.conj().T, np.dot(F, orb)) * pm.sys.deltax
+      
+      # LDA energy:
+      E_LDA = iDEA.LDA.EXC(pm, density) - np.dot(density, Vxc_LDA)*pm.sys.deltax
+      
+      # Mix energy appropriately:
+      E = (E_SYS + E_H + alpha*E_F + (1.0 - alpha)*E_LDA).real
+      
+      # Calculate charges on grid:
+      grid_charge = np.sum(density)*pm.sys.deltax
+
+   pm.sprint('\nHYB: Total charge on grids: {:10.9f}'.format(grid_charge), 1, newline=True)
    pm.sprint('HYB: total energy = {0} converged in {1} iterations'.format(E, counter), 1, newline=True)
+   pm.sprint('HYB: HOMO-LUMO gap = {0}\n'.format(eigv[pm.sys.NE]-eigv[pm.sys.NE-1]), 1, newline=True)
    return density, eigf, eigv, E
 
 
 def save_results(pm, results, density, E, eigf, eigv, alpha):
-   r"""Saves results to pickle files
-   """
-   results.add(density,'gs_hyb{}_den'.format(alpha).replace('.','_'))
-   results.add(E,'gs_hyb{}_E'.format(alpha).replace('.','_'))
+   results.add(density,'gs_hyb{:05.3f}_den'.format(alpha).replace('.','_'))
+   results.add(E,'gs_hyb{:05.3f}_E'.format(alpha).replace('.','_'))
    if pm.non.save_eig:
-      results.add(eigf.T,'gs_hyb{}_eigf'.format(alpha).replace('.','_'))
-      results.add(eigv,'gs_hyb{}_eigv'.format(alpha).replace('.','_'))
+      results.add(eigf.T,'gs_hyb{:05.3f}_eigf'.format(alpha).replace('.','_'))
+      results.add(eigv,'gs_hyb{:05.3f}_eigv'.format(alpha).replace('.','_'))
    if (pm.run.save):
       results.save(pm)
 
@@ -228,6 +247,39 @@ def n_minus_one_run(pm, results, alphas, occupations):
       energies = np.append(energies, energy)
    return energies, eigsLUMO
 
+def fractional_run(pm, results, occupations, fractions):
+   energies = np.array([])
+   eigsHOMO = np.array([])
+   eigsLUMO = np.array([])
+
+   pm.sprint('\nHYB: running fractional numbers of electrons from {} to {}\n'.format(fractions[0], fractions[-1]), 1, newline=True)
+
+   for num_electrons in fractions:
+      pm.sprint('HYB: Current total number of electrons = {:05.4f}'.format(num_electrons), 1, newline=True)
+      
+      pm.sys.NE = int(np.ceil(num_electrons))
+
+      if (pm.sys.NE == 0):
+         pm.sys.NE = 1
+         occupations = np.zeros(pm.sys.NE)
+      else: 
+         occupations = np.ones(pm.sys.NE)
+         occupations[-1] = num_electrons - int(np.ceil(num_electrons)) + 1
+
+      # Run a normal calculation:
+      density, eigf, eigv, energy = calc_with_alpha(pm, pm.hyb.alpha, occupations)
+      eigsHOMO = np.append(eigsHOMO, eigv[pm.sys.NE - 1])
+      eigsLUMO = np.append(eigsLUMO, eigv[pm.sys.NE])
+      energies = np.append(energies, energy)
+
+   results.add(fractions,'gs_hyb_frac{:05.3f}'.format(pm.hyb.alpha).replace('.','_'))
+   results.add(eigsHOMO, 'gs_hyb_frac{:05.3f}_HOMO'.format(pm.hyb.alpha).replace('.','_'))
+   results.add(eigsLUMO, 'gs_hyb_frac{:05.3f}_LUMO'.format(pm.hyb.alpha).replace('.','_'))
+   results.add(energies, 'gs_hyb_frac{:05.3f}_en'.format(pm.hyb.alpha).replace('.','_'))
+   
+   if (pm.run.save):
+      results.save(pm)
+
 
 def main(parameters):
    r"""Performs Hybrid calculation
@@ -244,21 +296,33 @@ def main(parameters):
    pm = parameters
    pm.setup_space()
    results = rs.Results()
-   pm.sprint('HYB: HOMO occupation = {}'.format(pm.hyb.homo_occupation), 1, newline=True)
+
+   # always use three electron LDA:
+   pm.lda.NE = 3
 
    # Occupations of all the orbitals, only the last value should be fractional:
    occupations = np.ones(pm.sys.NE)
 
-   # Run code to find optimal alpha - no fractional occupation in this part
-   if pm.hyb.alpha == 'o':
-       alphas = np.linspace(pm.hyb.alphas[0], pm.hyb.alphas[1], pm.hyb.alphas[2])
-       optimal_alpha(pm, results, alphas, occupations)
+   # Run code to find optimal alpha - no fractional occupation in this part:
+   if pm.hyb.functionality == 'o':
+      alphas = np.linspace(pm.hyb.of_array[0], pm.hyb.of_array[1], pm.hyb.of_array[2])
+      optimal_alpha(pm, results, alphas, occupations)
 
-   # Run code for one given alpha - fractional occupation only in here
+   # Run code to get fractional numbers of electrons:
+   elif pm.hyb.functionality == 'f':
+      fractions = np.linspace(pm.hyb.of_array[0], pm.hyb.of_array[1], pm.hyb.of_array[2])
+      #fractions = np.array([1.0, 0.9])
+      fractional_run(pm, results, occupations, fractions)
+   
+   # Run code for one given alpha:
+   elif pm.hyb.functionality == 'a':
+      occupations[pm.sys.NE - 1] = 1.0
+      density, eigf, eigv, E = calc_with_alpha(pm, pm.hyb.alpha, occupations)
+      save_results(pm, results, density, E, eigf, eigv, pm.hyb.alpha)
+
+   # Output an error message:   
    else:
-       occupations[pm.sys.NE - 1] = pm.hyb.homo_occupation
-       density, eigf, eigv, E = calc_with_alpha(pm, pm.hyb.alpha, occupations)
-       save_results(pm, results, density, E, eigf, eigv, pm.hyb.alpha)
+      pm.sprint('HYB: functionality chosen is not valid - please choose from a, o and f)'.format(pm.sys.NE), 1, newline=True)
 
    if pm.run.time_dependence:
 
