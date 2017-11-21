@@ -226,6 +226,7 @@ class Input(object):
         ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
         ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
         ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
+        ext.psi_gs_exp = False               #:
         ext.initial_psi = 'qho'              #: Initial wavefunction ('qho' by default. 'non' can be selected. 'hf', 'lda1', 'lda2', 'lda3',
                                              #  'ldaheg' or 'ext' can be selected if the orbitals/wavefunction are available. An ext
                                              #  wavefunction from another run can be used, but specify the run.name instead e.g. 'run_name'.
@@ -281,9 +282,9 @@ class Input(object):
         ### HYB parameters
         self.hyb = InputSection()
         hyb = self.hyb
-        hyb.alpha = 'o'                      #: Fraction of HF (float in [0,1]) (set to 'o' to calculate and use optimal alpha)
-        hyb.alphas = (0.5,1.0,6)             #: If finding optimal alpa, this defines the range (a,b,c)  a->b in c steps
-        hyb.homo_occupation = 1.0            #: Occupation of the HOMO (Float in [0,1])
+        hyb.functionality = 'o'              #: Functionality of hybrid functionals: 'o' for optimal alpha, 'f' for fractional numbers of electrons, 'a' for single alpha run
+        hyb.of_array = (0.5,1.0,6)           #: If finding optimal alpa, this defines the range (a,b,c)  a->b in c steps, If fractional run, this defines the numbers of electrons to calculate
+        hyb.alpha = 1.0                      #: If single alpha run, this defines the alpha
         hyb.mix = 0.5                        #: Mixing parameter for linear  mixing (float in [0,1])
         hyb.tol = 1e-12                      #: convergence tolerance in the density
         hyb.max_iter = 10000                 #: Maximum number of self-consistency iterations
