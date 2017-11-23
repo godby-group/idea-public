@@ -18,7 +18,8 @@ run.HF = False                       #: Run Hartree-Fock approximation
 run.EXT = True                       #: Run Exact Many-Body calculation
 run.HYB = False                      #: Run Hybrid (HF-LDA) calculation
 run.MBPT = False                     #: Run Many-body pertubation theory
-run.LAN = False                      #: Run Landauer approximation 
+run.LAN = False                      #: Run Landauer approximation
+run.MET = False                      #: Run metrics calculation
 
 
 ### System parameters
@@ -138,9 +139,11 @@ hf.OPT = False                       #: Calculate the external potential for the
 
 ### HYB parameters
 hyb = InputSection()
-hyb.alpha = 1.0                      #: Fraction of HF (float in [0,1]) (set to 'o' to calculate and use optimal alpha)
-hyb.alphas = (0.5,1.0,6)             #: If finding optimal alpa, this defines the range (a,b,c)  a->b in c steps
-hyb.homo_occupation = 1.0            #: Occupation of the HOMO level (float in [0,1])
+hyb.functionality = 'o'              #: Functionality of hybrid functionals: 'o' for optimal alpha, 'f' for fractional numbers of electrons,
+                                     #: 'a' for single alpha run
+hyb.of_array = (0.5,1.0,6)           #: If finding optimal alpa, this defines an array going from a->b in c steps whose energies are used for 
+                                     #: optimisation. If fractional run, this defines the numbers of electrons to calculate
+hyb.alpha = 1.0                      #: If single alpha run, this defines the alpha
 hyb.mix = 0.5                        #: Mixing parameter for linear  mixing (float in [0,1])
 hyb.tol = 1e-12                      #: convergence tolerance in the density
 hyb.max_iter = 10000                 #: Maximum number of self-consistency iterations
@@ -156,12 +159,14 @@ mbpt.tau_max = 40.0                  #: Maximum value of imaginary time
 mbpt.tau_npt = 1001                  #: Number of imaginary time points
 mbpt.norb = 35                       #: Number of orbitals to use
 mbpt.flavour = 'GW'                  #: 'G0W0', 'GW0', 'GW'
+mbpt.screening = 'dynamic'           #: Use 'dynamic' (frequency dependent) or 'static' (frequency independent) screening. 
+                                     #: (Note: must use static if running time-dependent calculation)
+mbpt.hedin_shift = True              #: perform Hedin shift
+mbpt.ssc = False                     #: Correct the self-screening error using our local vertex to the self-energy
 mbpt.den_tol = 1e-06                 #: density tolerance of self-consistent algorithm
 mbpt.max_iter = 100                  #: Maximum iterations of self-consistent algorithm
 mbpt.save_full = []                  #: save space-time quantities (e.g. 'G0_iw', 'S1_it')
 mbpt.save_diag = []                  #: save diaginal components of space-time quantities
-mbpt.w = 'dynamical'                 #: compute 'full' W or 'dynamical' W-v
-mbpt.hedin_shift = True              #: perform Hedin shift
 mbpt.RE = False                      #: Reverse-engineer mbpt density
 mbpt.OPT = False                     #: Calculate the external potential for the MBPT density
 
@@ -195,3 +200,14 @@ opt = InputSection()
 opt.tol = 1e-4                       #: Tolerance of the error in the density
 opt.mu = 1.0                         #: 1st convergence parameter
 opt.p = 0.05                         #: 2nd convergence parameter
+
+
+### Metrics parameters
+met = InputSection()
+met.type  = 'wavefunction'           #: Type of the metric to be calculated ("wavefunction" or "density")
+met.r_name_1 = 'run_name'            #: Run name of the first system (from run.name)
+met.r_type_1 = 'non'                 #: Run type of the first system (from name of data file: eg. gs_non)
+met.r_name_2 = 'run_name'            #: Run name of the second system
+met.r_type_2 = 'ext'                 #: Run type of the second system
+met.exact_1 = False                  #: Whether the first system is exact (not KS)
+met.exact_2 = True                   #: Whether the second system is exact (not KS)

@@ -15,13 +15,16 @@ Installing iDEA
 ----------------
 
 .. code-block:: bash
-   
+
    # Clone from the central repository
    git clone USERNAME@rwgu4.its.york.ac.uk:/shared/storage/physrwg/trunk/iDEAL iDEAL
 
    # Install iDEA for your unix user, including documentation extension
    cd iDEAL
    pip install --user -e .[doc]
+
+   # Compile the cython modules
+   python setup.py build_ext --inplace
 
 Updating iDEA
 -------------
@@ -31,7 +34,7 @@ Updating iDEA
    # Pull all changes from central git repository
    git pull
 
-   # Remove the compiled cython modules 
+   # Remove the compiled cython modules
    python setup.py clean --all
 
    # Recompile the cython modules
@@ -47,7 +50,7 @@ need to generate the documentation by yourself
 
 **Requirements**
 
- * `Sphinx <http://sphinx-doc.org>`_ 1.4 or later 
+ * `Sphinx <http://sphinx-doc.org>`_ 1.4 or later
  * `numpydoc extension <https://pypi.python.org/pypi/numpydoc>`_ 0.7 or later (adds support for numpy-style docstrings)
  * `nbconvert extension <http://sphinx-doc.org>`_ 5.2 or later (renders static versions of jupyter notebooks)
  * (optional) `LaTeX <https://www.latex-project.org/get/>`_ (for the LaTeX version of the documentation)
@@ -65,7 +68,5 @@ In order to produce the documentation in html and latex form:
    cd doc
    bash make_doc.sh
    # find html documentation in _build/html
-   # find latex documentation in _build/latex 
+   # find latex documentation in _build/latex
    make latexpdf  # generates _build/latex/iDEA.pdf
-
-

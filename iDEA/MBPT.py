@@ -12,13 +12,11 @@ energies and, if desired, the Green function of the system.
 from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
-
 import copy
 import numpy as np
 import scipy as sp
 from . import results as rs
 from . import continuation
-
 from .fftwrap import fft_1d, ifft_1d
 
 class SpaceTimeGrid(object):
@@ -163,8 +161,10 @@ def main(parameters):
 
         # For GW0, no need to recompute W
         if not (pm.mbpt.flavour == 'GW0' and cycle > 0):
+
+            # compute P
             pm.sprint('MBPT: setting up P(it)',0)
-            P = irreducible_polarizability(G, G_pzero)
+            P = irreducible_polarizability(st, G, G_pzero, screening=pm.mbpt.screening)
             save(P, "P{}_it".format(cycle))
             save(P, "P_it")
 
@@ -173,22 +173,16 @@ def main(parameters):
             save(P, "P{}_iw".format(cycle))
             save(P, "P_iw")
 
-            #### testing alternative way of computing W
-            # this is completely identical for flavor=dynamical
-            #v_test = np.empty( (st.x_npt, st.x_npt, st.tau_npt), dtype=float)
-            #for i in range(st.tau_npt):
-            #    v_test[:,:,i] = st.coulomb_repulsion
-            #W_test = solve_dyson_equation(v_test,P,st)
-            #save(W_test, "Wt{}_iw".format(cycle))
-
+            # compute eps
             pm.sprint('MBPT: setting up eps(iw)',0)
             eps = dielectric_matrix(P, st)
             save(eps, "eps{}_iw".format(cycle))
             save(eps, "eps_iw")
             del P # not needed anymore
 
+            # compute W-v
             pm.sprint('MBPT: setting up W(iw)',0)
-            W = screened_interaction(st, epsilon=eps, w_flavour=pm.mbpt.w)
+            W = screened_interaction(st, epsilon=eps)  # This is the sceening interaction (W-v)
             save(W, "W{}_iw".format(cycle))
             save(W, "W_iw")
             del eps # not needed anymore
@@ -198,61 +192,50 @@ def main(parameters):
             save(W, "W{}_it".format(cycle))
             save(W, "W_it")
 
-        pm.sprint('MBPT: computing S(it)',0)
-        S = self_energy(G, W)
-
-        if(pm.mbpt.w == 'dynamical'):
-            save(S, "Sc{}_it".format(cycle))
-            save(S, "Sc_it")
-        else:
-            save(S, "Sxc{}_it".format(cycle))
-            save(S, "Sxc_it")
-
+        # compute Sc
+        pm.sprint('MBPT: computing Sc(it)',0)
+        Sc = self_energy(G, W)
+        save(Sc, "Sc{}_it".format(cycle))
+        save(Sc, "Sc_it")
         if not pm.mbpt.flavour == 'GW0':
             del W # not needed anymore
 
-        pm.sprint('MBPT: transforming S to imaginary frequency',0)
-        S = fft_t(S, st, dir='it2if')
-        if(pm.mbpt.w == 'dynamical'):
-            save(S, "Sc{}_iw".format(cycle))
-            save(S, "Sc_iw")
-        else:
-            save(S, "Sxc{}_iw".format(cycle))
-            save(S, "Sxc_iw")
+        pm.sprint('MBPT: transforming Sc to imaginary frequency',0)
+        Sc = fft_t(Sc, st, dir='it2if')
+        save(Sc, "Sc{}_iw".format(cycle))
+        save(Sc, "Sc_iw")
 
-        # save Sx for all runs
-        Sx = np.zeros(S.shape, dtype=np.complex)
+        # compute Sx
+        Sx = np.zeros(Sc.shape, dtype=np.complex)
         for i in range(st.tau_npt):
             Sx[:,:,i] = H.vx
         save(Sx, "Sx{}_iw".format(cycle))
         save(Sx, "Sx_iw")
+
+        # compute Sxc
+        Sxc = np.zeros(Sc.shape, dtype=np.complex)
+        for i in range(st.tau_npt):
+            Sxc[:,:,i] = Sx[:,:,i] + Sc[:,:,i]    # Sxc = Sx + Sc
+        save(Sxc, "Sxc{}_iw".format(cycle))
+        save(Sxc, "Sxc_iw")
         del Sx
 
-        # calculate and save Scx for dynamical runs
-        if(pm.mbpt.w == 'dynamical'):
-            Sxc = np.zeros(S.shape, dtype=np.complex)
-            for i in range(st.tau_npt):
-                Sxc[:,:,i] = H.vx + S[:,:,i]    #Sxc = Sx + Sc
-            save(Sxc, "Sxc{}_iw".format(cycle))
-            save(Sxc, "Sxc_iw")
-
-            Sxc = fft_t(Sxc, st, dir='if2it')
-            save(Sxc, "Sxc{}_it".format(cycle))
-            save(Sxc, "Sxc_it")
-            del Sxc
-
-
-        pm.sprint('MBPT: updating S(iw)',0)
-        # real for real orbitals...
-        delta = np.zeros((st.x_npt, st.x_npt), dtype=np.complex)
-        np.fill_diagonal(delta, H.vh / st.x_delta)
-        delta -= h0.vhxc
-        if pm.mbpt.w == 'dynamical':
-            # in the frequency domain we can put the exchange back
-            # Note: here, we need the extrapolated G(it=0^-)
-            delta += H.vx
+        # construct the full S
+        S = np.zeros(Sc.shape, dtype=np.complex)
+        pm.sprint('MBPT: constructing S(iw)',0)
+        Vh = np.diag(H.vh) / st.x_delta
         for i in range(st.tau_npt):
-            S[:,:,i] += delta
+            S[:,:,i] = Vh + Sxc[:,:,i] - h0.vhxc  # S = Vh + Sxc - Vhxc0
+        del Sxc
+
+        # remove the self-screening error from S
+        if(pm.mbpt.ssc == True):
+            pm.sprint('MBPT: removing the self-screening error from sigma')
+            den = H.den * st.NE / (np.sum(H.den) * st.x_delta)
+            vssc = self_screening_correction(st, abs(den))
+            vssc_matrix = np.diag(vssc) / st.x_delta
+            for i in range(st.tau_npt):
+                S[:,:,i] = S[:,:,i] + vssc_matrix
         save(S, "S{}_iw".format(cycle))
         save(S, "S_iw")
 
@@ -478,6 +461,7 @@ def hartree_potential(st, den=None, G=None):
     v_h = np.dot(st.coulomb_repulsion, den) * st.x_delta
     return v_h
 
+
 def exchange_potential(st, G=None, orbitals=None):
     r"""Calculate Fock exchange operator V_x(r,r')
 
@@ -508,6 +492,27 @@ def exchange_potential(st, G=None, orbitals=None):
         raise IOError("Need to provide either G or orbitals.")
 
     return v_x
+
+
+def self_screening_correction(st, den):
+    r"""Evaluates our self-screening correction functinal for a given density.
+
+    parameters
+    ----------
+    st : object
+      contains space-time parameters
+    den : array_like
+      density
+
+    Returns
+    -------
+    Vssc: array_like
+      self-screening correction potential
+    """
+    a = 4.09268097
+    b = 9.20608941
+    c = 0.53651521
+    return a*den*np.exp(-b*den**c)*(2.0-b*c*den**c)
 
 
 def non_interacting_green_function(orbitals, energies, st, zero='0-'):
@@ -717,7 +722,7 @@ def fft_t(F, st, dir, phase_shift=False):
     return out
 
 
-def irreducible_polarizability(G, G_pzero):
+def irreducible_polarizability(st, G, G_pzero, screening):
     r"""Calculates irreducible polarizability P(r,r',it).
 
     .. math:: P(r,r';i\tau) = -iG(r,r';i\tau) G(r',r;-i\tau)
@@ -728,6 +733,8 @@ def irreducible_polarizability(G, G_pzero):
         Green function
     G_pzero : array
         it=0 component of Green function with :math:`G(0) = \lim_{t\downarrow 0}G(it)`
+    screening : string
+        Use 'dynamic' (frequency dependent) or 'static' (frequency independent) screening.
 
     FLOPS: grid**2 * tau_npt * 3
 
@@ -741,12 +748,15 @@ def irreducible_polarizability(G, G_pzero):
     G_rev = np.roll(G_rev, -1, axis=2)
     P =  -1J * G * G_rev[:,:,::-1]
 
-    # for information, the same loop in python, significantly slower but equivalent to the above code
-    #P = np.empty((st.x_npt, st.x_npt, st.tau_npt), dtype=complex)
-    #for i in range(st.x_npt):
-    #    for j in range(st.x_npt):
-    #        for k in range(st.tau_npt):
-    #            P[i,j,k] = -1.0j * G[i,j,k] * G[j,i,-k]
+    # Note: this is done inefficiently yes, to be optimised soon...
+    if screening == 'dynamic':
+        pass
+    elif screening == 'static':
+        for i in range(1, st.tau_npt):
+            P[:,:,i] = 0.0
+        P = P / st.tau_delta
+    else:
+        raise ValueError("Unrecognized screening {} for screened interaction".format(screening))
 
     return P
 
@@ -791,7 +801,7 @@ def dielectric_matrix(P, st):
     return eps
 
 
-def screened_interaction(st, epsilon_inv=None, epsilon=None, w_flavour='full'):
+def screened_interaction(st, epsilon_inv=None, epsilon=None):
     r"""Calculates screened interaction W(r,r';iw).
 
     Input is the (inverse) dielectric function.
@@ -812,9 +822,6 @@ def screened_interaction(st, epsilon_inv=None, epsilon=None, w_flavour='full'):
     epsilon: array_like
         dielectric matrix eps(r,r',iw).
         If provided, we solve epsilon W = v instead
-    w_flavour: string
-        - 'full': for full screened interaction (static and dynamical parts)
-        - 'dynamical': dynamical part only: W = (eps_inv -1) v
 
     Returns
     -------
@@ -823,17 +830,11 @@ def screened_interaction(st, epsilon_inv=None, epsilon=None, w_flavour='full'):
     W = np.empty((st.x_npt, st.x_npt, st.tau_npt), dtype=complex)
     v = st.coulomb_repulsion
 
-    if w_flavour not in ['full', 'dynamical']:
-        raise ValueError("Unrecognized flavour {} for screened interaction".format(w_flavour))
-
     if epsilon_inv is not None:
-        # W = eps_inv * v
-
-        if w_flavour == 'dynamical':
-            # calculate only dynamical part of S: W = (eps_inv-1) v
-            tmp = 1.0 / st.x_delta
-            for i in range(st.x_npt):
-                epsilon_inv[i,i,:] -= tmp
+        # calculate only dynamical part of S: W = (eps_inv-1) v
+        tmp = 1.0 / st.x_delta
+        for i in range(st.x_npt):
+            epsilon_inv[i,i,:] -= tmp
 
         for k in range(st.tau_npt):
             W[:, :, k] = np.dot(epsilon_inv[:, :, k], v) * st.x_delta
@@ -844,15 +845,9 @@ def screened_interaction(st, epsilon_inv=None, epsilon=None, w_flavour='full'):
         # solve linear system
         v_dx = v / st.x_delta
 
-        if w_flavour == 'dynamical':
-            # solve eps * (W+v) = v/dx
-            for k in range(st.tau_npt):
-                W[:, :, k] = np.linalg.solve(epsilon[:,:,k], v_dx) - v
-        else:
-            # solve eps*W = v/dx
-
-            for k in range(st.tau_npt):
-                W[:, :, k] = np.linalg.solve(epsilon[:,:,k], v_dx)
+        # solve eps * (W+v) = v/dx
+        for k in range(st.tau_npt):
+            W[:, :, k] = np.linalg.solve(epsilon[:,:,k], v_dx) - v
 
     else:
         raise ValueError("Need to provide either epsilon or epsilon_inv")
