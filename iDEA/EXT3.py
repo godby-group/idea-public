@@ -137,7 +137,7 @@ def construct_A_reduced(pm, reduction_matrix, expansion_matrix, td):
     return A_reduced
 
 
-def initial_wavefunction(pm, ground_state=True):
+def initial_wavefunction(pm, state):
     r"""Generates the initial wavefunction for the Crank-Nicholson imaginary 
     time propagation.
 
@@ -154,15 +154,9 @@ def initial_wavefunction(pm, ground_state=True):
     ----------
     pm : object
         Parameters object
-    ground_state : bool
-        - True: Construct a Slater determinant of either the three lowest 
-                non-interacting eigenstates of the system, the three lowest
-                Hartree-Fock eigenstates of the system or the three lowest
-                LDA eigenstates of the system to use as the initial 
-                wavefunction. Alternatively, read in a many-body wavefunction
-                to use as the initial wavefunction.
-        - False: Construct a Slater determinant of the three lowest eigenstates 
-                 of the harmonic oscillator to use as the initial wavefunction
+    state : integer
+        Many-body wavefunction to be calculated e.g. ground-state = 0, 
+        1st excited state = 1, 2nd excited state = 2, etc.
 
     returns array_like
         1D array of the reduced wavefunction, indexed as 
@@ -174,10 +168,10 @@ def initial_wavefunction(pm, ground_state=True):
     eigenstate_3 = np.copy(eigenstate_1)
 
     # If calculating the ground-state wavefunction
-    if(ground_state == True):
+    if(state == 0):
 
         # Read the three lowest Hartree-Fock eigenstates of the system
-        if(pm.ext.initial_psi == 'hf'):
+        if(pm.ext.initial_gspsi == 'hf'):
             try:
                 eigenstates = rs.Results.read('gs_hf_eigf', pm) 
                 eigenstate_1 = eigenstates[0].real
@@ -189,7 +183,7 @@ def initial_wavefunction(pm, ground_state=True):
                 raise IOError("Cannot find file containing HF orbitals.")
 
         # Read the three lowest LDA eigenstates of the system
-        elif(pm.ext.initial_psi == 'lda'):
+        elif(pm.ext.initial_gspsi == 'lda'):
             try:
                 eigenstates = rs.Results.read('gs_lda_eigf', pm)
                 eigenstate_1 = eigenstates[0].real
@@ -201,7 +195,7 @@ def initial_wavefunction(pm, ground_state=True):
                 raise IOError("Cannot find file containing LDA orbitals.")
 
         # Read the three lowest non-interacting eigenstates of the system
-        elif(pm.ext.initial_psi == 'non'):
+        elif(pm.ext.initial_gspsi == 'non'):
             try:
                 eigenstates = rs.Results.read('gs_non_eigf', pm)
                 eigenstate_1 = eigenstates[0].real
@@ -214,13 +208,13 @@ def initial_wavefunction(pm, ground_state=True):
                 eigenstate_1, eigenstate_2, eigenstate_3 = non_approx(pm)
 
         # Calculate the three lowest eigenstates of the harmonic oscillator
-        elif(pm.ext.initial_psi == 'qho'):
+        elif(pm.ext.initial_gspsi == 'qho'):
             eigenstate_1 = qho_approx(pm, 0)
             eigenstate_2 = qho_approx(pm, 1)
             eigenstate_3 = qho_approx(pm, 2)
 
         # Read an exact many-body wavefunction from this directory 
-        elif(pm.ext.initial_psi == 'ext'):
+        elif(pm.ext.initial_gspsi == 'ext'):
             try:
                 wavefunction_reduced = rs.Results.read('gs_ext_psi', pm)
             
@@ -233,7 +227,7 @@ def initial_wavefunction(pm, ground_state=True):
         else:
             try:
                 pm2 = copy.deepcopy(pm)
-                pm2.run.name = pm.ext.initial_psi
+                pm2.run.name = pm.ext.initial_gspsi
                 wavefunction_reduced = rs.Results.read('gs_ext_psi', pm2)
  
             # File does not exist
@@ -242,12 +236,43 @@ def initial_wavefunction(pm, ground_state=True):
                 " wavefunction.")
 
     # If calculating excited-state wavefunctions
-    elif(ground_state == False): 
+    else:
+
+        # Read an exact many-body wavefunction from this directory 
+        if(pm.ext.initial_espsi == 'ext'):
+            try:
+                wavefunction_reduced = rs.Results.read('es_ext_psi{}'.format(state), pm)
+            
+            # File does not exist
+            except:
+                string = "Cannot find file containting many-body" + \
+                " wavefunction. Starting from the quantum harmonic oscillator"
+                pm.sprint(string, 1, newline=True)
+                eigenstate_1 = qho_approx(pm, 0)
+                eigenstate_2 = qho_approx(pm, 1)
+                eigenstate_3 = qho_approx(pm, 2)
 
         # Calculate the three lowest eigenstates of the harmonic oscillator
-        eigenstate_1 = qho_approx(pm, 0)
-        eigenstate_2 = qho_approx(pm, 1)
-        eigenstate_3 = qho_approx(pm, 2)
+        elif(pm.ext.initial_espsi == 'qho'):
+            eigenstate_1 = qho_approx(pm, 0)
+            eigenstate_2 = qho_approx(pm, 1)
+            eigenstate_3 = qho_approx(pm, 2)
+
+        # Read an exact many-body wavefunction from a different directory
+        else:
+            try:
+                pm2 = copy.deepcopy(pm)
+                pm2.run.name = pm.ext.initial_espsi
+                wavefunction_reduced = rs.Results.read('es_ext_psi{}'.format(state), pm2)
+ 
+            # File does not exist
+            except:
+                string = "Cannot find file containting many-body" + \
+                " wavefunction. Starting from the quantum harmonic oscillator"
+                pm.sprint(string, 1, newline=True)
+                eigenstate_1 = qho_approx(pm, 0)
+                eigenstate_2 = qho_approx(pm, 1)
+                eigenstate_3 = qho_approx(pm, 2)
 
     # Construct a Slater determinant from the single-particle eigenstates if a
     # many-body wavefunction has not been read 
@@ -624,7 +649,7 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
     """
     # Array initialisations
     density = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float)
-    if(pm.ext.elf_td == 1):
+    if(pm.ext.elf_td):
         elf = np.copy(density)
     else:
         elf = 0 
@@ -668,7 +693,7 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
         wavefunction_3D = wavefunction.reshape(pm.space.npt, pm.space.npt, 
                           pm.space.npt)
         density[i,:] = calculate_density(pm, wavefunction_3D)
-        if(pm.ext.elf_td == 1):
+        if(pm.ext.elf_td):
             elf[i,:] = ELF.main(pm, wavefunction_3D, density=density[i,:])
     
         # Stop timing the iteration
@@ -693,10 +718,7 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
     # Calculate the current density
     current_density = calculate_current_density(pm, density)
 
-    if(pm.ext.elf_td == 1):
-        return density, current_density, elf
-    else:
-        return density, current_density, elf
+    return density, current_density, elf
 
 
 def main(parameters):
@@ -726,7 +748,7 @@ def main(parameters):
                 dtype=np.float)*expansion_matrix
 
     # Generate the initial wavefunction
-    wavefunction_reduced = initial_wavefunction(pm)
+    wavefunction_reduced = initial_wavefunction(pm, 0)
 
     # Propagate through imaginary time
     energy, wavefunction = solve_imaginary_time(pm, A_reduced, C_reduced,
@@ -744,10 +766,10 @@ def main(parameters):
     results.add(density,'gs_ext_den')
     results.add(energy,'gs_ext_E')
     results.add(pm.space.v_ext,'gs_ext_vxt')
-    if(pm.ext.psi_gs == 1):
+    if(pm.ext.psi_gs):
         wavefunction_reduced = reduction_matrix*wavefunction
         results.add(wavefunction_reduced,'gs_ext_psi')
-    if(pm.ext.elf_gs == 1):
+    if(pm.ext.elf_gs):
         elf = ELF.main(pm, wavefunction_3D, density=density)
         results.add(elf,'gs_ext_elf')
     if(pm.run.save):
@@ -768,7 +790,7 @@ def main(parameters):
             eigenstates_array[j,:] = wavefunction_reduced[:]
 
             # Generate the initial wavefunction
-            wavefunction_reduced = initial_wavefunction(pm, ground_state=False)
+            wavefunction_reduced = initial_wavefunction(pm, j+1)
           
             # Propagate through imaginary time
             energy, wavefunction = solve_imaginary_time(pm, A_reduced,
@@ -785,10 +807,10 @@ def main(parameters):
             # reduced wavefunction and ELF)
             results.add(density,'es_ext_den{}'.format(j+1))
             results.add(energy,'es_ext_E{}'.format(j+1))
-            if(pm.ext.psi_es == 1):
+            if(pm.ext.psi_es):
                 wavefunction_reduced = reduction_matrix*wavefunction
                 results.add(wavefunction_reduced,'es_ext_psi{}'.format(j+1))
-            if(pm.ext.elf_es == 1):
+            if(pm.ext.elf_es):
                 elf = ELF.main(pm, wavefunction_3D, density=density)
                 results.add(elf,'es_ext_elf{}'.format(j+1))
             if(pm.run.save):
@@ -825,7 +847,7 @@ def main(parameters):
         results.add(density,'td_ext_den')
         results.add(current_density,'td_ext_cur')
         results.add(pm.space.v_ext+pm.space.v_pert,'td_ext_vxt')
-        if(pm.ext.elf_td == 1):
+        if(pm.ext.elf_td):
             results.add(elf,'td_ext_elf')
         if(pm.run.save):
             results.save(pm)

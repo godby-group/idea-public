@@ -18,7 +18,7 @@ run.HF = False                       #: Run Hartree-Fock approximation
 run.EXT = True                       #: Run Exact Many-Body calculation
 run.HYB = False                      #: Run Hybrid (HF-LDA) calculation
 run.MBPT = False                     #: Run Many-body pertubation theory
-run.LAN = False                      #: Run Landauer approximation
+run.LAN = False                      #: Run Landauer approximation 
 
 
 ### System parameters
@@ -69,7 +69,7 @@ sys.v_pert_im = v_pert_im
 ext = InputSection()
 ext.itol = 1e-12                     #: Tolerance of imaginary time propagation (Recommended: 1e-12)
 ext.itol_solver = 1e-14              #: Tolerance of linear solver in imaginary time propagation (Recommended: 1e-14)
-ext.rtol_solver = 1e-13              #: Tolerance of linear solver in real time propagation (Recommended: 1e-12)
+ext.rtol_solver = 1e-12              #: Tolerance of linear solver in real time propagation (Recommended: 1e-12)
 ext.itmax = 2000.0                   #: Total imaginary time
 ext.iimax = 1e5                      #: Imaginary time iterations
 ext.ideltat = ext.itmax/ext.iimax    #: Imaginary time step (DERIVED)
@@ -81,9 +81,15 @@ ext.elf_es = False                   #: Calculate ELF for the excited-states of 
 ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
 ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
 ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
-ext.initial_psi = 'qho'              #: Initial wavefunction ('qho' by default. 'non' can be selected. 'hf', 'lda1', 'lda2', 'lda3',
-                                     #  'ldaheg' or 'ext' can be selected if the orbitals/wavefunction are available. An ext
-                                     #  wavefunction from another run can be used, but specify the run.name instead e.g. 'run_name'.
+ext.initial_gspsi = 'qho'            #: Initial ground-state wavefunction ('qho' by default. 'non' can be selected. 
+                                     #: 'hf', 'lda1', 'lda2', 'lda3', 'ldaheg' or 'ext' can be selected if the orbitals/wavefunction 
+                                     #: are available. An ext wavefunction from another run can be used, but specify the run.name 
+                                     #: instead e.g. 'run_name').
+                                     #: WARNING: If no reliable starting guess can be provided e.g. wrong number of electrons per well,
+                                     #: then choose 'qho' - this will ensure stable convergence to the true ground-state.)
+ext.initial_espsi = 'qho'            #: Initial excited-state wavefunction ('qho' by default. 'ext' can be selected if the 
+                                     #: wavefunctions are available. An ext wavefunction from another run can be used, but specify 
+                                     #: the run.name instead e.g. 'run_name').
                                      #: WARNING: If no reliable starting guess can be provided e.g. wrong number of electrons per well,
                                      #: then choose 'qho' - this will ensure stable convergence to the true ground-state.)
 
@@ -98,7 +104,7 @@ non.OPT = False                      #: Calculate the external potential for the
 
 ### LDA parameters
 lda = InputSection()
-lda.NE = 2                           #: Number of electrons used in construction of the LDA (1, 2, 3 or 'heg')
+lda.NE = 'heg'                       #: Number of electrons used in construction of the LDA (1, 2, 3 or 'heg')
 lda.scf_type = 'pulay'               #: how to perform scf (None, 'linear', 'pulay', 'cg')
 lda.mix = 0.2                        #: Mixing parameter for linear & Pulay mixing (float in [0,1])
 lda.pulay_order = 20                 #: length of history for Pulay mixing (max: lda.max_iter)
@@ -171,7 +177,7 @@ re.save_eig = True                   #: Save Kohn-Sham eigenfunctions and eigenv
 re.stencil = 5                       #: Discretisation of 1st derivative (5 or 7)
 re.mu = 1.0                          #: 1st convergence parameter in the ground-state reverse-engineering algorithm
 re.p = 0.05                          #: 2nd convergence parameter in the ground-state reverse-engineering algorithm
-re.gs_density_tolerance = 1e-9       #: Tolerance of the error in the ground-state density
+re.gs_density_tolerance = 1e-10      #: Tolerance of the error in the ground-state density
 re.starting_guess = 'extre'          #: Starting guess of groud-state Vks (if not available will start with Vxt)
 re.nu = 1.0                          #: 1st convergence parameter in the time-dependent reverse-engineering algorithm
 re.a = 1.0e-6                        #: 2nd convergence parameter in the time-dependent reverse-engineering algorithm
@@ -182,6 +188,7 @@ re.max_iterations = 10               #: Maximum number of iterations per time st
 re.damping = True                    #: Damping term used to filter out the noise in the time-dependent Kohn-Sham vector potential
 re.filter_beta = 1.8                 #: 1st parameter in the damping term
 re.filter_sigma = 20.0               #: 2nd parameter in the damping term
+
 
 ### OPT parameters
 opt = InputSection()

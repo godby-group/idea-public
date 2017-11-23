@@ -225,9 +225,15 @@ class Input(object):
         ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
         ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
         ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
-        ext.initial_psi = 'qho'              #: Initial wavefunction ('qho' by default. 'non' can be selected. 'hf', 'lda1', 'lda2', 'lda3',
-                                             #  'ldaheg' or 'ext' can be selected if the orbitals/wavefunction are available. An ext
-                                             #  wavefunction from another run can be used, but specify the run.name instead e.g. 'run_name'.
+        ext.initial_gspsi = 'qho'            #: Initial ground-state wavefunction ('qho' by default. 'non' can be selected. 
+                                             #: 'hf', 'lda1', 'lda2', 'lda3', 'ldaheg' or 'ext' can be selected if the orbitals/wavefunction 
+                                             #: are available. An ext wavefunction from another run can be used, but specify the run.name 
+                                             #: instead e.g. 'run_name').
+                                             #: WARNING: If no reliable starting guess can be provided e.g. wrong number of electrons per well,
+                                             #: then choose 'qho' - this will ensure stable convergence to the true ground-state.)
+        ext.initial_espsi = 'qho'            #: Initial excited-state wavefunction ('qho' by default. 'ext' can be selected if the 
+                                             #: wavefunctions are available. An ext wavefunction from another run can be used, but specify 
+                                             #: the run.name instead e.g. 'run_name').
                                              #: WARNING: If no reliable starting guess can be provided e.g. wrong number of electrons per well,
                                              #: then choose 'qho' - this will ensure stable convergence to the true ground-state.)
 
@@ -277,6 +283,7 @@ class Input(object):
         hf.RE = False                        #: Reverse-engineer hf density
         hf.OPT = False                       #: Calculate the external potential for the HF density
 
+
         ### HYB parameters
         self.hyb = InputSection()
         hyb = self.hyb
@@ -289,6 +296,7 @@ class Input(object):
         hyb.save_eig = True                  #: Save eigenfunctions and eigenvalues of Hamiltonian
         hyb.OPT = False                      #: Calculate the external potential for the LDA density
         hyb.RE = False                       #: Calculate the external potential for the LDA density
+
 
         ### MBPT parameters
         self.mbpt = InputSection()
@@ -321,7 +329,7 @@ class Input(object):
         re.stencil = 5                       #: Discretisation of 1st derivative (5 or 7)
         re.mu = 1.0                          #: 1st convergence parameter in the ground-state reverse-engineering algorithm
         re.p = 0.05                          #: 2nd convergence parameter in the ground-state reverse-engineering algorithm
-        re.gs_density_tolerance = 1e-9       #: Tolerance of the error in the ground-state density
+        re.gs_density_tolerance = 1e-10      #: Tolerance of the error in the ground-state density
         re.starting_guess = 'extre'          #: Starting guess of groud-state Vks (if not available will start with Vxt)
         re.nu = 1.0                          #: 1st convergence parameter in the time-dependent reverse-engineering algorithm
         re.a = 1.0e-6                        #: 2nd convergence parameter in the time-dependent reverse-engineering algorithm
@@ -332,6 +340,7 @@ class Input(object):
         re.damping = True                    #: Damping term used to filter out the noise in the time-dependent Kohn-Sham vector potential
         re.filter_beta = 1.8                 #: 1st parameter in the damping term
         re.filter_sigma = 20.0               #: 2nd parameter in the damping term
+
 
         ### OPT parameters
         self.opt = InputSection()
