@@ -140,8 +140,12 @@ def calc_with_alpha(pm, alpha, occupations):
          E_F -= 0.5 * np.dot(orb.conj().T, np.dot(F, orb)) * pm.sys.deltax
       
       # LDA energy:
-      E_LDA = iDEA.LDA.EXC(pm, density) - np.dot(density, Vxc_LDA)*pm.sys.deltax
-      
+      if(pm.lda.NE == 'heg'):
+          Exc_LDA, Ex_LDA, Ec_LDA = iDEA.LDA.EXC(pm, density)
+          E_LDA = Exc_LDA - np.dot(density, Vxc_LDA)*pm.sys.deltax
+      else:
+          E_LDA = iDEA.LDA.EXC(pm, density) - np.dot(density, Vxc_LDA)*pm.sys.deltax
+
       # Mix energy appropriately:
       E = (E_SYS + E_H + alpha*E_F + (1.0 - alpha)*E_LDA).real
       
