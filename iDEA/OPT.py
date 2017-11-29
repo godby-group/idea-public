@@ -223,7 +223,7 @@ def main(parameters, approx, target_density_array=None,
                 EXT.construct_antisymmetry_matrices(pm)) 
 
         # Generate the initial wavefunction
-        wavefunction_reduced = EXT.initial_wavefunction(pm)
+        wavefunction_reduced = EXT.initial_wavefunction(pm, 0)
 
         # Initial value of parameters 
         density_error = pm.opt.tol + 1.0

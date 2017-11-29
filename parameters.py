@@ -21,12 +21,13 @@ run.MBPT = False                     #: Run Many-body pertubation theory
 run.LAN = False                      #: Run Landauer approximation
 run.MET = False                      #: Run metrics calculation
 
+
 ### System parameters
 sys = SystemSection()
 sys.NE = 2                           #: Number of electrons
 sys.grid = 201                       #: Number of grid points (must be odd)
 sys.stencil = 3                      #: Discretisation of 2nd derivative (3 or 5 or 7)
-sys.xmax = 20.0                      #: Size of the system
+sys.xmax = 10.0                      #: Size of the system
 sys.tmax = 1.0                       #: Total real time
 sys.imax = 1001                      #: Number of real time iterations (NB: deltat = tmax/(imax-1))
 sys.acon = 1.0                       #: Smoothing of the Coloumb interaction
@@ -37,7 +38,7 @@ sys.im = 0                           #: Use imaginary potentials (0: no, 1: yes)
 def v_ext(x):
     """Initial external potential
     """
-    return 0.5*0.25**2*x**2
+    return 0.5*(0.25**2)*(x**2)
 sys.v_ext = v_ext
 
 def v_pert(x):
@@ -69,7 +70,7 @@ sys.v_pert_im = v_pert_im
 ext = InputSection()
 ext.itol = 1e-12                     #: Tolerance of imaginary time propagation (Recommended: 1e-12)
 ext.itol_solver = 1e-14              #: Tolerance of linear solver in imaginary time propagation (Recommended: 1e-14)
-ext.rtol_solver = 1e-13              #: Tolerance of linear solver in real time propagation (Recommended: 1e-12)
+ext.rtol_solver = 1e-12              #: Tolerance of linear solver in real time propagation (Recommended: 1e-12)
 ext.itmax = 2000.0                   #: Total imaginary time
 ext.iimax = 1e5                      #: Imaginary time iterations
 ext.ideltat = ext.itmax/ext.iimax    #: Imaginary time step (DERIVED)
@@ -80,11 +81,16 @@ ext.elf_gs = False                   #: Calculate ELF for the ground-state of th
 ext.elf_es = False                   #: Calculate ELF for the excited-states of the system
 ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
 ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
-ext.psi_gs_exp = False               #: Save the expanded ground-state wavefunction to file
 ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
-ext.initial_psi = 'qho'              #: Initial wavefunction ('qho' by default. 'non' can be selected. 'hf', 'lda1', 'lda2', 'lda3',
-                                     #  'ldaheg' or 'ext' can be selected if the orbitals/wavefunction are available. An ext
-                                     #  wavefunction from another run can be used, but specify the run.name instead e.g. 'run_name'.
+ext.initial_gspsi = 'qho'            #: Initial ground-state wavefunction ('qho' by default. 'non' can be selected. 
+                                     #: 'hf', 'lda1', 'lda2', 'lda3', 'ldaheg' or 'ext' can be selected if the orbitals/wavefunction 
+                                     #: are available. An ext wavefunction from another run can be used, but specify the run.name 
+                                     #: instead e.g. 'run_name').
+                                     #: WARNING: If no reliable starting guess can be provided e.g. wrong number of electrons per well,
+                                     #: then choose 'qho' - this will ensure stable convergence to the true ground-state.)
+ext.initial_espsi = 'qho'            #: Initial excited-state wavefunction ('qho' by default. 'ext' can be selected if the 
+                                     #: wavefunctions are available. An ext wavefunction from another run can be used, but specify 
+                                     #: the run.name instead e.g. 'run_name').
                                      #: WARNING: If no reliable starting guess can be provided e.g. wrong number of electrons per well,
                                      #: then choose 'qho' - this will ensure stable convergence to the true ground-state.)
 
@@ -99,7 +105,7 @@ non.OPT = False                      #: Calculate the external potential for the
 
 ### LDA parameters
 lda = InputSection()
-lda.NE = 2                           #: Number of electrons used in construction of the LDA (1, 2, 3 or 'heg')
+lda.NE = 'heg'                       #: Number of electrons used in construction of the LDA (1, 2, 3 or 'heg')
 lda.scf_type = 'pulay'               #: how to perform scf (None, 'linear', 'pulay', 'cg')
 lda.mix = 0.2                        #: Mixing parameter for linear & Pulay mixing (float in [0,1])
 lda.pulay_order = 20                 #: length of history for Pulay mixing (max: lda.max_iter)
@@ -133,8 +139,10 @@ hf.OPT = False                       #: Calculate the external potential for the
 
 ### HYB parameters
 hyb = InputSection()
-hyb.functionality = 'o'              #: Functionality of hybrid functionals: 'o' for optimal alpha, 'f' for fractional numbers of electrons, 'a' for single alpha run
-hyb.of_array = (0.5,1.0,6)           #: If finding optimal alpa, this defines an array going from a->b in c steps whose energies are used for optimisation, If fractional run, this defines the numbers of electrons to calculate
+hyb.functionality = 'o'              #: Functionality of hybrid functionals: 'o' for optimal alpha, 'f' for fractional numbers of electrons,
+                                     #: 'a' for single alpha run
+hyb.of_array = (0.5,1.0,6)           #: If finding optimal alpa, this defines an array going from a->b in c steps whose energies are used for 
+                                     #: optimisation. If fractional run, this defines the numbers of electrons to calculate
 hyb.alpha = 1.0                      #: If single alpha run, this defines the alpha
 hyb.mix = 0.5                        #: Mixing parameter for linear  mixing (float in [0,1])
 hyb.tol = 1e-12                      #: convergence tolerance in the density
@@ -151,7 +159,8 @@ mbpt.tau_max = 40.0                  #: Maximum value of imaginary time
 mbpt.tau_npt = 1001                  #: Number of imaginary time points
 mbpt.norb = 35                       #: Number of orbitals to use
 mbpt.flavour = 'GW'                  #: 'G0W0', 'GW0', 'GW'
-mbpt.screening = 'dynamic'           #: Use 'dynamic' (frequency dependent) or 'static' (frequency independent) screening. (Note: must use static if running time-dependent calculation)
+mbpt.screening = 'dynamic'           #: Use 'dynamic' (frequency dependent) or 'static' (frequency independent) screening. 
+                                     #: (Note: must use static if running time-dependent calculation)
 mbpt.hedin_shift = True              #: perform Hedin shift
 mbpt.ssc = False                     #: Correct the self-screening error using our local vertex to the self-energy
 mbpt.den_tol = 1e-06                 #: density tolerance of self-consistent algorithm
@@ -173,7 +182,7 @@ re.save_eig = True                   #: Save Kohn-Sham eigenfunctions and eigenv
 re.stencil = 5                       #: Discretisation of 1st derivative (5 or 7)
 re.mu = 1.0                          #: 1st convergence parameter in the ground-state reverse-engineering algorithm
 re.p = 0.05                          #: 2nd convergence parameter in the ground-state reverse-engineering algorithm
-re.gs_density_tolerance = 1e-9       #: Tolerance of the error in the ground-state density
+re.gs_density_tolerance = 1e-10      #: Tolerance of the error in the ground-state density
 re.starting_guess = 'extre'          #: Starting guess of groud-state Vks (if not available will start with Vxt)
 re.nu = 1.0                          #: 1st convergence parameter in the time-dependent reverse-engineering algorithm
 re.a = 1.0e-6                        #: 2nd convergence parameter in the time-dependent reverse-engineering algorithm
@@ -185,11 +194,13 @@ re.damping = True                    #: Damping term used to filter out the nois
 re.filter_beta = 1.8                 #: 1st parameter in the damping term
 re.filter_sigma = 20.0               #: 2nd parameter in the damping term
 
+
 ### OPT parameters
 opt = InputSection()
 opt.tol = 1e-4                       #: Tolerance of the error in the density
 opt.mu = 1.0                         #: 1st convergence parameter
 opt.p = 0.05                         #: 2nd convergence parameter
+
 
 ### Metrics parameters
 met = InputSection()

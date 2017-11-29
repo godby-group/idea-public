@@ -46,7 +46,7 @@ def construct_K(pm):
     """
     sd = pm.space.second_derivative_band
     nbnd = len(sd)
-    K = np.zeros((nbnd, pm.sys.grid), dtype=np.float)
+    K = np.zeros((nbnd, pm.space.npt), dtype=np.float)
 
     for i in range(nbnd):
         K[i,:] = -0.5 * sd[i]
@@ -71,8 +71,8 @@ def construct_V(pm, td):
     returns sparse_matrix
         Potential energy matrix
     """
-    xgrid = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.sys.grid)
-    V = np.zeros(pm.sys.grid, dtype=np.float)
+    xgrid = np.linspace(-pm.sys.xmax,pm.sys.xmax,pm.space.npt)
+    V = np.zeros(pm.space.npt, dtype=np.float)
 
     if(td == 0):
         V[:] = pm.sys.v_ext(xgrid[:])
@@ -102,17 +102,17 @@ def construct_A(pm, H):
     """
     if(pm.sys.stencil == 3):
         A = 1.0j*(pm.sys.deltat/2.0)*sps.diags([H[1,:], H[0,:], H[1,:]],
-        [-1, 0, 1], shape=(pm.sys.grid,pm.sys.grid), format='csc')
+        [-1, 0, 1], shape=(pm.space.npt,pm.space.npt), format='csc')
     elif(pm.sys.stencil == 5):
         A = 1.0j*(pm.sys.deltat/2.0)*sps.diags([H[2,:], H[1,:], H[0,:], 
-            H[1,:], H[2,:]], [-2, -1, 0, 1, 2], shape=(pm.sys.grid,
-            pm.sys.grid), format='csc')
+            H[1,:], H[2,:]], [-2, -1, 0, 1, 2], shape=(pm.space.npt,
+            pm.space.npt), format='csc')
     elif(pm.sys.stencil == 7):
         A = 1.0j*(pm.sys.deltat/2.0)*sps.diags([H[3,:], H[2,:], H[1,:], 
             H[0,:], H[1,:], H[2,:], H[3,:]], [-3, -2, -1, 0, 1, 2, 3], 
-            shape=(pm.sys.grid,pm.sys.grid), format='csc')
+            shape=(pm.space.npt,pm.space.npt), format='csc')
 
-    A += sps.identity(pm.sys.grid) 
+    A += sps.identity(pm.space.npt) 
 
     return A
 
@@ -138,13 +138,13 @@ def calculate_current_density(pm, density):
         current_density[time_index,space_index]
     """
     pm.sprint('', 1, newline=True)
-    current_density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
+    current_density = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float)
     string = 'NON: calculating current density'
     pm.sprint(string, 1, newline=True)
     for i in range(1, pm.sys.imax):
          string = 'NON: t = {:.5f}'.format(i*pm.sys.deltat)
          pm.sprint(string, 1, newline=False)
-         J = np.zeros(pm.sys.grid, dtype=np.float)
+         J = np.zeros(pm.space.npt, dtype=np.float)
          J = RE_cython.continuity_eqn(pm, density[i,:], density[i-1,:])
          current_density[i,:] = J[:]
     pm.sprint('', 1, newline=True)
@@ -186,7 +186,7 @@ def main(parameters):
     energies, wavefunctions = spla.eig_banded(H, lower=True)
 
     # Normalise the wavefunctions
-    wavefunctions /= pm.sys.deltax**0.5
+    wavefunctions /= np.sqrt(pm.space.delta)
 
     # Calculate the density 
     density = np.sum(wavefunctions[:,:pm.sys.NE]**2, axis=1)
@@ -227,10 +227,10 @@ def main(parameters):
 
         # Construct the sparse matrices used in the Crank-Nicholson method
         A = construct_A(pm, H)
-        C = 2.0*sps.identity(pm.sys.grid) - A
+        C = 2.0*sps.identity(pm.space.npt) - A
 
         # Construct the time-dependent density array 
-        density = np.zeros((pm.sys.imax,pm.sys.grid), dtype=np.float)
+        density = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float)
 
         # Save the ground-state
         for j in range(pm.sys.NE):
@@ -255,14 +255,15 @@ def main(parameters):
                 wavefunction, info = spsla.cg(A,b,x0=wavefunction,
                                  tol=pm.non.rtol_solver)
 
+                # Normalise the wavefunction 
+                norm = np.linalg.norm(wavefunction)*np.sqrt(pm.space.delta)
+                string = 'NON: t = {:.5f}, normalisation = {}'\
+                        .format(i*pm.sys.deltat, norm**2)
+                pm.sprint(string, 1, newline=False)
+                wavefunction[:] /= norm
+  
                 # Calculate the density
                 density[i,:] += abs(wavefunction[:])**2
-
-                # Calculate the norm of the wavefunction
-                normalisation = 1.0 - np.linalg.norm(wavefunction)*pm.sys.deltax**0.5
-                string = "NON: N = {}, t = {:.5f}, normalisation error = {:+8.5e}" \
-                        .format(n+1, i*pm.sys.deltat, normalisation)
-                pm.sprint(string, 1, newline=False)
 
         # Calculate the current density
         current_density = calculate_current_density(pm, density)

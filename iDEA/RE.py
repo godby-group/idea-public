@@ -908,6 +908,8 @@ def main(parameters, approx):
     # Calculate the exchange-correlation energy
     E_xc = calculate_xc_energy(pm, approx, density_ks[0,:], v_h[0,:],
                                v_xc[0,:], energies_ks)
+    string = 'RE: exchange-correlation energy = {}'.format(E_xc)
+    pm.sprint(string, 1, newline=True)
 
     # Save the ground-state quantities to file
     approxre = approx + 're'

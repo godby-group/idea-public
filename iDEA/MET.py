@@ -8,10 +8,13 @@ a range of 0 to :math:`2\sqrt{2}`.
 import parameters as pm
 from . import results as rs
 import numpy as np
+import scipy.sparse as sps
+import scipy.misc as spmisc
 import pickle
 from math import *
 import sys
 import copy
+
 
 def make_filename(pm):
     r"""Creates the file name for both data files containing the data needed to
@@ -42,10 +45,10 @@ def make_filename(pm):
         # For exact wavefunctions:
         # data 1
         if (pm.met.exact_1 == True):
-            data_file_1 = "gs_" + pm.met.r_type_1 + "_psi_exp"
+            data_file_1 = "gs_" + pm.met.r_type_1 + "_psi"
         # data 2
         if (pm.met.exact_2 == True):
-            data_file_2 = "gs_" + pm.met.r_type_2 + "_psi_exp"
+            data_file_2 = "gs_" + pm.met.r_type_2 + "_psi"
 
     # Error checking:
     else:
@@ -56,6 +59,48 @@ def make_filename(pm):
     pm.sprint("met: datafiles: gs_{0}/{1}/ and gs_{2}/{3}".format(pm.met.r_type_1 \
               ,data_file_1,pm.met.r_type_2,data_file_2))
     return data_file_1,data_file_2
+
+
+def construct_expansion_matrix(pm):
+    r"""Constructs the expansion matrix that is used to expand the reduced 
+    wavefunction (insert indistinct elements) to get back the full 
+    wavefunction.
+
+    parameters
+    ----------
+    pm : object
+        Parameters object
+
+    returns sparse_matrix
+        Expansion matrix used to expand the reduced wavefunction (insert
+        indistinct elements) to get back the full wavefunction.
+    """
+    # Number of elements in the reduced wavefunction
+    coo_size = int(np.prod(list(range(pm.space.npt,pm.space.npt+pm.sys.NE)))\
+               /spmisc.factorial(pm.sys.NE))
+    
+    # COOrdinate holding arrays for the expansion matrix 
+    coo_1 = np.zeros((pm.space.npt**pm.sys.NE), dtype=int)
+    coo_2 = np.copy(coo_1)
+    coo_data = np.zeros((pm.space.npt**pm.sys.NE), dtype=np.float)  
+
+    # Populate the COOrdinate holding arrays with the coordinates and data
+    if(pm.sys.NE == 2):
+        coo_1, coo_2, coo_data = EXT_cython.expansion_two(coo_1, coo_2, 
+                                 coo_data, pm.space.npt)
+    elif(pm.sys.NE == 3):
+        coo_1, coo_2, coo_data = EXT_cython.expansion_three(coo_1, coo_2, 
+                                 coo_data, pm.space.npt)
+
+    # Convert the holding arrays into COOrdinate sparse matrices
+    expansion_matrix = sps.coo_matrix((coo_data,(coo_1,coo_2)), shape=(
+                       pm.space.npt**pm.sys.NE,coo_size), dtype=np.float)
+
+    # Convert into compressed sparse row (csr) form for efficient arithemtic
+    expansion_matrix = sps.csr_matrix(expansion_matrix)
+
+    return expansion_matrix
+
 
 def load_data(pm):
     r"""Loads data_file_1 and data_file_2 into a numpy array using pickle.load().
@@ -84,6 +129,7 @@ def load_data(pm):
         raw_data_2 = pickle.load(metric_file_2)
 
     return raw_data_1,raw_data_2
+
 
 def slat_calc(pm,raw_data):
     r"""Calculates the slater determinant of the eigenfunctions (single particle
@@ -123,6 +169,7 @@ def slat_calc(pm,raw_data):
     psi = det
     return psi
 
+
 def data_prep(pm,raw_data_1,raw_data_2):
     r"""Prepares the data ready for the metric calculation, which is different
     depending on the type of metric and the type of data. If either of the raw
@@ -156,7 +203,8 @@ def data_prep(pm,raw_data_1,raw_data_2):
         # Checking whether data is exact:
         # 1st data - exact
         if (pm.met.exact_1 == True):
-            data_1 = sqrt(2)*raw_data_1
+            expansion_matrix = construct_expansion_matrix(pm)
+            data_1 = sqrt(2)*expansion_matrix*raw_data_1
             pm.sprint("met: 1st system: exact")
         # 1st data - not exact
         elif (pm.met.exact_1 == False):
@@ -164,7 +212,8 @@ def data_prep(pm,raw_data_1,raw_data_2):
             pm.sprint("met: 1st system: not exact")
         # 2nd data - exact
         if (pm.met.exact_2 == True):
-            data_2 = sqrt(2)*raw_data_2
+            expansion_matrix = construct_expansion_matrix(pm)
+            data_2 = sqrt(2)*expansion_matrix*raw_data_2
             pm.sprint("met: 2nd system: exact")
         # 2nd data - not exact
         elif (pm.met.exact_2 == False):
@@ -177,6 +226,7 @@ def data_prep(pm,raw_data_1,raw_data_2):
         data_2 = raw_data_2
 
     return data_1,data_2
+
 
 def mat_calc(pm,data_1,data_2):
     r"""Calculates either the density or wavefunction metrics, depending on the
@@ -220,6 +270,7 @@ def mat_calc(pm,data_1,data_2):
         metric = 0.5*sum(abs(data_1-data_2))*dx
 
     return metric
+
 
 def main(pm):
     r"""Calculates the desired metric, with the input files being set as a
