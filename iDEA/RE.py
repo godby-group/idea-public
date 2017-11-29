@@ -108,7 +108,7 @@ def construct_kinetic_energy(pm):
 
 def construct_momentum(pm):
     r"""Stores the band elements of the momentum matrix in lower form.
-    The momentum matrix is constructed using a five-point or seven-point 
+    The momentum matrix is constructed using a five-point or seven-point
     stencil. This yields an NxN band matrix (where N is the number of grid
     points). For example with N=6 and a five-point stencil:
 
@@ -754,7 +754,7 @@ def xc_correction(pm, v_xc):
     x_max = int(0.15*pm.space.npt)
 
     # Calculate the fit and determine the correction to v_xc and its error
-    fit, variance = curve_fit(xc_fit, pm.space.grid[x_min:x_max], 
+    fit, variance = curve_fit(xc_fit, pm.space.grid[x_min:x_max],
                     v_xc[x_min:x_max])
     correction = fit[0]
     correction_error = variance[0,0]**0.5
@@ -919,7 +919,7 @@ def main(parameters, approx):
     results.add(v_xc[0,:],'gs_{}_vxc'.format(approxre))
     results.add(E_xc,'gs_{}_Exc'.format(approxre))
     results.add(IP,'gs_{}_IP'.format(approxre))
-    results.add(ks_gap,'gs_{}_ksgap'.format(approxre))
+    results.add(ks_gap,'gs_{}_GAP'.format(approxre))
     if(pm.re.save_eig):
         results.add(wavefunctions_ks.T,'gs_{}_eigf'.format(approxre))
         results.add(energies_ks,'gs_{}_eigv'.format(approxre))
