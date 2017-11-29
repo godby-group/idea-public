@@ -82,14 +82,14 @@ ext.elf_es = False                   #: Calculate ELF for the excited-states of 
 ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
 ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
 ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
-ext.initial_gspsi = 'qho'            #: Initial ground-state wavefunction ('qho' by default. 'non' can be selected. 
-                                     #: 'hf', 'lda1', 'lda2', 'lda3', 'ldaheg' or 'ext' can be selected if the orbitals/wavefunction 
-                                     #: are available. An ext wavefunction from another run can be used, but specify the run.name 
+ext.initial_gspsi = 'qho'            #: Initial ground-state wavefunction ('qho' by default. 'non' can be selected.
+                                     #: 'hf', 'lda1', 'lda2', 'lda3', 'ldaheg' or 'ext' can be selected if the orbitals/wavefunction
+                                     #: are available. An ext wavefunction from another run can be used, but specify the run.name
                                      #: instead e.g. 'run_name').
                                      #: WARNING: If no reliable starting guess can be provided e.g. wrong number of electrons per well,
                                      #: then choose 'qho' - this will ensure stable convergence to the true ground-state.)
-ext.initial_espsi = 'qho'            #: Initial excited-state wavefunction ('qho' by default. 'ext' can be selected if the 
-                                     #: wavefunctions are available. An ext wavefunction from another run can be used, but specify 
+ext.initial_espsi = 'qho'            #: Initial excited-state wavefunction ('qho' by default. 'ext' can be selected if the
+                                     #: wavefunctions are available. An ext wavefunction from another run can be used, but specify
                                      #: the run.name instead e.g. 'run_name').
                                      #: WARNING: If no reliable starting guess can be provided e.g. wrong number of electrons per well,
                                      #: then choose 'qho' - this will ensure stable convergence to the true ground-state.)
@@ -139,9 +139,10 @@ hf.OPT = False                       #: Calculate the external potential for the
 
 ### HYB parameters
 hyb = InputSection()
+hyb.seperate = False                 #: seperate Vx and Vc in the hybrid (False: a*F + (1-a)Vxc, True: a*F + (1-a)Vx + Vc)
 hyb.functionality = 'o'              #: Functionality of hybrid functionals: 'o' for optimal alpha, 'f' for fractional numbers of electrons,
                                      #: 'a' for single alpha run
-hyb.of_array = (0.5,1.0,6)           #: If finding optimal alpa, this defines an array going from a->b in c steps whose energies are used for 
+hyb.of_array = (0.5,1.0,6)           #: If finding optimal alpa, this defines an array going from a->b in c steps whose energies are used for
                                      #: optimisation. If fractional run, this defines the numbers of electrons to calculate
 hyb.alpha = 1.0                      #: If single alpha run, this defines the alpha
 hyb.mix = 0.5                        #: Mixing parameter for linear  mixing (float in [0,1])
@@ -159,7 +160,7 @@ mbpt.tau_max = 40.0                  #: Maximum value of imaginary time
 mbpt.tau_npt = 1001                  #: Number of imaginary time points
 mbpt.norb = 35                       #: Number of orbitals to use
 mbpt.flavour = 'GW'                  #: 'G0W0', 'GW0', 'GW'
-mbpt.screening = 'dynamic'           #: Use 'dynamic' (frequency dependent) or 'static' (frequency independent) screening. 
+mbpt.screening = 'dynamic'           #: Use 'dynamic' (frequency dependent) or 'static' (frequency independent) screening.
                                      #: (Note: must use static if running time-dependent calculation)
 mbpt.hedin_shift = True              #: perform Hedin shift
 mbpt.ssc = False                     #: Correct the self-screening error using our local vertex to the self-energy
