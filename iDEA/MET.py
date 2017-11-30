@@ -12,6 +12,7 @@ import scipy.sparse as sps
 import scipy.misc as spmisc
 import pickle
 from math import *
+from . import EXT_cython
 import sys
 import copy
 
