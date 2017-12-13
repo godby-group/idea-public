@@ -329,8 +329,8 @@ def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
     # ground-state Kohn-Sham equations
     hamiltonian = np.copy(kinetic_energy)
     hamiltonian[0,:] += v_ks[:]
-    wavefunctions_ks, energies_ks, density_ks = (solve_gsks_equations(
-            pm, hamiltonian))
+    wavefunctions_ks, energies_ks, density_ks = solve_gsks_equations(
+            pm, hamiltonian)
     density_difference = abs(density_approx-density_ks)
     density_error = np.sum(density_difference)*pm.space.delta
     string = 'RE: initial guess density error = {}'.format(density_error)
@@ -410,7 +410,7 @@ def solve_gsks_equations(pm, hamiltonian):
     energies_ks, wavefunctions_ks = spla.eig_banded(hamiltonian, lower=True)
 
     # Normalise the wavefunctions
-    for j in range(pm.sys.NE):
+    for j in range(pm.space.npt):
         norm = np.linalg.norm(wavefunctions_ks[:,j])*pm.space.delta**0.5
         wavefunctions_ks[:,j] /= norm
 
@@ -674,12 +674,12 @@ def remove_gauge(pm, A_ks, v_ks, v_ks_gs):
     return v_ks[:]
 
 
-def calculate_hartree_potential(pm, density):
+def calculate_hartree_potential(pm, density_ks):
     r"""Calculates the Hartree potential for a given electron density.
 
     .. math::
 
-        V_{\mathrm{H}}(x) = \int U(x,x') n(x')dx'
+        V_{\mathrm{H}}(x) = \int U(x,x') n(x') dx'
 
     parameters
     ----------
@@ -694,7 +694,33 @@ def calculate_hartree_potential(pm, density):
         as v_h[space_index]
     """
 
-    return np.dot(pm.space.v_int,density)*pm.space.delta
+    return np.dot(pm.space.v_int,density_ks)*pm.space.delta
+
+
+def calculate_hartree_energy(pm, density_ks, v_h):
+    r"""Calculates the Hartree energy of the ground-state system.
+
+    .. math::
+
+        E_{\mathrm{H}} = \frac{1}{2} \int \int U(x,x') n(x) n(x') dx dx' 
+        = \frac{1}{2} \int V_{\mathrm{H}}(x) n(x) dx
+
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    density_ks : array_like
+        1D array of the ground-state Kohn-Sham electron density, indexed as
+        density_ks[space_index]
+    v_h : array_like
+        1D array of the ground-state Hartree potential, indexed as
+        v_h[space_index]                                                                                                                                      
+
+    returns float
+        The Hartree energy of the ground-state system
+    """
+
+    return 0.5*np.dot(v_h,density_ks)*pm.space.delta
 
 
 def calculate_current_density(pm, density_ks):
@@ -905,10 +931,20 @@ def main(parameters, approx):
     string = 'RE: Kohn-Sham gap = {0:.3f}'.format(ks_gap)
     pm.sprint(string, 1, newline=True)
 
+    # Calculate the Hartree energy 
+    E_h = calculate_hartree_energy(pm, density_ks[0,:], v_h[0,:])
+    string = 'RE: Hartree energy = {}'.format(E_h)
+    pm.sprint(string, 1, newline=True)
+
     # Calculate the exchange-correlation energy
     E_xc = calculate_xc_energy(pm, approx, density_ks[0,:], v_h[0,:],
                                v_xc[0,:], energies_ks)
     string = 'RE: exchange-correlation energy = {}'.format(E_xc)
+    pm.sprint(string, 1, newline=True)
+
+    # Calculate the Hartree exchange-correlation energy
+    E_hxc = E_h + E_xc
+    string = 'RE: Hartree exchange-correlation energy = {}'.format(E_hxc)
     pm.sprint(string, 1, newline=True)
 
     # Save the ground-state quantities to file
@@ -919,6 +955,8 @@ def main(parameters, approx):
     results.add(v_hxc[0,:],'gs_{}_vhxc'.format(approxre))
     results.add(v_h[0,:],'gs_{}_vh'.format(approxre))
     results.add(v_xc[0,:],'gs_{}_vxc'.format(approxre))
+    results.add(E_hxc,'gs_{}_Ehxc'.format(approxre))
+    results.add(E_h,'gs_{}_Eh'.format(approxre))
     results.add(E_xc,'gs_{}_Exc'.format(approxre))
     results.add(IP,'gs_{}_IP'.format(approxre))
     results.add(ks_gap,'gs_{}_ksgap'.format(approxre))

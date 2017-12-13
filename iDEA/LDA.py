@@ -348,6 +348,7 @@ def EXC(pm, n):
     else:
         return E_xc_LDA
 
+
 def VXC(pm, Den): 
     r"""Finite/HEG LDA approximation for the exchange-correlation potential
 
@@ -569,8 +570,7 @@ def LHS(pm, v, j):
         if i > 0:
             CNLHS[i,i-1] = -0.5j*pm.sys.deltat*(0.5/pm.space.delta**2)
     return CNLHS
-
-        
+       
 
 # Main function
 def main(parameters):
@@ -708,7 +708,11 @@ def main(parameters):
        E_xc, E_x, E_c = EXC(pm, n)
    else:
        E_xc = EXC(pm, n)
+   E_h = hartree_energy(pm, v_h, n)
+   E_hxc = E_h + E_xc
    pm.sprint('LDA: ground-state energy: {}'.format(LDA_E),1)
+   pm.sprint('LDA: ground-state Hartree exchange-correlation energy: {}'.format(E_hxc),1)
+   pm.sprint('LDA: ground-state Hartree energy: {}'.format(E_h),1)
    pm.sprint('LDA: ground-state exchange-correlation energy: {}'.format(E_xc),1)
    if(pm.lda.NE == 'heg'):
        pm.sprint('LDA: ground-state exchange energy: {}'.format(E_x),1)
