@@ -106,14 +106,11 @@ def main(parameters):
       Results object
     """
     pm = parameters
-
     if pm.mbpt.flavour in ['GW','G0W0','GW0','QSGW']:
         pm.sprint('MBPT: running {} calculation'.format(pm.mbpt.flavour),1)
     else:
         raise ValueError("Unknown MBPT flavour {}".format(pm.mbpt.flavour))
-
     results = rs.Results()
-
     st = SpaceTimeGrid(pm)
     pm.sprint(str(st),0)
 
@@ -182,7 +179,7 @@ def main(parameters):
 
             # compute W-v
             pm.sprint('MBPT: setting up W(iw)',0)
-            W = screened_interaction(st, epsilon=eps)  # This is the sceening interaction (W-v)
+            W = screened_interaction(st, epsilon=eps)  # This is the screening interaction (W-v)
             save(W, "W{}_iw".format(cycle))
             save(W, "W_iw")
             del eps # not needed anymore
@@ -239,16 +236,15 @@ def main(parameters):
         save(S, "S{}_iw".format(cycle))
         save(S, "S_iw")
 
-        pm.sprint('MBPT: computing expectation values <i|sigma(w)|j>',0)
-        H.sigma_iw_dg = bracket_r(S, h0.orbitals, st)
-        if pm.mbpt.flavour == 'QSGW':
-            H.sigma_iw_full = bracket_r(S, h0.orbitals, st, mode='full')
+        #if pm.mbpt.flavour == 'QSGW':
+        #    H.sigma_iw_full = bracket_r(S, h0.orbitals, st, mode='full')
 
         # Align fermi energy of input and output Green function
         if pm.mbpt.hedin_shift:
             pm.sprint('MBPT: performing Hedin shift',0)
 
             # Get QP energies
+            H.sigma_iw_dg = bracket_r(S, h0.orbitals, st)
             qp_energies = H.sigma_iw_dg[:,0].real + h0.energies
 
             # Sort orbitals and energies if required
@@ -263,24 +259,33 @@ def main(parameters):
             # Do Hedin Shift
             H.qp_shift = 0.5 * (qp_energies[st.NE-1] + qp_energies[st.NE]) # Quasi-particle shift to keep fermi-energy in HOMO-LUMO gap
             H.qp_shift = H.qp_shift.real # Take just the real part
-            #pm.sprint('MBPT: quasi-particle fermi energy: {:.3f} Ha ({:+.3f} Ha).'.format(qp_fermi,qp_shift))
             pm.sprint('MBPT: quasi-particle shift: {:.7f} Ha.'.format(H.qp_shift))
             for i in range(st.x_npt):
                 S[i,i,:] -= H.qp_shift / st.x_delta # Perfrom hedin shift
 
             # Print new qp_energies
-            new_b = bracket_r(S, h0.orbitals, st)[:,0].real + h0.energies
-            pm.sprint('MBPT: qp_energies after shift: {}...'.format(new_b[0:pm.sys.NE+2]),0)
+            H.sigma_iw_dg = bracket_r(S, h0.orbitals, st)[:,0].real + h0.energies
+            pm.sprint('MBPT: qp_energies after shift: {}...'.format(H.sigma_iw_dg[0:pm.sys.NE+2]),0)
 
-        # Compute new quasiparticle energies (QSGW: and wave functions)
-        if pm.mbpt.flavour == 'QSGW':
-            pm.sprint('MBPT: analytic continuation of sigma(iw) to obtain sigma(w)',0)
-            S_w = analytic_continuation(H.sigma_iw_full.reshape(st.norb*st.norb,st.tau_npt), st, pm)
-            S_w = np.array(S_w).reshape((st.norb,st.norb))
-            S_w_dg = np.diagonal(S_w)
-            pm.sprint('MBPT: diagonalising quasiparticle Hamiltonian',0)
-            h0_qp = optimise_hamiltonian(h0, S_w, st)
-            break
+        # Compute quasiparticle energies
+        d = np.gradient(S, st.omega_delta*1.0j, axis=-1) # dS/dw (derivative of sigma wrt imaginary frequency)
+        qp_energies = (h0.energies + bracket_r(S, h0.orbitals, st)[:,0].real +  H.qp_shift) / (1.0 - bracket_r(d, h0.orbitals, st)[:,0].real) # Use 1st order approx to QP energies
+        qp_energies = qp_energies + h0.e_fermi # Take account of the vaccum shift
+        homo = qp_energies[st.NE-1]
+        ip = -homo
+        lumo = qp_energies[st.NE]
+        af = -lumo
+        gap = ip - af
+        pm.sprint('MBPT: IP, AF, GAP: {0:.3f}, {1:.3f}, {2:.3f} Ha'.format(ip, af, gap))
+
+        #if pm.mbpt.flavour == 'QSGW':
+        #    pm.sprint('MBPT: analytic continuation of sigma(iw) to obtain sigma(w)',0)
+        #    S_w = analytic_continuation(H.sigma_iw_full.reshape(st.norb*st.norb,st.tau_npt), st, pm)
+        #    S_w = np.array(S_w).reshape((st.norb,st.norb))
+        #    S_w_dg = np.diagonal(S_w)
+        #    pm.sprint('MBPT: diagonalising quasiparticle Hamiltonian',0)
+        #    h0_qp = optimise_hamiltonian(h0, S_w, st)
+        #    break
 
         cycle = cycle + 1
         pm.sprint('')
@@ -302,12 +307,12 @@ def main(parameters):
         results.add(den_new, "gs_mbpt_den{}".format(cycle))
         if pm.run.save:
             results.save(pm, list=["gs_mbpt_den{}".format(cycle)])
-
         den_norm = np.sum(den_new) * st.x_delta
         pm.sprint("MBPT: norm of new density: {:.3f} electrons".format(den_norm))
         den_maxdiff = np.max(np.abs(den_new - H.den))
         H.den = den_new
 
+        # continue self-consitency?
         if pm.mbpt.flavour == 'G0W0':
             break
         elif cycle == pm.mbpt.max_iter:
@@ -316,7 +321,6 @@ def main(parameters):
         elif den_maxdiff < pm.mbpt.den_tol:
             pm.sprint("MBPT: convergence reached, exiting self-consistency cycle",0)
             break
-
         pm.sprint("MBPT: Max. change in den: {:.2e} > {:.2e}".format(den_maxdiff,pm.mbpt.den_tol))
         H.vh = hartree_potential(st, den=H.den)
         H.vx = -G_mzero.imag * st.coulomb_repulsion # = iGv
@@ -330,8 +334,14 @@ def main(parameters):
     # normalise and save density
     den = H.den * st.NE / (np.sum(H.den) * st.x_delta)
     results.add(den, "gs_mbpt_den")
+    results.add(H.vh, "gs_mbpt_vh")
+    results.add(qp_energies, "gs_mbpt_eigv")
+    results.add(ip, "gs_mbpt_IP")
+    results.add(af, "gs_mbpt_AF")
+    results.add(gap, "gs_mbpt_GAP")
+    l = ["gs_mbpt_den", "gs_mbpt_vh", "gs_mbpt_eigv", "gs_mbpt_IP", "gs_mbpt_AF", "gs_mbpt_GAP"]
     if pm.run.save:
-        results.save(pm, list=["gs_mbpt_den"])
+        results.save(pm, list=l)
 
     return results
 

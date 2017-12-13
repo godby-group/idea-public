@@ -302,7 +302,11 @@ def main(parameters):
 
    results = rs.Results()
    results.add(E_HF,'gs_hf_E')
+   results.add(-eigv[pm.sys.NE-1],'gs_hf_IP')
+   results.add(-eigv[pm.sys.NE],'gs_hf_AF')
+   results.add(eigv[pm.sys.NE]-eigv[pm.sys.NE-1],'gs_hf_GAP')
    results.add(den,'gs_hf_den')
+   results.add(hartree(pm, den),'gs_hf_vh')
    results.add(fock(pm, eigf),'gs_hf_F')
 
    if pm.hf.save_eig:
