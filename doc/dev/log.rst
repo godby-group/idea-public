@@ -204,11 +204,11 @@ Changelog
    - GW code now supports different starting orbitals
    - GW code parameters now converged (only in HF regime be sure to check!)
 
- * **v1.5.1** (2016-06-16)
+ * **v1.5.1** (2016-06-30)
 
    - MLP updated
 
- * **v1.5.0** (2016-06-16)
+ * **v1.5.0** (2016-06-26)
 
    - Added Many-Body Perturbation Theory code (GW approximation). MBPT can now
      be run to generate densities and Kohn-Sham potentials and is compatible
@@ -223,7 +223,7 @@ Changelog
 
    - Fixed major bug in MB2 and MB3 introduced in version 1.4.0 causing the code to crash when attempting to output the external potential.
 
- * **v1.4.0** (2016-04-03)
+ * **v1.4.0** (2016-04-04)
 
    - Imaginary potentials have been added to all parts of iDEA and tested.
 
@@ -253,4 +253,8 @@ Changelog
  * **v1.2.0** (2016-01-28)
 
    - MLP approximation added (constant f, 2 electron, time independent)
+
  * **v1.1.0** (2016-01-03)
+
+ * **v1.0.0** (2015-10-16)
+
