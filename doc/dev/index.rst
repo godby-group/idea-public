@@ -4,6 +4,7 @@ Developers
 
 .. toctree::
 
+   practises
    add
    documentation
    log

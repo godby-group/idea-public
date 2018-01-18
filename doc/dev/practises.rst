@@ -1,3 +1,5 @@
+.. _practises:
+
 Coding practises
 ================
 
@@ -5,7 +7,7 @@ If you'd like to contribute your changes back to iDEA,
 please follow good coding practises.
 
 Write unit tests
-================
+----------------
 
 For any new feature you add, make sure to add a 
 **unit test** that checks you feature is working as intended.
@@ -16,7 +18,7 @@ For any new feature you add, make sure to add a
    it should run *in the blink of an eye*
    
 Checklist
-=========
+---------
 
 Before making a pull request, go through the following checklist:
 
