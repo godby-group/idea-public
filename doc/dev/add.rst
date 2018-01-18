@@ -72,8 +72,8 @@ To check whether your code is properly covered by the unit tests, use the
 .. code-block:: bash
 
    # run this in the base directory
-   coverage run -m iDEA/test*.py  # tests coverage
-   coverage html  # generates report in doc/coverage/index.html                 
+   coverage run -m unittest discover # tests coverage
+   coverage html  # generates report in doc/_build/coverage/index.html                 
 
 
 Pulling changes from the central repository

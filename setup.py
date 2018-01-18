@@ -70,7 +70,7 @@ setup(
         'cython>=0.22',
     ],
     extras_require = {
-    'doc':  ['sphinx>=1.4', 'numpydoc', 'jupyter','nbsphinx'],
+    'doc':  ['sphinx>=1.4', 'numpydoc', 'jupyter','nbsphinx', 'coverage'],
     },
     ext_modules = cythonize(extensions),
     cmdclass = {'clean': clean_inplace},
