@@ -1,18 +1,21 @@
 from setuptools import setup
 from distutils.util import convert_path
+from distutils.extension import Extension
+from distutils.command.clean import clean
 from Cython.Build import cythonize
+import os
+import platform
+import numpy
 
+# read package info
 package_name = "iDEA"
 info_dict = {}
 with open(convert_path('{}/info.py'.format(package_name))) as f:
     exec(f.read(), info_dict)
 
-from distutils.command.clean import clean
-import os
-import platform
 
+# define custom clean command
 arch = platform.system()
-
 class clean_inplace(clean):
     """Clean shared libararies"""
 
@@ -36,6 +39,10 @@ class clean_inplace(clean):
                 print("Removing {}".format(path))
                 os.remove(path)
 
+
+extensions = [ 
+    Extension("*", ["{}/*.pyx".format(package_name)], include_dirs = [numpy.get_include()]) 
+]
 
 setup(
     name='iDEA',
@@ -65,9 +72,6 @@ setup(
     extras_require = {
     'doc':  ['sphinx>=1.4', 'numpydoc', 'jupyter','nbsphinx'],
     },
-    ext_modules = cythonize("{}/*.pyx".format(package_name)),
+    ext_modules = cythonize(extensions),
     cmdclass = {'clean': clean_inplace},
 )
-
-
-
