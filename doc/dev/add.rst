@@ -1,15 +1,24 @@
 Adding to iDEA
 ==============
 
-The version control system used to manage the iDEA source code is 
-`git <https://git-scm.com/>`_. Git offers a "learn git in 15 minutes" tutorial
-found `here <https://try.github.io/>`_. 
+The iDEA source code is managed  using the `git <https://git-scm.com/>`_
+version control system. Git offers a 
+`"learn git in 15 minutes" tutorial <https://try.github.io/>`_. 
 
 Committing changes locally
 --------------------------
 
-Once you have made a change to a file, you will want to commit this change to your local repository. This
-will ensure that as you pull changes from the central repository they will be automatically integrated into your work.
+Before you start committing, make sure that your environment is properly configured:
+
+.. code-block:: bash
+
+   git config --global user.name "John Smith"
+   git config --global user.email "john.smith@york.ac.uk"
+
+Once you have made a set of changes you are happy with, you can commit the
+change set to your local repository. This will ensure that as you pull changes
+from the central repository they will be automatically integrated into your
+work.
 To see the list of files you have changed run
 
 .. code-block:: bash
@@ -31,62 +40,52 @@ Once you have finished adding files you can commit your changes locally using
 You will be prompted to enter a commit message to describe your changes and save the file. Your changes are now committed!
 
 
-Pushing your changes to the central repository
-------------------------------------------------
+Contributing your changes to iDEA
+---------------------------------
 
-Before asking for your changes to be included into iDEA, please make sure to
-**create a unit test** that checks you feature is working as intended.
+Before contributing your changes back to iDEA, make sure
+to comply with our :doc:`best practises <practises>`.
 
- * Naming convention: :code:`test_<your_module>.py`
- * start by copying a simple example, e.g. :code:`test_NON.py`
- * make sure your test is quick,
-   it should run *in the blink of an eye*
-   
-At the **very minimum**
 
- 1. Check that the existing unit tests aren't broken:
+ 1. Fork the `iDEA repository on github <https://github.com/godby-group/idea-private>`_
+ 2. Assuming you've already committed your changes to a local repo, add a remote to your fork:
 
     .. code-block:: bash
 
-       # run this in the base directory
-       python -m unittest iDEA/test*.py
+       git remote add fork git@github.com:ltalirz/idea-private.git
 
-
- 2. Check that the documentation builds fine:
+ 3. Pull from your fork (to synchronize), and then push local changes back to github
 
     .. code-block:: bash
 
-       cd doc/
-       bash make_doc.sh
+       git pull fork master # may be asked to merge
+       git push fork master
 
+ 4. `Create a pull request <https://github.com/godby-group/idea-private/pulls>`_ from your fork to the iDEA repo on github (you'll need to click on *compare across forks*)
 
-To have the changes you have commited pulled into the central repository for
-everyone to access, email jw1294@york.ac.uk with a pull request.
+Once a core developer maintainer has reviewed your pull request, your changes
+will be incorporated into iDEA.
 
-Advanced
-.........
+Pulling the latest changes from iDEA
+------------------------------------
 
-To check whether your code is properly covered by the unit tests, use the
-`coverage module <http://coverage.readthedocs.io/>`_.
+As the development of iDEA is progressing, you'll need to update your fork and
+your local repository from time to time.
 
-.. code-block:: bash
-
-   # run this in the base directory
-   coverage run -m iDEA/test*.py  # tests coverage
-   coverage html  # generates report in doc/coverage/index.html                 
-
-
-Pulling changes from the central repository
--------------------------------------------
-
-Once another user has had their changes pulled into the central repository you will want to fetch 
-these changes into your local repository and merge them with your work. To do this run
+Updating your local repository:
 
 .. code-block:: bash
 
-   git pull
+   git remote add upstream git@github.com:godby-group/idea-private.git
+   git pull upstream master
 
-You will not be able to perfrom this pull if you have untracked changes, you should first commit your changes as described above.
+After this, also update your fork on github:
+
+.. code-block:: bash
+
+   git push fork master
+
+**Note:** You will not be able to perfrom this pull if you have untracked changes, you should first commit your changes as described above.
 If you do not wish to commit the untracked changes and simply want to remove them run
 
 .. code-block:: bash

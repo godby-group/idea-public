@@ -1,12 +1,10 @@
 # .controls coverage.py
-# checks coverage of unit tests
 # usage: coverage run -m unittest discover
 #        coverage html
 #        # then open doc/coverage/index.html
 [run]
-branch = True
-source = iDEA
-omit = iDEA/test_*
+source = ../iDEA
+omit = ../iDEA/test_*
 
 [report]
 # Regexes for lines to exclude from consideration
@@ -17,5 +15,5 @@ exclude_lines =
     if __name__ == .__main__.:
 
 [html]
-directory = doc/coverage
+directory = _build/coverage
 
