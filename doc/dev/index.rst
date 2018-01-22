@@ -4,8 +4,8 @@ Developers
 
 .. toctree::
 
+   practises
    add
    documentation
-   log
-   todo
+   changelog
    related

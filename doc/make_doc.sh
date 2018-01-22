@@ -24,4 +24,9 @@ rm -fr _build
 make html
 make latex
 
+echo "### Test coverage report ###"
+coverage run -m unittest discover ..
+coverage html
+
 echo "### Please find the documentation website in _build/html ###"
+echo "### Please find the coverage report in _build/coverage ###"

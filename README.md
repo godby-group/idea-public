@@ -1,26 +1,7 @@
-iDEA
-====
+# iDEA
 
-.. toctree::
-   :titlesonly:
-   :hidden:
-
-   tutorial/index
-   jupyter/index
-   theory/index
-   intro/index
-   dev/index
-   API documentation <apidoc/modules>
-
-.. Indices and tables
-   ==================
-
-   * :ref:`genindex`
-   * :ref:`modindex`
-   * :ref:`search`
-
-The iDEA code (interacting Dynamic Electrons Approach) is a Python-Cython
-software suite developed in Rex Godby's group at the University of York since
+The interacting Dynamic Electrons Approach (iDEA) is a Python-Cython software
+suite developed in Rex Godby's group at the University of York since
 2010. It has a central role in a number of research projects related to
 many-particle quantum mechanics for electrons in matter.
 
@@ -40,4 +21,17 @@ iDEA's main features are:
 * Many-body perturbation theory with implementation of various approximate
   vertex corrections for comparison
 
-iDEA Contributors: |idea_contributors|
+## How to get iDEA
+
+    git clone git@github.com:godby-group/idea-private.git
+    cd idea-private
+    pip install --user -e .[doc]
+    python run.py # this runs an example system
+
+## Documentation
+
+The [iDEA documentation](https://www.cmt.york.ac.uk/group_info/idea_html/) is
+hosted at the University of York.
+Besides explaining the inner workings and theory behind iDEA, it includes
+examples based on jupyter notebooks and pointers on 
+[how to contribute](https://www.cmt.york.ac.uk/group_info/idea_html/dev/add.html) to the development of iDEA.
