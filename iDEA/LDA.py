@@ -744,9 +744,12 @@ def main(parameters):
          Psi[i,0,:] = waves[:,i]
       v_ks_t = np.zeros((pm.sys.imax,pm.space.npt),dtype='float')
       v_xc_t = np.zeros((pm.sys.imax,pm.space.npt),dtype='float')
+      v_h_t = np.zeros((pm.sys.imax,pm.space.npt),dtype='float')
       current = np.zeros((pm.sys.imax,pm.space.npt),dtype='float')
       n_t = np.zeros((pm.sys.imax,pm.space.npt),dtype='float')
       v_ks_t[0,:] = v_ks[:]
+      v_h_t[0,:] = v_h[:]
+      v_xc_t[0,:] = v_xc[:]
       n_t[0,:] = n[:]
       for i in range(pm.space.npt):
          v_ks_t[1,i] = v_ks[i]+pm.sys.v_pert((i*pm.space.delta-pm.sys.xmax))
@@ -764,6 +767,7 @@ def main(parameters):
          if not orthogonal:
              pm.sprint("LDA: Warning: Orthonormality of orbitals violated at iteration {}".format(j))
 
+         v_h_t[j,:] = hartree_potential(pm, n_t[j,:])
          v_xc_t[j,:] = VXC(pm, n_t[j,:])
 
       # Calculate the current density
@@ -771,12 +775,13 @@ def main(parameters):
 
       # Output results
       results.add(v_ks_t, 'td_lda{}_vks'.format(pm.lda.NE))
+      results.add(v_h_t, 'td_lda{}_vh'.format(pm.lda.NE))
       results.add(v_xc_t, 'td_lda{}_vxc'.format(pm.lda.NE))
       results.add(n_t, 'td_lda{}_den'.format(pm.lda.NE))
       results.add(current_density, 'td_lda_cur')
 
       if pm.run.save:
-         l = ['td_lda{}_vks'.format(pm.lda.NE),'td_lda{}_vxc'.format(pm.lda.NE),'td_lda{}_den'.format(pm.lda.NE),'td_lda{}_cur'.format(pm.lda.NE)]
+         l = ['td_lda{}_vks'.format(pm.lda.NE),'td_lda{}_vxc'.format(pm.lda.NE),'td_lda{}_den'.format(pm.lda.NE),'td_lda{}_cur'.format(pm.lda.NE), 'td_lda{}_vh'.format(pm.lda.NE)]
          results.save(pm, list=l)
 
       pm.sprint('',1)

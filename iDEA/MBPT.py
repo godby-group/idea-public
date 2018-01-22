@@ -139,6 +139,13 @@ def main(parameters):
             if pm.run.save:
                 results.save(pm, list=[name])
 
+        if shortname in pm.mbpt.save_zero:
+            name = "gs_mbpt_{}_0".format(shortname)
+            results.add(O[:,:,0], name)
+            if pm.run.save:
+                results.save(pm, list=[name])
+
+
     # compute G0
     pm.sprint('MBPT: setting up G0(it)',0)
     G0, G0_pzero = non_interacting_green_function(h0.orbitals, h0.energies, st, zero='both')
