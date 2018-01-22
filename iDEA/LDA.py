@@ -275,11 +275,13 @@ ex_lda['heg'] = {
 
 ec_lda = {} # parameters for \varepsilon_{c}(n)
 ec_lda['heg'] = {
-   'a' :  0.00166042096868,
-   'b' :  0.065638899567,
-   'c' :  0.0740628539892,
-   'd' :  0.00406836067366,
-   'e' :  0.000621193747143,
+   'a' :  0.0009415195,
+   'b' :  0.2601,
+   'c' :  0.06404,
+   'd' :  0.0002477,
+   'e' :  0.00000261,
+   'f' :  1.2538,
+   'g' :  28.79, 
 }
 
 vx_lda = {} # parameters for V_{x}(n)
@@ -334,16 +336,17 @@ def EXC(pm, n):
                          n[j]**4 + p['f'] * n[j]**5) * n[j]**p['g']
 
                 r_s = 0.5/n[j]
-                e_c[j] = -(q['a']*r_s + q['e']*(r_s**2))/(1.0 + q['b']*r_s + \
-                         q['c']*(r_s**2) + q['d']*(r_s**3))
+                e_c[j] = -((q['a']*r_s + q['e']*r_s**2)/(1.0 + q['b']*r_s + \
+                         q['c']*r_s**2 + q['d']*r_s**3))*np.log(1.0 + q['f']*r_s + \
+                         q['g']*r_s**2)/q['f']
 
         e_xc = e_x + e_c
 
-    E_xc_LDA = np.dot(e_xc, n) * pm.space.delta
+    E_xc_LDA = np.dot(e_xc, n)*pm.space.delta
 
     if(NE == 'heg'):
-        E_x_LDA = np.dot(e_x, n) * pm.space.delta
-        E_c_LDA = np.dot(e_c, n) * pm.space.delta
+        E_x_LDA = np.dot(e_x, n)*pm.space.delta
+        E_c_LDA = np.dot(e_c, n)*pm.space.delta
         return E_xc_LDA, E_x_LDA, E_c_LDA
     else:
         return E_xc_LDA
@@ -379,13 +382,19 @@ def VXC(pm, Den, seperate=False):
                          p['f']*Den[j]**5)*Den[j]**p['g']
 
                 r_s = 0.5/Den[j]
-                term_1 = -(q['a']*r_s + q['e']*(r_s**2))/(1.0 + q['b']*r_s + \
-                         q['c']*(r_s**2) + q['d']*(r_s**3))
-                term_2 = -q['a']*r_s*(q['c']*(r_s**2) + 2.0*q['d']*(r_s**3) - 1.0) - \
-                         q['e']*(r_s**2)*(-q['b']*r_s + q['d']*(r_s**3) - 2.0)
-                term_3 = (q['b']*r_s + q['c']*(r_s**2) + q['d']*(r_s**3) + 1.0)**2
+                energy = -((q['a']*r_s + q['e']*r_s**2)/(1.0 + q['b']*r_s + \
+                         q['c']*r_s**2 + q['d']*r_s**3))*np.log(1.0 + f*r_s + \
+                         g*r_s**2)/f
+                derivative = ((r_s*(q['a'] + q['e']*r_s)*(q['b'] + r_s*(2.0*q['c'] + \
+                             3.0*q['d']*r_s))*np.log(1.0 + q['f']*r_s + q['g']*(r_s**2)) - \
+                             (r_s*(q['a'] + q['e']*r_s)*(q['f'] + 2.0*q['g']*r_s)*(q['b']*r_s + \
+                             q['c']*(r_s**2) + q['d']*(r_s**3) + 1.0)/(q['f']*r_s + \
+                             q['g']*(r_s**2) + 1.0)) - ((q['a'] + 2.0*q['e']*r_s)*(q['b']*r_s + \
+                             q['c']*(r_s**2) + q['d']*(r_s**3) + 1.0)*np.log(1.0 + q['f']*r_s + \
+                             q['g']*(r_s**2))))/(q['f']*(q['b']*r_s + q['c']*(r_s**2) + \
+                             q['d']*(r_s**3) + 1.0)**2))
 
-                V_c[j] = term_1 + (term_2/term_3)
+                V_c[j] = energy - r_s*derivative
 
         V_xc = V_x + V_c
 
@@ -728,6 +737,8 @@ def main(parameters):
    results.add(v_ks[:], 'gs_lda{}_vks'.format(pm.lda.NE))
    results.add(LDA_E, 'gs_lda{}_E'.format(pm.lda.NE))
    results.add(E_xc, 'gs_lda{}_Exc'.format(pm.lda.NE))
+   results.add(E_h, 'gs_lda{}_Eh'.format(pm.lda.NE))
+   results.add(E_hxc, 'gs_lda{}_Ehxc'.format(pm.lda.NE))
    if(pm.lda.NE == 'heg'):
        results.add(E_x, 'gs_lda{}_Ex'.format(pm.lda.NE))
        results.add(E_c, 'gs_lda{}_Ec'.format(pm.lda.NE))
