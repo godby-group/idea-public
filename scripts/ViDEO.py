@@ -4,129 +4,16 @@
 Add the directory containing this script to your PATH variable.
 """
 from __future__ import division
-
-#from builtins import str
-#from builtins import input
-#from builtins import range
+from __future__ import print_function
 import os
 import sys
 import pickle
+import numpy as np
+import iDEA.plot
 
-# user must provide either pickled or unpickled parameters file
-pickle_file = "parameters.p"
-python_file = "parameters.py"
-if os.path.isfile(pickle_file):
-    f = open(pickle_file,'rb')
-    pm = pickle.load(f)
-    f.close()
-elif os.path.isfile(python_file):
-    sys.path.insert(0,os.getcwd())
-    import parameters as pm
-else:
-    raise IOError("Neither {} nor {} found.".format(pickle_file, python_file))
+def main():
 
-
-def read_quantity(name):
-    """Reads quantity from pickle file
-
-    """
-    input_file = open('raw/' + str(name) + '.db', 'rb')
-    data = pickle.load(input_file)
-    input_file.close()
-    return data
-
-def save_quantity(name, string):
-    """Saves data to text file
-
-    """
-    output_file = open('data/' + str(name) + '.dat', 'w')
-    output_file.write(string)
-    output_file.close()
-
-# Function to save ground-state data to a dat file
-def save_data_gs(filename,dx,L):
-   data = read_quantity(filename)
-   s = ''
-   for i in range(0,len(data)):
-      x = -0.5*L + dx*float(i)
-      s += str(x) + ' ' + str(data[i]) + '\n'
-   save_quantity(filename, s)
-
-# Function to save ground-state data to a png image
-def save_plot_gs(filename,dx,L):
-   data = read_quantity(filename)
-
-   import matplotlib.pyplot as plt
-   plt.plot(pm.space.grid,data)
-   plt.xlabel("x [a.u.]")
-   plt.ylabel("{} [a.u.]".format(filename))
-   plt.savefig('plots/' + str(filename) + '.png')
-
-# Function to save timestep of time dependant data to a dat file
-def save_data_td(filename,dx,L,save_data_timestep):
-   data = read_quantity(filename)
-   data = data[save_data_timestep]
-   s = ''
-   for i in range(0,len(data)):
-      x = -0.5*L + dx*float(i)
-      s += str(x) + ' ' + str(data[i]) + '\n'
-   output_name = str(filename) + '_' + str(save_data_timestep)
-   save_quantity(output_name, s)
-
-# Function to save timestep of time dependant data to a png image
-def save_plot_td(filename,dx,L,save_plot_timestep):
-   data = read_quantity(filename)
-   data = data[save_plot_timestep]
-   output_name = str(filename) + '_' + str(save_data_timestep)
-
-   import matplotlib.pyplot as plt
-   plt.plot(pm.space.grid,data)
-   plt.xlabel("x [a.u.]")
-   plt.ylabel("{} [a.u.]".format(output_name))
-   plt.savefig('plots/' + str(output_name) + '.png')
-
-# Function to animate time dependent pickle file
-def animate_mp4(filename,dx,L,step):
-   input_file = open('raw/' + str(filename) + '.db', 'rb')
-   raw_data = pickle.load(input_file)
-   for i in range(0,len(raw_data),step):
-       spring = 'animating: ' + str(int(100.0*i/len(raw_data))) + '%'
-       sprint(spring,1,1,1)
-       file_name = '_tmp%07d.dat'%i
-       output_file = open(file_name, 'w')
-       script_file = open('temp_script','w')
-       data = raw_data[i]
-       for j in range(0,len(data)):
-           x = -0.5*L + dx*float(j)
-           output_file.write(str(x) + ' ' + str(data[j]) + '\n')
-       script_file.write('set terminal png size 1920,1080 \n')
-       frame_name = '_tmp%07d.png'%i
-       script_file.write('set output "' + str(frame_name) + '"\n')
-       script_file.write("plot '" + str(file_name) + "'" + " w lines\n")
-       output_file.close()
-       script_file.close()
-       os.system('gnuplot temp_script')
-       os.system('rm temp_script')
-       os.system('rm *.dat')
-   print()
-   os.system("mencoder 'mf://_tmp*.png' -mf type=png:fps=10 -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o " + 'animations/' + str(filename) + ".avi")
-   os.system('rm *.png')
-   input_file.close()
-
-# Function to print to screen replacing last line
-def sprint(text, n, s, msglvl):
-    if(n == msglvl):
-        if(s == 1):
-            sys.stdout.write('\033[K')
-            sys.stdout.flush()
-            sys.stdout.write('\r' + text)
-            sys.stdout.flush()
-        else:
-            print(text)
-
-if __name__ == '__main__':
-
-    # Print splash
+    # print splash
     print('                                                                ')
     print('              *   *   *    ****     *****     ****              ')
     print('              *   *        *   *    *        *    *             ')
@@ -144,53 +31,72 @@ if __name__ == '__main__':
     print('  +------------------------------------------------------------+')
     print('                                                                ')
 
-
-    # Gather file information from user
-    run_name = pm.run.name
-    NE = pm.sys.NE
-    td = bool(eval(input('is the data ground state or time dependant (gs=0,td=1): ')))
-    approx = str(input('enter which approximation to use (ext,non,lda,hf,hfre...): '))
-    data = str(input('enter which quantity to plot (den,cur,vxt,vks,vh,vxc,elf...): '))
-    N = pm.sys.grid
-    L = 2.0*pm.sys.xmax
-    dx = L/(N-1)
-    #filename = str(run_name) + '_' + str(NE)
-    filename = ''
-    if(td):
-       filename = filename + 'td_'
+    # import parameters file
+    print('loading in parameters file...')
+    pickle_file = "parameters.p"
+    python_file = "parameters.py"
+    if os.path.isfile(pickle_file):
+        f = open(pickle_file,'rb')
+        pm = pickle.load(f)
+        f.close()
+    elif os.path.isfile(python_file):
+        sys.path.insert(0,os.getcwd())
+        import parameters as pm
     else:
-       filename = filename + 'gs_' 
-    filename = filename + approx + '_'
-    filename = filename + data
+        raise IOError("Neither {} nor {} found.".format(pickle_file, python_file))
 
-    # Determine what the user wants to be processed
-    if(td==0):
-       save_data = bool(eval(input('save to data file (0=no,1=yes): ')))
-       save_plot = bool(eval(input('save to png image (0=no,1=yes): ')))
-    if(td==1):
-       save_data = bool(eval(input('save to data file (0=no,1=yes): ')))
-       if(save_data):
-           save_data_timestep = int(eval(input('timestep to save data: ')))
-       save_plot = bool(eval(input('save to png image (0=no,1=yes): ')))
-       if(save_plot):
-           save_plot_timestep = int(eval(input('timestep to plot image: ')))
-       animate = bool(eval(input('save to avi video (0=no,1=yes): ')))
-       if(animate):
-          step = int(eval(input('skip every n frames (1=animate all frames, 2=skip every 2 frames, etc): n = ')))
+    # gather file information from user
+    file_names = str(input('enter file names to process (space seperated): ')).split(' ')
+    td = bool(eval(input('is the data ground-state or time-dependent (gs=0,td=1): ')))
 
-    # Process data in specified way
-    if(td==0):
-       if(save_data):
-          save_data_gs(filename,dx,L)
-       if(save_plot):
-          save_plot_gs(filename,dx,L)
-    if(td==1):
-       if(save_data):
-          save_data_td(filename,dx,L,save_data_timestep)
-       if(save_plot):
-          save_plot_td(filename,dx,L,save_plot_timestep)
-       if(animate):
-          animate_mp4(filename,dx,L,step)
+    # load the raw data in
+    print('reading raw data:')
+    data = []
+    for fn in file_names:
+        print('reading {}...'.format(fn))
+        data.append(iDEA.plot.read_quantity(pm, fn))
+    # ensure data is all the same shape
+    for i in range(0, len(data)):
+        for j in range(0, len(data)):
+            if data[i].shape != data[j].shape:
+                raise IOError('all files must have same shapes of data')
 
-    ## Clear generated files
-    #os.system('rm *.pyc')
+    # get the dimentions of the data
+    if td == False:
+        dim = len(data[0].shape)
+    else:
+        dim = len(data[0].shape) - 1
+
+    # determine what the user wants to be processed
+    save_data = bool(eval(input('save to data file (0=no,1=yes): ')))
+    save_plot = bool(eval(input('save to pdf image (0=no,1=yes): ')))
+    if td or dim==3:
+        if save_data or save_plot:
+            timestep = int(eval(input('timestep to save: ')))
+        save_anim = bool(eval(input('save to mp4 video (0=no,1=yes): ')))
+        if save_anim:
+            step = int(eval(input('skip every n frames: n = ')))
+    file_name = str(input('name of output file (leave blank for default): '))
+    if file_name == '':
+        file_name = None
+
+    # process data in specified way
+    print('processing raw data:')
+    if td or dim==3:
+        if save_data:
+            iDEA.plot.to_data(pm, file_names, data, td, dim, file_name=file_name, timestep=timestep)
+        if save_plot:
+            iDEA.plot.to_plot(pm, file_names, data, td, dim, file_name=file_name, timestep=timestep)
+        if save_anim:
+            iDEA.plot.to_anim(pm, file_names, data, td, dim, file_name=file_name, step=step)
+    else:
+        if save_data:
+            iDEA.plot.to_data(pm, file_names, data, td, dim, file_name=file_name)
+        if save_plot:
+            iDEA.plot.to_plot(pm, file_names, data, td, dim, file_name=file_name)
+
+    # finish
+    print('all jobs done')
+
+if __name__ == '__main__':
+    main()

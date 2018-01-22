@@ -321,7 +321,11 @@ def main(parameters):
       # Starting values for wave functions, density
       waves = eigf
       n_t = np.empty((pm.sys.imax, pm.sys.grid), dtype=np.float)
+      F_t = np.empty((pm.sys.imax, pm.sys.grid, pm.sys.grid), dtype=np.complex)
+      Vh_t = np.empty((pm.sys.imax, pm.sys.grid) , dtype=np.float)
       n_t[0] = den
+      F_t[0,:,:] = fock(pm, waves)
+      Vh_t[0,:] = hartree(pm, den)
 
       for i in range(1, pm.sys.imax):
          string = 'HF: evolving through real time: t = {:.4f}'.format(i*pm.sys.deltat)
@@ -337,6 +341,8 @@ def main(parameters):
          H = hamiltonian(pm, waves, perturb=True)
 
          n_t[i] = den
+         F_t[i,:,:] = fock(pm, waves)
+         Vh_t[i,:] = hartree(pm, den)
 
       pm.sprint()
 
@@ -344,11 +350,14 @@ def main(parameters):
       current_density = calculate_current_density(pm, n_t)
 
       # Output results
+      pm.sprint('HF: saving quantities...', 1, newline=True)
       results.add(n_t, 'td_hf_den')
+      results.add(F_t, 'td_hf_F')
+      results.add(Vh_t, 'td_hf_vh')
       results.add(current_density, 'td_hf_cur')
 
       if pm.run.save:
-         l = ['td_hf_den','td_hf_cur']
+         l = ['td_hf_den','td_hf_cur', 'td_hf_F', 'td_hf_vh']
          results.save(pm, list=l)
 
    return results

@@ -157,9 +157,9 @@ hyb.RE = False                       #: Calculate the external potential for the
 mbpt = InputSection()
 mbpt.h0 = 'non'                      #: starting hamiltonian: 'non','ha','hf','lda'
 mbpt.tau_max = 40.0                  #: Maximum value of imaginary time
-mbpt.tau_npt = 1001                  #: Number of imaginary time points
+mbpt.tau_npt = 2001                  #: Number of imaginary time points
 mbpt.norb = 35                       #: Number of orbitals to use
-mbpt.flavour = 'GW'                  #: 'G0W0', 'GW0', 'GW'
+mbpt.flavour = 'G0W0'                #: 'G0W0', 'GW0', 'GW'
 mbpt.screening = 'dynamic'           #: Use 'dynamic' (frequency dependent) or 'static' (frequency independent) screening.
                                      #: (Note: must use static if running time-dependent calculation)
 mbpt.hedin_shift = True              #: perform Hedin shift
@@ -167,6 +167,7 @@ mbpt.ssc = False                     #: Correct the self-screening error using o
 mbpt.den_tol = 1e-06                 #: density tolerance of self-consistent algorithm
 mbpt.max_iter = 100                  #: Maximum iterations of self-consistent algorithm
 mbpt.save_full = []                  #: save space-time quantities (e.g. 'G0_iw', 'S1_it')
+mbpt.save_zero = ['G_it','P_iw','W_iw','Sx_iw','Sxc_iw'] #: save space-time quantities (e.g. 'G0_iw', 'S1_it') at iw/it=0
 mbpt.save_diag = []                  #: save diaginal components of space-time quantities
 mbpt.RE = False                      #: Reverse-engineer mbpt density
 mbpt.OPT = False                     #: Calculate the external potential for the MBPT density

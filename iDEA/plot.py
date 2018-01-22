@@ -1,133 +1,372 @@
 """Plotting output quantities of iDEA
 """
+from __future__ import division
 from __future__ import print_function
-ffmpeg_path = '/rwgdisks/home/lt934/packages/ffmpeg-3.2/ffmpeg'
-
+import os
+import sys
+import pickle
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+ffmpeg_path = '/shared/storage/physrwg/trunk/iDEAL/packages/ffmpeg-3.4.1-64bit-static/ffmpeg'
 
-
-def plot3d(O, name, pm, space='it', format='png', step=1, final=None):
-    """Plot quantity O(r,r';it) or O(r,r';iw)
-
-    Produces pngs or mp4 movie
-
-    parameters
-    -----------
-    O: array_like
-      the quantity to be plotted
-    name: str
-      name of the quantity
-    pm: object
-      parameters file
-    space: str
-        'it': last index is complex time
-        'iw': last index is complex frequency
-    format: str
-        Output format
-        'mp4': mpeg 4 movie (requires ffmpeg)
-        'png': collection of portable network graphics
-        'pdf': collection of pdf files
-    step: int
-        stride of indices in time domain
-    final: int
-        final index in time domain
+def read_quantity(pm, name):
+    """Reads quantity from pickle file
 
     """
-    import matplotlib.animation as animation
-    from . import MBPT
+    input_file = open('raw/' + str(name) + '.db', 'rb')
+    data = pickle.load(input_file)
+    input_file.close()
+    return np.array(data)
 
-    st = MBPT.SpaceTimeGrid(pm)
-    grid = st.x_npt
-    xmax = st.x_max
-    # this is something one always needs to do for imshow
-    O = O[::-1]
-    #O = O.swapaxes(0,1)   # Why was this here?
-    extent = [-xmax, xmax, -xmax, xmax]
+def to_data(pm, names, data, td, dim, file_name=None, timestep=0):
+    """Saves data to text file (/data)
 
-    tau_npt = st.tau_npt
-    if space == 'it':
-        tau_grid = st.tau_grid
-        label = "$\\tau = {:+.2f}$ a.u."
-    elif space == 'iw':
-        tau_grid = st.omega_grid
-        label = "$\\omega = {:+.2f}$ a.u."
-    else:
-        raise ValueError("space must be either 'it' or 'iw'")
+    """
+    if len(data) > 1:
+        raise IOError('cannot save multiple quantities to data file')
+    data = data[0]
+    names = names[0]
+    file_name = names
+    if td == False:
+        if(dim == 0):
+            d = [data]
+            print('saving to data file...')
+            np.savetxt('data/{}.dat'.format(file_name), d)
+        if(dim == 1):
+            x = np.linspace(-pm.sys.xmax, pm.sys.xmax, pm.sys.grid)
+            d = np.zeros(shape=(len(x),2))
+            d[:,0]=x[:]
+            d[:,1]=data[:]
+            print('saving to data file...')
+            np.savetxt('data/{}.dat'.format(file_name), d)
+        if(dim == 2):
+            d = data
+            print('saving to data file...')
+            np.savetxt('data/{}.dat'.format(file_name), d)
+        if(dim == 3):
+            d = data[:,:,timestep]
+            print('saving to data file...')
+            np.savetxt('data/{0}_{1}.dat'.format(file_name, timestep), d)
+    if td == True:
+        if(dim == 0):
+            d = [data[timestep]]
+            print('saving to data file...')
+            np.savetxt('data/{}.dat'.format(file_name), d)
+        if(dim == 1):
+            x = np.linspace(-pm.sys.xmax, pm.sys.xmax, pm.sys.grid)
+            d = np.zeros(shape=(len(x),2))
+            d[:,0]=x[:]
+            d[:,1]=data[timestep,:]
+            print('saving to data file...')
+            np.savetxt('data/{0}_{1}.dat'.format(file_name, timestep), d)
+        if(dim == 2):
+            d = data[timestep,:]
+            print('saving to data file...')
+            np.savetxt('data/{0}_{1}.dat'.format(file_name, timestep), d)
+        if(dim == 3):
+            raise IOError('cannot plot time-dependent 3D quantities to data file')
 
+def to_plot(pm, names, data, td, dim, file_name=None, timestep=0):
+    """Saves data to png (/png)
 
-    expected_shape = np.array([grid,grid,tau_npt])
-    if not (O.shape == expected_shape).all():
-        raise IOError("Dimensions {} are not ({}) as expected"\
-                .format(O.shape, expected_shape))
-
-    vmax = np.maximum(np.max(np.abs(O.real)),np.max(np.abs(O.imag)))
-    vmin = -vmax
-
-    fig, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(11,5))
-    plt.subplots_adjust(left=0.10)
-
-    for ax in [ax1, ax2]:
-        ax.set_xlim([-xmax,xmax])
-        ax.set_ylim([-xmax,xmax])
-        ax.set_xlabel('x [$a_0$]')
-        ax.set_ylabel('y [$a_0$]')
-        divider = make_axes_locatable(ax)
-        if ax == ax1:
-            cax1 = divider.append_axes("right", size="5%", pad=0.05)
-            ax.set_title("{} (real)".format(name))
-        else:
-            cax2 = divider.append_axes("right", size="5%", pad=0.05)
-            ax.set_title("{} (imag)".format(name))
-
-
-    if format == 'png':
-        print("Saving {} frames as pngs to plots/".format(tau_npt))
-    else:
-        print("Plotting {} frames".format(tau_npt))
-
-    ims = []
-    if final is None:
-        final = tau_npt
-
-    for it in range(0, int(final), int(step)):
-        im_r = ax1.imshow(O.real[:,:,it],norm=plt.Normalize(vmin,vmax),
-                extent=extent, cmap=matplotlib.cm.bwr)
-        im_i = ax2.imshow(O.imag[:,:,it],norm=plt.Normalize(vmin,vmax),
-                extent=extent, cmap=matplotlib.cm.bwr)
-        label_i = ax2.text(0.8, 0.9,label.format(tau_grid[it]),
-                           horizontalalignment='center', verticalalignment='center',
-                           transform = ax2.transAxes)
-        if it == 0:
+    """
+    if type(data) is not list:
+        data = [data]
+        names = [names]
+    if file_name == None:
+        file_name = '_'.join(names)
+    if td == False:
+        if(dim == 0):
+            raise IOError('cannot plot 0D data to pdf')
+        if(dim == 1):
+            for n in names:
+                print('adding {} to plot...'.format(n))
+                plt.plot(pm.space.grid, data[names.index(n)], label=n)
+            plt.xlabel('x (a.u.)')
+            plt.ylabel('{} (a.u.)'.format(','.join(names)))
+            plt.legend()
+            print('saving plot to pdf...')
+            plt.savefig('plots/{}.pdf'.format(file_name), dpi=500)
+        if(dim == 2):
+            if len(data) > 1:
+                raise IOError('cannot plot multiple 2D quantities')
+            data = data[0]
+            data = np.flipud(data)
+            fig, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(11,5))
+            plt.subplots_adjust(left=0.10)
+            for ax in [ax1, ax2]:
+                ax.set_xlim([-pm.sys.xmax,pm.sys.xmax])
+                ax.set_ylim([-pm.sys.xmax,pm.sys.xmax])
+                ax.set_xlabel('x (a.u.)')
+                ax.set_ylabel('x\' (a.u.)')
+                divider = make_axes_locatable(ax)
+                if ax == ax1:
+                    cax1 = divider.append_axes("right", size="5%", pad=0.05)
+                    ax.set_title("{} (real)".format(names[0]))
+                else:
+                    cax2 = divider.append_axes("right", size="5%", pad=0.05)
+                    ax.set_title("{} (imag)".format(names[0]))
+            rvmax = np.max(np.abs(data.real))
+            if rvmax < 1e-8:
+                rvmax = 1.0
+            rvmin = -rvmax
+            ivmax = np.max(np.abs(data.imag))
+            if ivmax < 1e-8:
+                ivmax = 1.0
+            ivmin = -ivmax
+            extent = [-pm.sys.xmax, pm.sys.xmax, -pm.sys.xmax, pm.sys.xmax]
+            print('adding {} to plot...'.format(names[0]))
+            im_r = ax1.imshow(data.real, norm=plt.Normalize(rvmin,rvmax), extent=extent, cmap=matplotlib.cm.bwr)
+            im_i = ax2.imshow(data.imag, norm=plt.Normalize(ivmin,ivmax), extent=extent, cmap=matplotlib.cm.bwr)
             plt.colorbar(im_r, cax=cax1)
             plt.colorbar(im_i, cax=cax2)
-
-        if format=='png':
-            plt.savefig("{}/{}_{:04d}.png".format('plots',name,it), dpi=150)
+            print('saving plot to pdf...')
+            plt.savefig("plots/{}.pdf".format(file_name), dpi=150)
+            im_r.remove()
+            im_i.remove()
+        if(dim == 3):
+            if len(data) > 1:
+                raise IOError('cannot plot multiple 3D quantities')
+            data = data[0]
+            for i in range(data.shape[2]):
+                data[:,:,i] = np.flipud(data[:,:,i])
+            fig, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(11,5))
+            plt.subplots_adjust(left=0.10)
+            for ax in [ax1, ax2]:
+                ax.set_xlim([-pm.sys.xmax,pm.sys.xmax])
+                ax.set_ylim([-pm.sys.xmax,pm.sys.xmax])
+                ax.set_xlabel('x (a.u.)')
+                ax.set_ylabel('x\' (a.u.)')
+                divider = make_axes_locatable(ax)
+                if ax == ax1:
+                    cax1 = divider.append_axes("right", size="5%", pad=0.05)
+                    ax.set_title("{} (real)".format(names[0]))
+                else:
+                    cax2 = divider.append_axes("right", size="5%", pad=0.05)
+                    ax.set_title("{} (imag)".format(names[0]))
+            rvmax = np.max(np.abs(data.real))
+            if rvmax < 1e-8:
+                rvmax = 1.0
+            rvmin = -rvmax
+            ivmax = np.max(np.abs(data.imag))
+            if ivmax < 1e-8:
+                ivmax = 1.0
+            ivmin = -ivmax
+            extent = [-pm.sys.xmax, pm.sys.xmax, -pm.sys.xmax, pm.sys.xmax]
+            print('adding {} to plot...'.format(names[0]))
+            im_r = ax1.imshow(data[:,:,timestep].real, norm=plt.Normalize(rvmin,rvmax), extent=extent, cmap=matplotlib.cm.bwr)
+            im_i = ax2.imshow(data[:,:,timestep].imag, norm=plt.Normalize(ivmin,ivmax), extent=extent, cmap=matplotlib.cm.bwr)
+            label_i = ax2.text(0.8, 0.9, 'timestep = {}'.format(timestep), horizontalalignment='center', verticalalignment='center', transform=ax2.transAxes)
+            plt.colorbar(im_r, cax=cax1)
+            plt.colorbar(im_i, cax=cax2)
+            print('saving plot to pdf...')
+            plt.savefig("plots/{0}_{1}.pdf".format(file_name, timestep), dpi=150)
             label_i.remove()
             im_r.remove()
             im_i.remove()
-        elif format=='pdf':
-            plt.savefig("{}/{}_{:04d}.pdf".format('plots',name,it), dpi=150)
+    if td == True:
+        if(dim == 0):
+            raise IOError('cannot plot time-dependent 0D data to pdf')
+        if(dim == 1):
+            for n in names:
+                print('adding {} to plot...'.format(n))
+                plt.plot(pm.space.grid, data[names.index(n)][timestep,:], label=n)
+            plt.xlabel('x (a.u.)')
+            plt.ylabel('{} (a.u.)'.format(','.join(names)))
+            plt.legend()
+            plt.title('timestep = {}'.format(timestep))
+            print('saving plot to pdf...')
+            plt.savefig('plots/{0}_{1}.pdf'.format(file_name, timestep), dpi=300)
+        if(dim == 2):
+            if len(data) > 1:
+                raise IOError('cannot plot multiple time-dependent 2D quantities')
+            data = data[0]
+            data = data[timestep,:,:]
+            data = np.flipud(data)
+            fig, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(11,5))
+            plt.subplots_adjust(left=0.10)
+            for ax in [ax1, ax2]:
+                ax.set_xlim([-pm.sys.xmax,pm.sys.xmax])
+                ax.set_ylim([-pm.sys.xmax,pm.sys.xmax])
+                ax.set_xlabel('x (a.u.)')
+                ax.set_ylabel('x\' (a.u.)')
+                divider = make_axes_locatable(ax)
+                if ax == ax1:
+                    cax1 = divider.append_axes("right", size="5%", pad=0.05)
+                    ax.set_title("{} (real)".format(names[0]))
+                else:
+                    cax2 = divider.append_axes("right", size="5%", pad=0.05)
+                    ax.set_title("{} (imag)".format(names[0]))
+            rvmax = np.max(np.abs(data.real))
+            if rvmax < 1e-8:
+                rvmax = 1.0
+            rvmin = -rvmax
+            ivmax = np.max(np.abs(data.imag))
+            if ivmax < 1e-8:
+                ivmax = 1.0
+            ivmin = -ivmax
+            extent = [-pm.sys.xmax, pm.sys.xmax, -pm.sys.xmax, pm.sys.xmax]
+            print('adding {} to plot...'.format(names[0]))
+            im_r = ax1.imshow(data.real, norm=plt.Normalize(rvmin,rvmax), extent=extent, cmap=matplotlib.cm.bwr)
+            im_i = ax2.imshow(data.imag, norm=plt.Normalize(ivmin,ivmax), extent=extent, cmap=matplotlib.cm.bwr)
+            label_i = ax2.text(0.8, 0.9, 'timestep = {}'.format(timestep), horizontalalignment='center', verticalalignment='center', transform=ax2.transAxes)
+            plt.colorbar(im_r, cax=cax1)
+            plt.colorbar(im_i, cax=cax2)
+            print('saving plot to pdf...')
+            plt.savefig("plots/{0}_{1}.pdf".format(file_name, timestep), dpi=150)
             label_i.remove()
             im_r.remove()
             im_i.remove()
-        else:
-            ims.append( (im_r, im_i, label_i,) )
+        if(dim == 3):
+            raise IOError('cannot plot time-dependent 3D quantities to pdf')
 
 
+def to_anim(pm, names, data, td, dim, file_name=None, step=1):
+    """Saves data to png (/png)
 
-    if format =='mp4':
-        im_ani = animation.ArtistAnimation(fig, ims, interval=50, repeat_delay=3000,
-                                           blit=True)
-        mfile = "animations/{}.mp4".format(name)
-        print("Making movie {}".format(mfile))
-        print("This may take some time...")
-        plt.rcParams['animation.ffmpeg_path'] = ffmpeg_path
-        writer = animation.FFMpegWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-        #writer = animation.MencoderWriter(fps=15, bitrate=1800)
-        im_ani.save(mfile, writer=writer)
-
+    """
+    if type(data) is not list:
+        data = [data]
+        names = [names]
+    if file_name == None:
+        file_name = '_'.join(names)
+    if td == False:
+        if(dim == 0):
+            raise IOError('cannot animate ground-state 0D quantities')
+        if(dim == 1):
+            raise IOError('cannot animate ground-state 1D quantities')
+        if(dim == 2):
+            raise IOError('cannot animate ground-state 2D quantities')
+        if(dim == 3):
+            if len(data) > 1:
+                raise IOError('cannot animate multiple 3D quantities')
+            data = data[0]
+            for i in range(data.shape[2]):
+                data[:,:,i] = np.flipud(data[:,:,i])
+            fig, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(11,5))
+            plt.subplots_adjust(left=0.10)
+            for ax in [ax1, ax2]:
+                ax.set_xlim([-pm.sys.xmax,pm.sys.xmax])
+                ax.set_ylim([-pm.sys.xmax,pm.sys.xmax])
+                ax.set_xlabel('x (a.u.)')
+                ax.set_ylabel('x\' (a.u.)')
+                divider = make_axes_locatable(ax)
+                if ax == ax1:
+                    cax1 = divider.append_axes("right", size="5%", pad=0.05)
+                    ax.set_title("{} (real)".format(names[0]))
+                else:
+                    cax2 = divider.append_axes("right", size="5%", pad=0.05)
+                    ax.set_title("{} (imag)".format(names[0]))
+            rvmax = np.max(np.abs(data.real))
+            if rvmax < 1e-8:
+                rvmax = 1.0
+            rvmin = -rvmax
+            ivmax = np.max(np.abs(data.imag))
+            if ivmax < 1e-8:
+                ivmax = 1.0
+            ivmin = -ivmax
+            extent = [-pm.sys.xmax, pm.sys.xmax, -pm.sys.xmax, pm.sys.xmax]
+            ims = []
+            print('animating... (may take some time)')
+            import matplotlib.animation as animation
+            for it in range(0, data.shape[2], int(step)):
+                im_r = ax1.imshow(data[:,:,it].real, norm=plt.Normalize(rvmin,rvmax), extent=extent, cmap=matplotlib.cm.bwr)
+                im_i = ax2.imshow(data[:,:,it].imag, norm=plt.Normalize(ivmin,ivmax), extent=extent, cmap=matplotlib.cm.bwr)
+                label_i = ax2.text(0.8, 0.9, 'timestep = {}'.format(it), horizontalalignment='center', verticalalignment='center', transform=ax2.transAxes)
+                if it == 0:
+                    plt.colorbar(im_r, cax=cax1)
+                    plt.colorbar(im_i, cax=cax2)
+                ims.append((im_r, im_i, label_i,))
+            im_ani = animation.ArtistAnimation(fig, ims, interval=50, repeat_delay=3000,blit=True)
+            mfile = "animations/{}.mp4".format(file_name)
+            print("making movie {}... (may take some time)".format(mfile))
+            plt.rcParams['animation.ffmpeg_path'] = ffmpeg_path
+            writer = animation.FFMpegWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+            im_ani.save(mfile, writer=writer)
+    if td == True:
+        if(dim == 0):
+            raise IOError('cannot animate time-dependent 0D quantity')
+        if(dim == 1):
+            from matplotlib import animation, rc
+            ymax = np.max(data) + 0.1
+            ymin = np.min(data) - 0.1
+            fig, ax = plt.subplots()
+            ax.set_xlim([-pm.sys.xmax,pm.sys.xmax])
+            ax.set_ylim((ymin, ymax))
+            array = []
+            line = []
+            print('animating... (may take some time)')
+            for i in range(0, len(data)):
+                array.append(data[i])
+                lineObj, = ax.plot([], [], lw=2)
+                line.append(lineObj)
+            def init():
+                for i in range(len(data)):
+                    line[i].set_data([], [])
+                return tuple(line)
+            x = np.linspace(-pm.sys.xmax, pm.sys.xmax, pm.sys.grid)
+            def animate(i):
+                for j in range(len(data)):
+                    line[j].set_data(x, data[j][i*int(step),:])
+                    line[j].set_label(names[j])
+                    ax.set_title('timestep = {}'.format(i))
+                legend = plt.legend()
+                return tuple(line)
+            mfile = "animations/{}.mp4".format(file_name)
+            print("making movie {}... (may take some time)".format(mfile))
+            rc('animation', html='html5')
+            plt.rcParams['animation.ffmpeg_path'] = ffmpeg_path
+            line_ani = animation.FuncAnimation(fig, animate, init_func=init, interval=10, blit=True)
+            writer = animation.FFMpegWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+            line_ani.save(mfile, writer=writer, dpi=300)
+        if(dim == 2):
+            if len(data) > 1:
+                raise IOError('cannot animate multiple 2D quantities')
+            data = data[0]
+            for i in range(data.shape[0]):
+                data[i,:,:] = np.flipud(data[i,:,:])
+            fig, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(11,5))
+            plt.subplots_adjust(left=0.10)
+            for ax in [ax1, ax2]:
+                ax.set_xlim([-pm.sys.xmax,pm.sys.xmax])
+                ax.set_ylim([-pm.sys.xmax,pm.sys.xmax])
+                ax.set_xlabel('x (a.u.)')
+                ax.set_ylabel('x\' (a.u.)')
+                divider = make_axes_locatable(ax)
+                if ax == ax1:
+                    cax1 = divider.append_axes("right", size="5%", pad=0.05)
+                    ax.set_title("{} (real)".format(names[0]))
+                else:
+                    cax2 = divider.append_axes("right", size="5%", pad=0.05)
+                    ax.set_title("{} (imag)".format(names[0]))
+            rvmax = np.max(np.abs(data.real))
+            if rvmax < 1e-8:
+                rvmax = 1.0
+            rvmin = -rvmax
+            ivmax = np.max(np.abs(data.imag))
+            if ivmax < 1e-8:
+                ivmax = 1.0
+            ivmin = -ivmax
+            extent = [-pm.sys.xmax, pm.sys.xmax, -pm.sys.xmax, pm.sys.xmax]
+            ims = []
+            print('animating... (may take some time)')
+            import matplotlib.animation as animation
+            for it in range(0, data.shape[0], int(step)):
+                im_r = ax1.imshow(data[it,:,:].real, norm=plt.Normalize(rvmin,rvmax), extent=extent, cmap=matplotlib.cm.bwr)
+                im_i = ax2.imshow(data[it,:,:].imag, norm=plt.Normalize(ivmin,ivmax), extent=extent, cmap=matplotlib.cm.bwr)
+                label_i = ax2.text(0.8, 0.9, 'timestep = {}'.format(it), horizontalalignment='center', verticalalignment='center', transform=ax2.transAxes)
+                if it == 0:
+                    plt.colorbar(im_r, cax=cax1)
+                    plt.colorbar(im_i, cax=cax2)
+                ims.append((im_r, im_i, label_i,))
+            im_ani = animation.ArtistAnimation(fig, ims, interval=50, repeat_delay=3000,blit=True)
+            mfile = "animations/{}.mp4".format(file_name)
+            print("making movie {}... (may take some time)".format(mfile))
+            plt.rcParams['animation.ffmpeg_path'] = ffmpeg_path
+            writer = animation.FFMpegWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+            im_ani.save(mfile, writer=writer)
+        if(dim == 3):
+            raise IOError('cannot animate time-dependent 3D quantity')
