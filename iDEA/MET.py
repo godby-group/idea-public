@@ -206,6 +206,7 @@ def data_prep(pm,raw_data_1,raw_data_2):
         if (pm.met.exact_1 == True):
             expansion_matrix = construct_expansion_matrix(pm)
             data_1 = sqrt(2)*expansion_matrix*raw_data_1
+            data_1 = data_1.reshape(pm.space.npt, pm.space.npt)
             pm.sprint("met: 1st system: exact")
         # 1st data - not exact
         elif (pm.met.exact_1 == False):
@@ -215,6 +216,7 @@ def data_prep(pm,raw_data_1,raw_data_2):
         if (pm.met.exact_2 == True):
             expansion_matrix = construct_expansion_matrix(pm)
             data_2 = sqrt(2)*expansion_matrix*raw_data_2
+            data_2 = data_2.reshape(pm.space.npt, pm.space.npt)
             pm.sprint("met: 2nd system: exact")
         # 2nd data - not exact
         elif (pm.met.exact_2 == False):
@@ -261,8 +263,8 @@ def mat_calc(pm,data_1,data_2):
     if (pm.met.type == "wavefunction"):
         for k in range(grid):
             for l in range(grid):
-                metric += (abs(data_1[k,l])**2 + abs(data_2[k,l])**2)*dx \
-                            - 2*abs(np.conjugate(data_1[k,l])*data_2[k,l])*dx
+                metric += (abs(data_1[k,l])**2 + abs(data_2[k,l])**2)*dx*dx \
+                            - 2*abs(np.conjugate(data_1[k,l])*data_2[k,l])*dx*dx
 
         metric = np.sqrt(metric)
 
