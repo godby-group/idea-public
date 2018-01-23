@@ -18,7 +18,9 @@ you find static HTML versions of the examples below.
 .. toctree::
    :titlesonly:
 
-   get_started.ipynb
+   get_started_basics.ipynb
+   get_started_further.ipynb
    well.ipynb
    double_well.ipynb
-   tunneling_solution.ipynb
+   tunneling.ipynb
+   convergence.ipynb
