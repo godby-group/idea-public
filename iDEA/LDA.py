@@ -52,7 +52,7 @@ def groundstate(pm, H):
     """
 
     #e,eigf = spsla.eigsh(H, k=pm.space.npt/2, which='SA')
-    #e,eigf = spla.eigh(H)
+    #e,eigf = spla.eigh(H)#
     e,eigf = spla.eig_banded(H,True)
 
     eigf /= np.sqrt(pm.space.delta)
