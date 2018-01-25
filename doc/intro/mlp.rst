@@ -16,7 +16,7 @@ In the ground state, the SOA KS potential has the following analytic form
 
 where :math:`n` is the electron density. The mixing term, :math:`f`, is approximated to be constant in space, and has been optimised based on a series on one-dimensional training systems [Torelli2018]
 
-.. math:: f = \left | 1.49 \left \langle L \right \rangle - 0.984 \right |,
+.. math:: f = \left | 1.49 \left \langle L \right \rangle - 0.984 \right | ,
 
 where :math:`\left \langle L \right \rangle` is the average value of the electron localisation function (ELF) of Ref. [Becke1990].
 
@@ -27,11 +27,11 @@ Time dependence
 
 For time-dependent systems the form of the components of the MLP change; the LDA becomes the adiabatic LDA (ALDA), and the SOA becomes
 
-.. math:: V^{\mathrm{SOA}}_{\mathrm{KS}} = \frac{\nabla^2 n}{4 n} - \frac{(\nabla n)^2}{8 n^2} - \frac{j}{2 n}
+.. math:: V^{\mathrm{SOA}}_{\mathrm{KS}} = \frac{\nabla^2 n}{4 n} - \frac{(\nabla n)^2}{8 n^2} - \frac{j^2}{2 n^2}
 
 .. math:: A^{\mathrm{SOA}}_{\mathrm{KS}} = - \frac{j}{n},
 
-where :math:`j` is the current density and :math:`A^{\mathrm{SOA}}_{\mathrm{KS}}` is the KS vector potential.
+where :math:`j` is the current density and :math:`A^{\mathrm{SOA}}_{\mathrm{KS}}` is the SOA KS vector potential.
 
 The mixing term, :math:`f`, can be used adiabatically, i.e., the electron density and orbitals at time :math:`t` are used in the ground-state form of :math:`f`, or fixed (:math:`f = f(0)`). 
 
