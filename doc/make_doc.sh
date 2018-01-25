@@ -26,6 +26,6 @@ echo "### Producing test coverage report ###"
 coverage run -m unittest discover ..
 coverage html
 
-echo "### Please find the HTML documentation in _build/html/index.html ###"
-echo "### Please find the LaTeX documentation in _build/html/latex (type 'make') ###"
-echo "### Please find the coverage report in _build/coverage/index.html ###"
+echo "### Find HTML documentation in _build/html/index.html ###"
+echo "### Find LaTeX documentation in _build/html/latex (type 'make') ###"
+echo "### Find test coverage report in _build/coverage/index.html ###"
