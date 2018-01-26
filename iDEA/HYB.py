@@ -54,7 +54,7 @@ def hamiltonian(pm, eigf, density, alpha, occupations, perturb=False):
 
    F = np.zeros((pm.sys.grid,pm.sys.grid), dtype='complex')
 
-   # construct fock operator
+   # construct the fock operator
    if alpha != 0.0:
       for i in range(pm.sys.NE):
          orb = copy.deepcopy(eigf[:,i])*np.sqrt(occupations[i])
