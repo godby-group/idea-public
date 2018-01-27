@@ -262,7 +262,7 @@ class Input(object):
         lda.OPT = False                      #: Calculate the external potential for the LDA density
 
         ### MLP parameters
-        mlp = InputSection()
+        self.mlp = InputSection()
         mlp = self.mlp
         mlp.f = 'e'                          #: f mixing parameter (if f='e' the weight is optimzed with the elf)
         mlp.tol = 1e-12                      #: Self-consistent convergence tollerance
