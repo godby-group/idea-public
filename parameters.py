@@ -124,7 +124,7 @@ mlp.mix = 1.0                        #: Self-consistent mixing parameter
 mlp.reference_potential = 'lda'      #: Choice of reference potential for mixing with the SOA
 mlp.OPT = False                      #: Calculate the external potential for the MLP density
 mlp.tdf = 0                          #: Time-dependent bahviour of f (if tdf = 'a' f is adiabatic, default is statis f)
-mlp.TDKS = 'False'                   #: Save the time-dependent KS potential
+mlp.TDKS = False                     #: Save the time-dependent KS potential
 
 
 ### HF parameters
