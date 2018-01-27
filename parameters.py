@@ -120,10 +120,11 @@ lda.OPT = False                      #: Calculate the external potential for the
 mlp = InputSection()
 mlp.f = 'e'                          #: f mixing parameter (if f='e' the weight is optimzed with the elf)
 mlp.tol = 1e-12                      #: Self-consistent convergence tollerance
-mlp.mix = 1.0                        #: Self-consistent mixing parameter 
+mlp.mix = 1.0                        #: Self-consistent mixing parameter
 mlp.reference_potential = 'lda'      #: Choice of reference potential for mixing with the SOA
 mlp.OPT = False                      #: Calculate the external potential for the MLP density
 mlp.tdf = 0                          #: Time-dependent bahviour of f (if tdf = 'a' f is adiabatic, default is statis f)
+mlp.TDKS = 'False'                   #: Save the time-dependent KS potential
 
 
 ### HF parameters
