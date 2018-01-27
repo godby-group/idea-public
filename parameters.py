@@ -43,7 +43,6 @@ sys.v_ext = v_ext
 
 def v_pert(x):
     """Time-dependent perturbation potential
-
     Switched on at t=0.
     """
     y = -0.01*x
@@ -54,7 +53,6 @@ sys.v_pert = v_pert
 
 def v_pert_im(x):
     """Imaginary perturbation potential
-
     Switched on at t=0.
     """
     strength = 1.0
@@ -122,9 +120,10 @@ lda.OPT = False                      #: Calculate the external potential for the
 mlp = InputSection()
 mlp.f = 'e'                          #: f mixing parameter (if f='e' the weight is optimzed with the elf)
 mlp.tol = 1e-12                      #: Self-consistent convergence tollerance
-mlp.mix = 0.0                        #: Self-consistent mixing parameter (default 0, only use if doesn't converge)
-mlp.reference_potential = 'non'      #: Choice of reference potential for mixing with the SOA
+mlp.mix = 1.0                        #: Self-consistent mixing parameter 
+mlp.reference_potential = 'lda'      #: Choice of reference potential for mixing with the SOA
 mlp.OPT = False                      #: Calculate the external potential for the MLP density
+mlp.tdf = 0                          #: Time-dependent bahviour of f (if tdf = 'a' f is adiabatic, default is statis f)
 
 
 ### HF parameters

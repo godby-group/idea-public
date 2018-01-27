@@ -438,6 +438,10 @@ def main(parameters):
          pm.sprint(string,1,newline=False)
          n_t, Psi = CrankNicolson(pm, v_ks_t, Psi, n_t, j, A_ks)
          current[j,:] = calculate_current_density(pm, n_t, j)
+         if pm.mlp.tdf == 'a' and pm.mlp.f == 'e':
+             elf = ELF(pm, n_t[j,:], waves, False)
+             av_loc = np.sum(elf[:]*n_t[j,:])*pm.space.delta/pm.sys.NE # Calculate the average localisation
+             f = abs(1.49*av_loc - 0.984) # Daniele's optimsed f
          A_ks[j,:] = -f*current[j,:]/n_t[j,:]
          A_ks[j,:] = filter_noise(pm, A_ks[j,:], damping)
          A_ks[j,:] = extrapolate_edge(pm, A_ks[j,:], n_t[j,:])
@@ -452,18 +456,18 @@ def main(parameters):
          if not orthogonal:
              pm.sprint("MLP: Warning: Orthonormality of orbitals violated at iteration {}".format(j))
 
-      if pm.mlp.KS_pot == True:
+      if pm.mlp.OPT == True:
           v_ks_t[0,:] += v_ks_gs[:] - v_ks_t[0,:]
           v_xc_t[:,:] = v_ks_t[:,:] - v_ext[:] - v_h_t[:,:]
 
       for j in range(1,pm.sys.imax):
-          if pm.mlp.KS_pot == True:
+          if pm.mlp.OPT == True:
               # Convert vector potential into scalar potential
               v_ks_t[j,:] = remove_gauge(pm, A_ks, v_ks_t[j,:], v_ks_gs, j)
               v_h_t[j,:] = hartree_potential(pm, n_t[j,:])
 
       # Output results
-      if pm.mlp.KS_pot == True:
+      if pm.mlp.OPT == True:
           results.add(v_ks_t, 'td_mlp_vks')
           results.add(v_h_t, 'td_mlp_vh')
           results.add(v_xc_t, 'td_mlp_vxc')
@@ -471,7 +475,7 @@ def main(parameters):
       results.add(current, 'td_mlp_cur')
 
       if pm.run.save:
-          if pm.mlp.KS_pot == True:
+          if pm.mlp.OPT == True:
               l = ['td_mlp_vks','td_mlp_vxc','td_mlp_den','td_mlp_cur', 'td_mlp_vh']
           else:
               l = ['td_mlp_den','td_mlp_cur']
