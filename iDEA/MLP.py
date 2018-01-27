@@ -1,325 +1,481 @@
-######################################################################################
-# Name: The mixed localisation potential (MLP)                                       #
-######################################################################################
-# Author(s): Matt Hodgson and Daniele Torelli                                        #
-######################################################################################
-# Description:                                                                       #
-# Computes electron density and current using the MLP.                               #
-######################################################################################
-# Notes: Uses either the LDA or the external potential as a reference                #
-# potential and mixes it with the SOA.                                               #
-#                                                                                    #
-######################################################################################
+"""Performs self-consistent MLP calculation
 
-#change
+Uses the [adiabatic] local density approximations ([A]LDA) and the 
+[time-dependent] SOA to calculate the [time-dependent] electron density 
+[and current] for a system of N electrons.The mixing term, f, is assumed to be 
+constant. It requires the average ELF and has been optimsed for 1D systems.
 
+Computes approximations to V_KS, V_H, V_xc using the MLP self-consistently.
+For ground state calculations the code outputs the MLP orbitals, the ground-state 
+charge density and the Kohn-Sham potential. For time dependent calculations the 
+code also outputs the time-dependent charge and current densities and the 
+time-dependent Kohn-Sham potential.
+
+"""
 from __future__ import division
 from __future__ import absolute_import
 
+import math
+import pickle
+import iDEA.LDA
 import numpy as np
 import scipy as sp
-import math as math
 import copy as copy
 import scipy.sparse as sps
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
+
 from . import RE_cython
-from . import LDA
 from . import results as rs
+from . import mix
+from . import minimize
 
-# Given n returns SOA potential
-def SOA(den):
-   v = np.zeros(pm.sys.grid,dtype='float')
-   v = 0.25*(np.gradient(np.gradient(np.log(den),pm.sys.deltax),pm.sys.deltax))+0.125*np.gradient(np.log(den),pm.sys.deltax)**2 
-   return v
+def groundstate(pm, H):
+    r"""Calculates the oribitals and ground-state density for the system for a
+    given potential.
 
-# Given n returns SOA potential
-def SOA_TD(den,cur,j,exp):
-   pot = np.zeros(pm.sys.grid,dtype='float')
-   vel_int = np.zeros(pm.sys.grid,dtype='float')
-   vel = np.zeros(pm.sys.grid,dtype='float')
-   vel0 = np.zeros(pm.sys.grid,dtype='float')
-   pot[:] = 0.25*(np.gradient(np.gradient(np.log(den[j,:]),pm.sys.deltax),pm.sys.deltax))+0.125*np.gradient(np.log(den[j,:]),pm.sys.deltax)**2
-   edge = int(0.01*pm.sys.xmax/pm.sys.deltax)
-   for i in range(1,edge):
-      pot[-i] = pot[-edge]
-   for i in range(0,edge):
-      pot[i] = pot[15]
-   vel[:] = cur[j,:]/den[j,:]
-   vel0[:] = cur[j-1,:]/den[j-1,:]
-   pot[:] -= 0.5*vel[:]**2
-   pot = Filter(pot,j,exp) # Remove high frequencies from vector potential
-   return pot
+     .. math:: H \psi_{i} = E_{i} \psi_{i}
 
-# Function to filter out 'noise' occuring between calculation of the exact TDSE solution and the present KS solution
-def Filter(A,j,exp):
-   A_Kspace = np.zeros(pm.sys.grid,dtype='complex')
-   A_Kspace = momentumspace(A)
-   A_Kspace[:] *= exp[:]
-   A[:] = realspace(A_Kspace).real
-   return A
+    parameters
+    ----------
+    H: array_like
+       Hamiltonian matrix (band form)
 
-# Solve ground-state KS equations
-def groundstate(v):
-   H = copy.copy(T)
-   H[0,:] += v[:]
-   e,eig_func = spla.eig_banded(H,True) 
-   n = np.zeros(pm.sys.grid,dtype='float')
-   for i in range(pm.sys.NE):
-      n[:] += abs(eig_func[:,i])**2 # Calculate density
-   n[:] /= pm.sys.deltax # Normalise
-   return n,eig_func
+    returns
+    -------
+    n: array_like
+       density
+    eigf: array_like
+       normalised orbitals, index as eigf[space_index,orbital_number]
+    e: array_like
+       orbital energies
+    """
 
-# Define function for generating the Hartree potential for a given charge density
-def Hartree(n,U):
-   return np.dot(U,n)*pm.sys.deltax
+    e,eigf = spla.eig_banded(H,True)
 
-# Coulomb matrix
-def Coulomb():
-   U = np.zeros((pm.sys.grid,pm.sys.grid),dtype='float')
-   for i in range(pm.sys.grid):
-      for k in range(pm.sys.grid):
-         U[i,k] = 1.0/(abs(i*pm.sys.deltax-k*pm.sys.deltax)+pm.sys.acon)
-   return U
+    eigf /= np.sqrt(pm.space.delta)
+    n = electron_density(pm, eigf)
 
-# Calculate elf
-def Elf(den,KS,posDef=False):
-   # The single particle kinetic energy density terms
-   grad = np.zeros((pm.sys.NE,pm.sys.grid),dtype='float')
-   for i in range(pm.sys.NE):
-      grad[i,:] = np.gradient(KS[:,i],pm.sys.deltax)
-   # Gradient of the density
-   gradDen = np.gradient(den,pm.sys.deltax)
-   # Unscaled measure
-   c = np.arange(den.shape[0], dtype=np.float)
-   for i in range(pm.sys.NE):
-      c += np.abs(grad[i,:])**2
-   c -= 0.25*((np.abs(gradDen)**2)/den)
-   # Force a positive-definate approximation if requested
-   if posDef == True:
-      for i in range(den.shape[0]):
-          if c[i] < 0.0:
-             c[i] = 0.0
-   elf = np.arange(den.shape[0])
-   # Scaling reference to the homogenous electron gas
-   c_h = getc_h(den)
-   # Finaly scale c to make ELF
-   elf = (1 + (c/c_h)**2)**(-1)
-   return elf
+    return n,eigf,e
+
+
+def electron_density(pm, orbitals):
+    r"""Compute density for given orbitals
+
+    parameters
+    ----------
+    orbitals: array_like
+      array of properly normalised orbitals[space-index,orital number]
+
+    returns
+    -------
+    n: array_like
+      electron density
+    """
+    occupied = orbitals[:, :pm.sys.NE]
+    n = np.sum(occupied*occupied.conj(), axis=1)
+
+    return n
+
+
+def lda_ks_potential(pm, n):
+    r"""Compute Kohn-Sham potential from density
+
+    parameters
+    ----------
+    n: array_like
+      electron density
+
+    returns
+    -------
+    v_ks: array_like
+      kohn-sham potential
+    """
+    v_ks_lda = pm.space.v_ext + hartree_potential(pm,n) + iDEA.LDA.VXC(pm,n)
+
+    return v_ks_lda
+
+
+def banded_to_full(H):
+    r"""Convert band matrix to full matrix
+
+    For diagonalisation, the Hamiltonian matrix may be stored as a symmetric
+    band matrix with H[i,:] the ith off-diagonal.
+    """
+    nbnd, npt = H.shape
+
+    H_full = np.zeros((npt,npt),dtype=np.float)
+    for ioff in range(nbnd):
+        d = np.arange(npt-ioff)
+        H_full[d,d+ioff] = H[ioff,d]
+        H_full[d+ioff,d] = H[ioff,d]
+
+    return H_full
+
+
+def kinetic(pm):
+    r"""Compute kinetic energy operator
+
+    parameters
+    ----------
+    pm : array_like
+        parameters object
+    """
+    # banded version
+    sd = pm.space.second_derivative_band
+    nbnd = len(sd)
+    T = np.zeros((nbnd, pm.space.npt), dtype=np.float)
+
+    for i in range(nbnd):
+        T[i,:] = -0.5 * sd[i]
+
+    return T
+
+
+def hamiltonian(pm, v_KS=None, wfs=None):
+    r"""Compute LDA Hamiltonian
+
+    Computes LDA Hamiltonian from a given Kohn-Sham potential.
+
+    parameters
+    ----------
+    v_KS : array_like
+         KS potential
+    wfs : array_like
+         kohn-sham orbitals. if specified, v_KS is computed from wfs
+    returns
+    -------
+    H_new: array_like
+         Hamiltonian matrix (in banded form)
+    """
+    H_new = kinetic(pm)
+
+    if not(wfs is None):
+        v_KS = ks_potential(pm, electron_density(pm, wfs))
+    H_new[0,:] += v_KS
+
+    return H_new
+
+
+def hartree_potential(pm, density):
+    r"""Computes Hartree potential for a given density
+
+    .. math::
+
+        V_H(r) = = \int U(r,r') n(r')dr'
+
+    parameters
+    ----------
+    density : array_like
+        given density
+
+    returns array_like
+    """
+    return np.dot(pm.space.v_int,density)*pm.space.delta
+
+
+def CrankNicolson(pm, v_ks, Psi, n, t, A_ks):
+    r"""Solves Crank Nicolson Equation
+    """
+    Mat = LHS(pm, v_ks, t-1, A_ks)
+    Mat = Mat.tocsr()
+    Matin =- (Mat-sps.identity(pm.space.npt, dtype='complex'))+sps.identity(pm.space.npt, dtype='complex')
+    for i in range(pm.sys.NE):
+        B = Matin*Psi[i,t-1,:]
+        Psi[i,t,:] = spsla.spsolve(Mat,B)
+        n[t,:] = 0
+        for i in range(pm.sys.NE):
+            n[t,:] += abs(Psi[i,t,:])**2
+    return n, Psi
+
+
+def LHS(pm, v_ks, j, A_ks):
+    r"""Constructs the matrix A to be used in the Crank-Nicolson solution of Ax=b when evolving the wavefunction in time (Ax=b)
+    """
+    frac1 = 1.0/3.0
+    frac2 = 1.0/24.0
+    CNLHS = sps.lil_matrix((pm.space.npt,pm.space.npt), dtype='complex') # Matrix for the left hand side of the Crank Nicolson method
+    for i in range(pm.space.npt):
+        CNLHS[i,i] = 1.0+0.5j*pm.sys.deltat*(1.0/pm.space.delta**2+0.5*A_ks[j,i]**2+v_ks[j,i])
+    for i in range(pm.space.npt-1):
+       CNLHS[i,i+1] = -0.5j*pm.sys.deltat*(0.5/pm.space.delta-(frac1)*1.0j*A_ks[j,i+1]-(frac1)*1.0j*A_ks[j,i])/pm.space.delta
+    for i in range(1,pm.space.npt):
+       CNLHS[i,i-1] = -0.5j*pm.sys.deltat*(0.5/pm.space.delta+(frac1)*1.0j*A_ks[j,i-1]+(frac1)*1.0j*A_ks[j,i])/pm.space.delta
+    for i in range(pm.space.npt-2):	
+       CNLHS[i,i+2] = -0.5j*pm.sys.deltat*(1.0j*A_ks[j,i+2]+1.0j*A_ks[j,i])*(frac2)/pm.space.delta
+    for i in range(2,pm.space.npt):
+       CNLHS[i,i-2] = 0.5j*pm.sys.deltat*(1.0j*A_ks[j,i-2]+1.0j*A_ks[j,i])*(frac2)/pm.space.delta
+    return CNLHS
+
+
+def ELF(pm, den, KS, posDef=False):
+    r"""Calculate the approximate ELF
+    """
+    grad = np.zeros((pm.sys.NE,pm.space.npt), dtype='float') # The single particle kinetic energy density terms
+    for i in range(pm.sys.NE):
+       grad[i,:] = np.gradient(KS[:,i], pm.space.delta) # Gradient of the density
+    gradDen = np.gradient(den,pm.space.delta)
+    c = np.zeros(pm.space.npt,dtype='float') # Unscaled measure
+    for i in range(pm.sys.NE):
+       c += np.abs(grad[i,:])**2
+    c -= 0.25*((np.abs(gradDen)**2)/den)
+    if posDef == True: # Force a positive-definate approximation if requested
+       for i in range(den.shape[0]):
+           if c[i] < 0.0:
+              c[i] = 0.0
+    elf = np.arange(den.shape[0]) # Scaling reference to the homogenous electron gas
+    c_h = getc_h(den)
+    elf = (1 + (c/c_h)**2)**(-1) # Finaly scale c to make ELF
+    return elf
 
 def getc_h(den):
-   c_h = np.arange(den.shape[0])
-   c_h = (1.0/6.0)*(np.pi**2)*(den**3)
-   return c_h
+    r"""Scaling term for the approximate ELF
+    """
+    c_h = np.arange(den.shape[0])
+    c_h = (1.0/6.0)*(np.pi**2)*(den**3)
+    return c_h
 
-# Function to calculate the current density
-def CalculateCurrentDensity(n,j):
-   J = np.zeros(pm.sys.grid, dtype=np.float)
-   J = RE_cython.continuity_eqn(pm, n[j,:], n[j-1,:])
-   if(pm.sys.im == 0):
-      J = ExtrapolateCD(J,j,n,(int((pm.sys.grid-1)/2.0)))
-   return J
+def extrapolate_edge(pm, A, n):
+    r"""Extrapolate quantity at teh edge of the system
+    """
+    edge = int((5.0/100.0)*(pm.space.npt-1)) # Define the edge of the system (%)
+    dAdx = np.zeros(pm.space.npt, dtype='float')
+    for i in range(edge+1):
+       l = edge - i
+       dAdx[:] = np.gradient(A[:], pm.space.delta)
+       A[l] = 8*A[l+1]-8*A[l+3]+A[l+4]+dAdx[l+2]*12.0*pm.space.delta 
+    for i in range((pm.space.npt-edge),pm.space.npt):
+       dAdx[:] = np.gradient(A[:], pm.space.delta)
+       A[i] = 8*A[i-1]-8*A[i-3]+A[i-4]-dAdx[i-2]*12.0*pm.space.delta
+    return A
 
-# Solve the Crank Nicolson equation
-def CrankNicolson(v,Psi,n,j,A): 
-   Mat = LHS(v,j,A)
-   Mat = Mat.tocsr()
-   Matin = -(Mat-sps.identity(pm.sys.grid,dtype='complex'))+sps.identity(pm.sys.grid,dtype='complex')
-   for i in range(pm.sys.NE):
-      B = Matin*Psi[i,j-1,:]
-      Psi[i,j,:] = spsla.spsolve(Mat,B)
-      n[j,:] = 0
-      for i in range(pm.sys.NE):
-         n[j,:] += abs(Psi[i,j,:])**2
-   return n,Psi
+def soa_ks_potential(pm, den):
+    r"""Given n returns SOA potential
+    """
+    v_ks_soa = np.zeros(pm.space.npt, dtype='float')
+    v_ks_soa = 0.25*(np.gradient(np.gradient(np.log(den),pm.space.delta),pm.space.delta))+0.125*np.gradient(np.log(den),pm.space.delta)**2 
+    return v_ks_soa
 
-# Left hand side of the Crank Nicolson method
-def LHS(v,j,A):
-   frac1 = 1.0/3.0
-   frac2 = 1.0/24.0
-   CNLHS = sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex') # Matrix for the left hand side of the Crank Nicholson method
-   for i in range(pm.sys.grid):
-      CNLHS[i,i] = 1.0+0.5j*pm.sys.deltat*(1.0/pm.sys.deltax**2+0.5*A[j,i]**2+v[j,i])
-   for i in range(pm.sys.grid-1):
-      CNLHS[i,i+1] = -0.5j*pm.sys.deltat*(0.5/pm.sys.deltax-(frac1)*1.0j*A[j,i+1]-(frac1)*1.0j*A[j,i])/pm.sys.deltax
-   for i in range(1,pm.sys.grid):
-      CNLHS[i,i-1] = -0.5j*pm.sys.deltat*(0.5/pm.sys.deltax+(frac1)*1.0j*A[j,i-1]+(frac1)*1.0j*A[j,i])/pm.sys.deltax
-   for i in range(pm.sys.grid-2):
-      CNLHS[i,i+2] = -0.5j*pm.sys.deltat*(1.0j*A[j,i+2]+1.0j*A[j,i])*(frac2)/pm.sys.deltax
-   for i in range(2,pm.sys.grid):
-      CNLHS[i,i-2] = 0.5j*pm.sys.deltat*(1.0j*A[j,i-2]+1.0j*A[j,i])*(frac2)/pm.sys.deltax
-   return CNLHS
 
-# Function used in calculation of the Hatree potential
-def realspace(vector):
-   mid_k = int(0.5*(pm.sys.grid-1))
-   fftin = np.zeros(pm.sys.grid-1,dtype='complex')
-   fftin[0:mid_k+1] = vector[mid_k:pm.sys.grid]
-   fftin[pm.sys.grid-mid_k:pm.sys.grid-1] = vector[1:mid_k]
-   fftout = np.fft.ifft(fftin)
-   func = np.zeros(pm.sys.grid, dtype='complex')
-   func[0:pm.sys.grid-1] = fftout[0:pm.sys.grid-1]
-   func[pm.sys.grid-1] = func[0]
-   return func
+def td_soa_ks_potential(pm, den, cur, j, damping):
+    r"""Given n returns TDSOA potential
+    """
+    v_ks_soa_t = np.zeros(pm.space.npt,dtype='float')
+    v_old = np.zeros(pm.space.npt,dtype='float')
+    vel = np.zeros(pm.space.npt,dtype='float')
+    v_ks_soa_t = 0.25*(np.gradient(np.gradient(np.log(den[j,:]),pm.space.delta),pm.space.delta))+0.125*np.gradient(np.log(den[j,:]),pm.space.delta)**2
+    vel[:] = cur[j,:]/den[j,:]
+    v_ks_soa_t[:] -= 0.5*vel[:]**2
+    v_ks_soa_t = filter_noise(pm, v_ks_soa_t, damping) # Remove high frequencies from vector potential
+    return v_ks_soa_t
 
-# Function used in calculation of the Hatree potential
-def momentumspace(func):
-   mid_k = int(0.5*(pm.sys.grid-1))
-   fftin = np.zeros(pm.sys.grid-1,dtype='complex')
-   fftin[0:pm.sys.grid-1] = func[0:pm.sys.grid-1] + 0.0j
-   fftout = np.fft.fft(fftin)
-   vector = np.zeros(pm.sys.grid,dtype='complex')
-   vector[mid_k:pm.sys.grid] = fftout[0:mid_k+1]
-   vector[1:mid_k] = fftout[pm.sys.grid-mid_k:pm.sys.grid-1]
-   vector[0] = vector[pm.sys.grid-1].conjugate()
-   return vector
+def filter_noise(pm, A, damping):
+    r"""Filters out noise in A by suppressing high-frequency terms in the Fourier transform.
 
-# Function to extrapolate the current density from regions of low density to the system's edges
-def ExtrapolateCD(J,j,n,upper_bound):
-   imaxl = 0 # Start from the edge of the system
-   nmaxl = 0.0
-   imaxr = 0
-   nmaxr = 0.0
-   for l in range(upper_bound+1):
-      if n[j,l]>nmaxl: # Find the first peak in the density from the left
-         nmaxl = n[j,l]
-         imaxl = l
-      i = upper_bound+l-1
-      if n[j,i]>nmaxr: # Find the first peak in the density from the right
-          nmaxr = n[j,i]
-          imaxr = l
-   U = np.zeros(pm.sys.grid)
-   U[:] = J[:]/n[j,:]
-   dUdx = np.zeros(pm.sys.grid)
-   # Extraplorate the density for the low density regions
-   for i in range(imaxl+1):
-      l = imaxl-i
-      if n[j,l]<1e-6:
-         dUdx[:] = np.gradient(U[:],pm.sys.deltax)
-         U[l] = 8*U[l+1]-8*U[l+3]+U[l+4]+dUdx[l+2]*12.0*pm.sys.deltax
-   for i in range(int(0.5*(pm.sys.grid-1)-imaxr+1)):
-      l = int(0.5*(pm.sys.grid-1)+imaxr+i)
-      if n[j,l]<1e-6:
-         dUdx[:] = np.gradient(U[:],pm.sys.deltax)
-         U[l] = 8*U[l-1]-8*U[l-3]+U[l-4]-dUdx[l-2]*12.0*pm.sys.deltax
-   J[:] = n[j,:]*U[:]
-   return J
+    """
+    A_freq = np.zeros(pm.space.npt,dtype='complex')
+    # Calculate the Fourier transform of A
+    A_freq = np.fft.rfft(A)
+
+    # Apply the damping function to suppress high-frequency terms
+    A_freq[:] *= damping[:]
+
+    # Calculate the inverse Fourier transform to recover the spatial
+    # representation of A with the noise filtered out
+    A[:] = np.fft.irfft(A_freq, len(A)).real
+    return A
+
+def calculate_current_density(pm, density_ks, j):
+    r"""Calculates the Kohn-Sham electron current density, at time t+dt, from
+    the time-dependent Kohn-Sham electron density by solving the continuity
+    equation.
+
+    """
+    current_density_ks = np.zeros(pm.space.npt, dtype=np.float)
+    current_density_ks = RE_cython.continuity_eqn(pm, density_ks[j,:], density_ks[j-1,:])
+
+    return current_density_ks
+
+def remove_gauge(pm, A_ks, v_ks, v_ks_gs, j):
+    r"""Removes the gauge transformation that was applied to the Kohn-Sham
+    potential, so that it becomes a fully scalar quantity.
+    """
+    # Change gauge to calculate the full Kohn-Sham (scalar) potential
+    for i in range(pm.space.npt):
+        for k in range(i+1):
+            v_ks[i] += (A_ks[j,k] - A_ks[j-1,k])*(pm.space.delta/pm.sys.deltat)
+
+    # Shift the Kohn-Sham potential to match the ground-state Kohn-Sham
+    # potential at the centre of the system
+    shift = v_ks_gs[int((pm.space.npt-1)/2)] - v_ks[int((pm.space.npt-1)/2)]
+    v_ks[:] += shift
+
+    return v_ks[:]
 
 # Main function
 def main(parameters):
-   global T, pm
+   r"""Performs MLP calculation
+
+   parameters
+   ----------
+   parameters : object
+      Parameters object
+
+   returns object
+      Results object
+   """
    pm = parameters
    pm.setup_space()
 
-   # Initalise matrices
-   sd = pm.space.second_derivative_band
-   nbnd = len(sd)
-   T = np.zeros((nbnd,pm.sys.grid),dtype=np.float)
-   for i in range(nbnd):
-       T[i,:] = -0.5 * sd[i]
+   v_ext = pm.space.v_ext
 
-   v_s = copy.copy(pm.space.v_ext)
-   v_ext = copy.copy(pm.space.v_ext)
-   v_ref = copy.copy(pm.space.v_ext)
+   # take external potential for initial guess
+   v_ks_old = v_ext
+   H = hamiltonian(pm, v_ks_old)
+   n,waves,energies = groundstate(pm, H)
 
-   Psi = np.zeros((pm.sys.NE,pm.sys.imax,pm.sys.grid), dtype='complex')
-   for i in range(pm.sys.grid):
-      v_s[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # External potential
-      v_ext[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax)) # External potential
-      if pm.mlp.reference_potential=='non':
-         v_ref[i] = pm.sys.v_ext((i*pm.sys.deltax-pm.sys.xmax))
-   n,waves = groundstate(v_s) #Inital guess
-   U = Coulomb()
-   n_old = np.zeros(pm.sys.grid,dtype='float')
-   n_old[:] = n[:]
-   convergence = 1.0
-   while convergence>pm.mlp.tol: # Use MLP
-      soa = SOA(n) # Calculate SOA potential
-      v_s_old = copy.copy(v_s)
-      edge = int(0.2*pm.sys.xmax)
-      for i in range(1,edge):
-         soa[-i] = soa[-edge]
-      for i in range(0,edge):
-         soa[i] = soa[edge]
-      if pm.mlp.reference_potential=='lda':
-         v_ref[:] = v_ext[:]+Hartree(n,U)+LDA.XC(n) # Up-date refernce potential (if needed)
-      if str(pm.mlp.f)=='e':
-         elf = Elf(n[:],waves)
-         average_elf = np.sum(n[:]*elf[:]*pm.sys.deltax)/pm.sys.NE
-         f_e = 2.2e-4*math.exp(8.5*average_elf) # Self-consistent f
-         v_s[:] = f_e*soa[:]+(1-f_e)*v_ref[:] # Calculate MLP
+   if pm.mlp.reference_potential=='non':
+       v_ref = v_ext
+       if pm.mlp.f == 'e':
+           s = 'MLP: Warning: f not optimised for v_ref = v_ext'
+           pm.sprint(s,1)
+       else:
+           f = pm.mlp.f
+
+   iteration = 1
+   converged = False
+   while (not converged) and iteration <= pm.lda.max_iter:
+
+      # mixing scheme
+
+      # compute the mixing term, f
+      if pm.mlp.f == 'e':
+          elf = ELF(pm, n, waves, False)
+          av_loc = np.sum(elf[:]*n[:])*pm.space.delta/pm.sys.NE # Calculate the average localisation
+          f = abs(1.49*av_loc - 0.984) # Daniele's optimsed f
       else:
-         v_s[:] = pm.mlp.f*soa[:]+(1-pm.mlp.f)*v_ref[:] # Calculate MLP
-      if pm.mlp.mix != 0: # Mix if needed
-         v_s[:] = (1-pm.mlp.mix)*v_s_old[:]+pm.mlp.mix*v_s[:]
-      n,waves = groundstate(v_s) # Calculate MLP density 
-      convergence = np.sum(abs(n-n_old))*pm.sys.deltax
-      n_old[:] = n[:]
-      string = 'MLP: electron density convergence = {}'.format(convergence)
-      pm.sprint(string,1,newline=False)
+          f = pm.mlp.f
 
-   v_xc = np.zeros(pm.sys.grid,dtype='float')
-   v_xc[:]=v_s[:]-v_ext[:]-Hartree(n,U)
+      # compute new ks-potential, update hamiltonian
+      v_ks_lda = lda_ks_potential(pm, n)
+      v_ks_soa = soa_ks_potential(pm, n)
+
+      if pm.mlp.reference_potential=='lda':
+          v_ref = v_ks_lda
+
+      v_ks = f*v_ks_soa + (1-f)*v_ref
+      v_ks = extrapolate_edge(pm, v_ks, n) # SOA usually has noise at the edges of the system and must be extrapolated
+
+      # potential mixing
+      v_ks = (1-pm.mlp.mix)*v_ks_old+pm.mlp.mix*v_ks
+
+      H = hamiltonian(pm, v_ks)
+
+      # compute new n
+      n_old = n
+      n,waves,energies = groundstate(pm, H)
+
+      v_ks_old = v_ks
+
+      # compute self-consistent density error
+      dn = np.sum(np.abs(n-n_old))*pm.space.delta
+      converged = dn < pm.mlp.tol
+      s = 'MLP: f = {:.3e}, dn = {:.3e}, iter = {}'\
+              .format(f, dn, iteration)
+      pm.sprint(s,1,newline=False)
+
+      iteration += 1
+
+   iteration -= 1
+   pm.sprint('')
+
+   if not converged:
+       s = 'MLP: Warning: convergence not reached in {} iterations. Terminating.'.format(iteration)
+       pm.sprint(s,1)
+   else:
+       pm.sprint('MLP: reached convergence in {} iterations.'.format(iteration),0)
+
+   v_h = hartree_potential(pm, n)
+   v_xc = v_ks - v_ext - v_h
 
    results = rs.Results()
+   results.add(n[:], 'gs_mlp_den')
+   results.add(v_h[:], 'gs_mlp_vh')
+   results.add(v_xc[:], 'gs_mlp_vxc')
+   results.add(v_ks[:], 'gs_mlp_vks')
 
-   if pm.run.time_dependence == False: # Output results
-      results.add(v_s,name='gs_mlp_vks')
-      results.add(v_xc,name='gs_mlp_vxc')
-      results.add(n,name='gs_mlp_den')
+   if pm.run.save:
+      results.save(pm)
 
-      if str(pm.mlp.f)=='e':
-         pm.sprint('\nMLP: optimal f = %s' % f_e,1)
-         results.add(elf,name='gs_mlp_elf')
-      else:
-         pm.sprint('',1)
-
-      if pm.run.save:
-         results.save(pm)
-
-
-   pm.sprint('',1)
+   Psi = np.zeros((pm.sys.NE,pm.sys.imax,pm.space.npt), dtype='complex')
    if pm.run.time_dependence == True:
       for i in range(pm.sys.NE):
-         Psi[i,0,:] = waves[:,i]/math.sqrt(pm.sys.deltax)
-      v_s_t = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
-      v_xc_t = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
-      current = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
-      n_t = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
-      v_s_t[0,:] = v_s[:]
+         Psi[i,0,:] = waves[:,i]
+      v_ks_t = np.zeros((pm.sys.imax,pm.space.npt), dtype='float')
+      A_ks = np.zeros((pm.sys.imax,pm.space.npt), dtype='float')
+      A_old = np.zeros((pm.sys.imax,pm.space.npt), dtype='float')
+      v_ks_gs = np.zeros(pm.space.npt, dtype='float')
+      v_pert = np.zeros(pm.space.npt, dtype='float')
+      damping = np.zeros((int(0.5*(pm.space.npt-1)+1)), dtype='float')
+      v_xc_t = np.zeros((pm.sys.imax,pm.space.npt), dtype='float')
+      v_h_t = np.zeros((pm.sys.imax,pm.space.npt), dtype='float')
+      current = np.zeros((pm.sys.imax,pm.space.npt), dtype='float')
+      n_t = np.zeros((pm.sys.imax,pm.space.npt), dtype='float')
+      v_ks_t[0,:] = v_ks[:]
+      v_ks_gs[:] = v_ks[:]
+      v_h_t[0,:] = v_h[:]
+      v_xc_t[0,:] = v_xc[:]
       n_t[0,:] = n[:]
-      exp = np.zeros(pm.sys.grid,dtype='float')
-      for i in range(pm.sys.grid): 
-         v_s_t[1,i] = v_s[i]+pm.sys.v_pert((i*pm.sys.deltax-pm.sys.xmax))  
-         v_ext[i] += pm.sys.v_pert((i*pm.sys.deltax-pm.sys.xmax))
-         exp[i] = math.exp(-0.1*(i*pm.sys.deltax-pm.sys.xmax)**2)
-      A = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
-      for j in range(1,pm.sys.imax): 
-         string = 'MLP: evolving through real time: t = {}'.format(j*pm.sys.deltat) 
+      for i in range(pm.space.npt):
+         v_pert[i] = pm.sys.v_pert((i*pm.space.delta-pm.sys.xmax))
+      for i in range(int(0.5*(pm.space.npt-1)+1)):
+         damping[i] = math.exp(-0.5*(i*pm.space.delta)**2) # This may need to be tuned for each system
+      v_ks_t[0,:] += v_pert[:]
+      if pm.mlp.reference_potential=='non':
+         v_ref = v_ext + v_pert
+      for j in range(1,pm.sys.imax):
+         string = 'MLP: evolving through real time: t = {}'.format(j*pm.sys.deltat)
          pm.sprint(string,1,newline=False)
-         n_t,Psi = CrankNicolson(v_s_t,Psi,n_t,j,A)
-         current[j,:] = CalculateCurrentDensity(n_t,j)
-         if j != pm.sys.imax-1:
-            A[j+1,:] = -pm.mlp.f*current[j,:]/n_t[j,:]
-            A[j+1,:] = Filter(A[j+1,:],j,exp)
-            if pm.mlp.reference_potential=='lda':
-               v_s_t[j+1,:] = (1-pm.mlp.f)*(v_ext[:]+Hartree(n_t[j,:],U)+LDA.XC(n_t[j,:]))+pm.mlp.f*SOA_TD(n_t,current,j,exp)
-            if pm.mlp.reference_potential=='non':
-               v_s_t[j+1,:] = (1-pm.mlp.f)*v_ext[:]+pm.mlp.f*SOA_TD(n_t,current,j,exp)
+         n_t, Psi = CrankNicolson(pm, v_ks_t, Psi, n_t, j, A_ks)
+         current[j,:] = calculate_current_density(pm, n_t, j)
+         A_ks[j,:] = -f*current[j,:]/n_t[j,:]
+         A_ks[j,:] = filter_noise(pm, A_ks[j,:], damping)
+         A_ks[j,:] = extrapolate_edge(pm, A_ks[j,:], n_t[j,:])
+         if pm.mlp.reference_potential=='lda':
+             v_ref = lda_ks_potential(pm, n_t[j,:]) + v_pert
+         v_ks_t[j,:] = (1-f)*v_ref+f*td_soa_ks_potential(pm, n_t, current, j, damping)
+         v_ks_t[j,:] = extrapolate_edge(pm, v_ks_t[j,:], n_t[j,:])
 
-      for j in range(pm.sys.imax):
-         for i in range(pm.sys.grid):
-            for k in range(i+1):
-               v_s_t[j,i] += (A[j,k]-A[j-1,k])*pm.sys.deltax/pm.sys.deltat # Convert vector potential into scalar potential
+         # Verify orthogonality of states
+         S = np.dot(Psi[:,j,:].conj(), Psi[:,j,:].T) * pm.space.delta
+         orthogonal = np.allclose(S, np.eye(pm.sys.NE, dtype=np.complex),atol=1e-6)
+         if not orthogonal:
+             pm.sprint("MLP: Warning: Orthonormality of orbitals violated at iteration {}".format(j))
 
+      if pm.mlp.KS_pot == True:
+          v_ks_t[0,:] += v_ks_gs[:] - v_ks_t[0,:]
+          v_xc_t[:,:] = v_ks_t[:,:] - v_ext[:] - v_h_t[:,:]
 
-      # Output ground state density
-      results.add(n_t,name='td_mlp_den')
-      results.add(v_s_t,name='td_mlp_vks')
+      for j in range(1,pm.sys.imax):
+          if pm.mlp.KS_pot == True:
+              # Convert vector potential into scalar potential
+              v_ks_t[j,:] = remove_gauge(pm, A_ks, v_ks_t[j,:], v_ks_gs, j)
+              v_h_t[j,:] = hartree_potential(pm, n_t[j,:])
+
+      # Output results
+      if pm.mlp.KS_pot == True:
+          results.add(v_ks_t, 'td_mlp_vks')
+          results.add(v_h_t, 'td_mlp_vh')
+          results.add(v_xc_t, 'td_mlp_vxc')
+      results.add(n_t, 'td_mlp_den')
+      results.add(current, 'td_mlp_cur')
 
       if pm.run.save:
-         # no need to save ground state quantities again...
-         l = ['td_mlp_den', 'td_mlp_vks']
-         results.save(pm, list=l)
+          if pm.mlp.KS_pot == True:
+              l = ['td_mlp_vks','td_mlp_vxc','td_mlp_den','td_mlp_cur', 'td_mlp_vh']
+          else:
+              l = ['td_mlp_den','td_mlp_cur']
+          results.save(pm, list=l)
 
-   pm.sprint('',1)
+      pm.sprint('',1)
+   return results
