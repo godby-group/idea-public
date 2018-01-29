@@ -456,15 +456,15 @@ def main(parameters):
          if not orthogonal:
              pm.sprint("MLP: Warning: Orthonormality of orbitals violated at iteration {}".format(j))
 
-      if pm.mlp.TDKS == True:
-          v_ks_t[0,:] += v_ks_gs[:] - v_ks_t[0,:]
-          v_xc_t[:,:] = v_ks_t[:,:] - v_ext[:] - v_h_t[:,:]
-
       for j in range(1,pm.sys.imax):
           if pm.mlp.TDKS == True:
               # Convert vector potential into scalar potential
               v_ks_t[j,:] = remove_gauge(pm, A_ks, v_ks_t[j,:], v_ks_gs, j)
               v_h_t[j,:] = hartree_potential(pm, n_t[j,:])
+
+      if pm.mlp.TDKS == True:
+          v_ks_t[0,:] += v_ks_gs[:] - v_ks_t[0,:]
+          v_xc_t[:,:] = v_ks_t[:,:] - v_ext[:] - v_h_t[:,:]
 
       # Output results
       if pm.mlp.TDKS == True:
