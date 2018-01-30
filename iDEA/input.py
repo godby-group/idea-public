@@ -655,7 +655,7 @@ class Input(object):
               results.add(OPT.main(pm,'mbpt'), name='mbptopt')
         if(pm.run.MET == True):
               from . import MET
-              results.add(MET.main(pm), name='{0}_{1}_{2}_{3}'.format(pm.met.r_name_1,pm.met.r_type_1, pm.met.r_name_2, pm.met.r_type_2))
+              results.add(MET.main(pm), name='met')
 
         # All jobs done
         if pm.run.save:
