@@ -323,3 +323,4 @@ def main(pm):
 
     if pm.run.save:
        results.save(pm)
+    return results
