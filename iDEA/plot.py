@@ -376,7 +376,11 @@ def to_anim(pm, names, data, td, dim, file_name=None, step=1):
             print("making movie {}... (may take some time)".format(mfile))
             rc('animation', html='html5')
             plt.rcParams['animation.ffmpeg_path'] = ffmpeg_path
-            line_ani = animation.FuncAnimation(fig, animate, frames=np.linspace(0, data.shape[2], int(step)), init_func=init, interval=10, blit=True)
+            frames = []
+            for i in range(0, data[0].shape[0], int(step)):
+                frames.append(i)
+            frames = np.array(frames)
+            line_ani = animation.FuncAnimation(fig, animate, frames=frames, init_func=init, interval=10, blit=True)
             writer = animation.FFMpegWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
             line_ani.save(mfile, writer=writer, dpi=300)
         if(dim == 2):
