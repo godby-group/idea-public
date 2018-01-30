@@ -25,16 +25,16 @@ class clean_inplace(clean):
         files=os.listdir(package_name)
 
         if arch == 'Linux':
-            ext = ".so"
+            exts = ('.so')
         elif arch == 'Darwin':
-            ext = '.dSYM'
+            exts = ('.so', '.dSYM')
         elif arch == 'Windows':
-            ext = '.dll'
+            exts = ('.dll')
         else:
-            ext = '.so'
+            exts = ('.so')
 
         for f in files:
-            if f.endswith(ext):
+            if f.endswith(exts):
                 path = os.path.join(package_name,f)
                 print("Removing {}".format(path))
                 os.remove(path)

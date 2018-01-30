@@ -1,17 +1,14 @@
 #!/bin/bash
 
-echo "### symlinking Jupyter Notebooks ###"
+echo "### Symlinking Jupyter Notebooks ###"
 src=../../jupyter
 dest=jupyter
-#ln -sfn $src jupyter/notebooks
-ln -sfn $src/00_get_started/get_started.ipynb $dest/
-ln -sfn $src/01_well/well.ipynb $dest/
-ln -sfn $src/02_double_well/double_well.ipynb $dest/
-ln -sfn $src/03_tunneling/tunneling_solution.ipynb $dest/
-#for f in "$jupyter_fldr/*.ipynb"; do
-#    jupyter nbconvert --to html --output-dir tutorial  $f 
-#done
-
+ln -sfn $src/01_get_started_basics/get_started_basics.ipynb $dest
+ln -sfn $src/02_get_started_further/get_started_further.ipynb $dest
+ln -sfn $src/03_well/well.ipynb $dest
+ln -sfn $src/04_double_well/double_well.ipynb $dest
+ln -sfn $src/05_tunneling/tunneling.ipynb $dest
+ln -sfn $src/06_convergence/convergence.ipynb $dest
 
 echo "### Preparing API documentation tree ###"
 fldr=apidoc
@@ -19,14 +16,16 @@ mkdir -p $fldr
 rm $fldr/*rst
 sphinx-apidoc -o $fldr ../iDEA
 
-echo "### Making documentation ###"
 rm -fr _build
+echo "### Making HTML documentation ###"
 make html
+echo "### Preparing LaTeX documentation ###"
 make latex
 
-echo "### Test coverage report ###"
+echo "### Producing test coverage report ###"
 coverage run -m unittest discover ..
 coverage html
 
-echo "### Please find the documentation website in _build/html ###"
-echo "### Please find the coverage report in _build/coverage ###"
+echo "### Find HTML documentation in _build/html/index.html ###"
+echo "### Find LaTeX documentation in _build/html/latex (type 'make') ###"
+echo "### Find test coverage report in _build/coverage/index.html ###"
