@@ -17,14 +17,15 @@ Installing iDEA
 .. code-block:: bash
 
    # Clone from the central repository
-   git clone USERNAME@rwgu4.its.york.ac.uk:/shared/storage/physrwg/trunk/iDEAL iDEAL
+   git clone git@github.com:godby-group/idea-private.git
 
-   # Install iDEA for your unix user, including documentation extension
-   cd iDEAL
+   # Install & compile iDEA for your unix user
+   # (including packages for generating the documentation)
+   cd idea-private
    pip install --user -e .[doc]
 
-   # Compile the cython modules
-   python setup.py build_ext --inplace
+   # Run example calculation
+   python run.py
 
 Updating iDEA
 -------------
@@ -46,27 +47,19 @@ Generating the documentation
 -----------------------------
 A recent version of the documentation can be found on the iDEA web page.
 If you are making changes to the code and/or the documentation, you may
-need to generate the documentation by yourself
-
-**Requirements**
-
- * `Sphinx <http://sphinx-doc.org>`_ 1.4 or later
- * `numpydoc extension <https://pypi.python.org/pypi/numpydoc>`_ 0.7 or later (adds support for numpy-style docstrings)
- * `nbconvert extension <http://sphinx-doc.org>`_ 5.2 or later (renders static versions of jupyter notebooks)
- * (optional) `LaTeX <https://www.latex-project.org/get/>`_ (for the LaTeX version of the documentation)
-
-Note: in order to install the required packages on a system without admin rights, do
-
-.. code-block:: bash
-
-   pip install --user sphinx numpydoc nbconvert
-
-In order to produce the documentation in html and latex form:
+need to generate the documentation by yourself:
 
 .. code-block:: bash
 
    cd doc
    bash make_doc.sh
-   # find html documentation in _build/html
-   # find latex documentation in _build/latex
-   make latexpdf  # generates _build/latex/iDEA.pdf
+   # find html documentation in _build/html/index.html
+   # find test coverage report in _build/coverage/index.html
+
+Besides HTML, the iDEA documentation can also be compiled as a pdf.
+If you have a LaTeX distribution installed on your system, simply do:
+
+.. code-block:: bash
+
+   cd doc
+   make latexpdf

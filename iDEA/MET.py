@@ -238,7 +238,7 @@ def mat_calc(pm,data_1,data_2):
     .. math::
 
             \text{wavefunction metric}: \ &D_{\psi}(\psi_1,\psi_2) = \sqrt{\int}(|\psi_1|^2+|\psi_2|^2)dx -2|\int\psi_{1}^{*}\psi_2 dx|\\
-            \text{density metric}: \ &D_{\ro}(\ro_1,\ro_2) = \int |\ro_1 -\ro_2|^2 \\ \\
+            \text{density metric}: \ &D_{\rho}(\rho_1,\rho_2) = \int |\rho_1 -\rho_2|^2 \\ \\
 
     parameters
     ----------
