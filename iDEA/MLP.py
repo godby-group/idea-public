@@ -257,7 +257,7 @@ def soa_ks_potential(pm, den):
     return v_ks_soa
 
 
-def td_soa_ks_potential(pm, den, cur, j, damping):
+def td_soa_ks_potential(pm, den, cur, j, damping2):
     r"""Given n returns TDSOA potential
     """
     v_ks_soa_t = np.zeros(pm.space.npt,dtype='float')
@@ -266,7 +266,7 @@ def td_soa_ks_potential(pm, den, cur, j, damping):
     v_ks_soa_t = 0.25*(np.gradient(np.gradient(np.log(den[j,:]),pm.space.delta),pm.space.delta))+0.125*np.gradient(np.log(den[j,:]),pm.space.delta)**2
     vel[:] = cur[j,:]/den[j,:]
     v_ks_soa_t[:] -= 0.5*vel[:]**2
-    v_ks_soa_t = filter_noise(pm, v_ks_soa_t, damping) # Remove high frequencies from vector potential
+    v_ks_soa_t = filter_noise(pm, v_ks_soa_t, damping2) # Remove high frequencies from vector potential
     return v_ks_soa_t
 
 def filter_noise(pm, A, damping):
@@ -380,8 +380,7 @@ def main(parameters):
       # compute self-consistent density error
       dn = np.sum(np.abs(n-n_old))*pm.space.delta
       converged = dn < pm.mlp.tol
-      s = 'MLP: f = {:.3e}, dn = {:.3e}, iter = {}'\
-              .format(f, dn, iteration)
+      s = 'MLP: f = {:.3e}, dn = {:.3e}, iter = {}'.format(f, dn, iteration)
       pm.sprint(s,1,newline=False)
 
       iteration += 1
@@ -417,6 +416,7 @@ def main(parameters):
       v_ks_gs = np.zeros(pm.space.npt, dtype='float')
       v_pert = np.zeros(pm.space.npt, dtype='float')
       damping = np.zeros((int(0.5*(pm.space.npt-1)+1)), dtype='float')
+      damping2 = np.zeros((int(0.5*(pm.space.npt-1)+1)), dtype='float')
       v_xc_t = np.zeros((pm.sys.imax,pm.space.npt), dtype='float')
       v_h_t = np.zeros((pm.sys.imax,pm.space.npt), dtype='float')
       current = np.zeros((pm.sys.imax,pm.space.npt), dtype='float')
@@ -429,7 +429,8 @@ def main(parameters):
       for i in range(pm.space.npt):
          v_pert[i] = pm.sys.v_pert((i*pm.space.delta-pm.sys.xmax))
       for i in range(int(0.5*(pm.space.npt-1)+1)):
-         damping[i] = math.exp(-0.5*(i*pm.space.delta)**2) # This may need to be tuned for each system
+         damping[i] = math.exp(-0.25*(i*pm.space.delta)**2) # This may need to be tuned for each system
+         damping2[i] = math.exp(-0.05*(i*pm.space.delta)**2) # This may need to be tuned for each system
       v_ks_t[0,:] += v_pert[:]
       if pm.mlp.reference_potential=='non':
          v_ref = v_ext + v_pert
@@ -447,7 +448,7 @@ def main(parameters):
          A_ks[j,:] = extrapolate_edge(pm, A_ks[j,:], n_t[j,:])
          if pm.mlp.reference_potential=='lda':
              v_ref = lda_ks_potential(pm, n_t[j,:]) + v_pert
-         v_ks_t[j,:] = (1-f)*v_ref+f*td_soa_ks_potential(pm, n_t, current, j, damping)
+         v_ks_t[j,:] = (1-f)*v_ref+f*td_soa_ks_potential(pm, n_t, current, j, damping2)
          v_ks_t[j,:] = extrapolate_edge(pm, v_ks_t[j,:], n_t[j,:])
 
          # Verify orthogonality of states
@@ -456,7 +457,10 @@ def main(parameters):
          if not orthogonal:
              pm.sprint("MLP: Warning: Orthonormality of orbitals violated at iteration {}".format(j))
 
+      print()      
       for j in range(1,pm.sys.imax):
+          st = 'MLP: transforming gauge: t = {}'.format(j*pm.sys.deltat)
+          pm.sprint(st,1,newline=False)
           if pm.mlp.TDKS == True:
               # Convert vector potential into scalar potential
               v_ks_t[j,:] = remove_gauge(pm, A_ks, v_ks_t[j,:], v_ks_gs, j)
@@ -464,8 +468,9 @@ def main(parameters):
 
       if pm.mlp.TDKS == True:
           v_ks_t[0,:] += v_ks_gs[:] - v_ks_t[0,:]
-          v_xc_t[:,:] = v_ks_t[:,:] - v_ext[:] - v_h_t[:,:]
-
+          v_xc_t[:,:] = v_ks_t[:,:] - v_ext[:] - v_pert[:] - v_h_t[:,:]
+          v_xc_t[0,:] += v_pert[:]
+ 
       # Output results
       if pm.mlp.TDKS == True:
           results.add(v_ks_t, 'td_mlp_vks')

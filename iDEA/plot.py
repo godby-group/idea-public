@@ -348,8 +348,8 @@ def to_anim(pm, names, data, td, dim, file_name=None, step=1):
             raise IOError('cannot animate time-dependent 0D quantity')
         if(dim == 1):
             from matplotlib import animation, rc
-            ymax = np.max(data) + 0.1
-            ymin = np.min(data) - 0.1
+            ymax = np.max(data)+0.1*(np.max(data)-np.min(data))
+            ymin = np.min(data)-0.1*(np.max(data)-np.min(data))
             fig, ax = plt.subplots()
             ax.set_xlim([-pm.sys.xmax,pm.sys.xmax])
             ax.set_ylim((ymin, ymax))
