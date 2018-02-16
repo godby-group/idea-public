@@ -33,7 +33,7 @@ For time-dependent systems the form of the components of the MLP change; the LDA
 
 where :math:`j` is the current density and :math:`A^{\mathrm{SOA}}_{\mathrm{KS}}` is the SOA KS vector potential.
 
-The mixing term, :math:`f`, can be used adiabatically, i.e., the electron density and orbitals at time :math:`t` are used in the ground-state form of :math:`f`, or fixed (:math:`f = f(0)`). 
+The mixing term, :math:`f`, can be used adiabatically, i.e., the electron density and orbitals at time :math:`t` are used in the ground-state form of :math:`f`, or fixed (:math:`f(t) = f(0)`). 
 
 The Crank-Nicolson method is used to propagate the KS equations through time after a perturbing field is applied to the system.
 

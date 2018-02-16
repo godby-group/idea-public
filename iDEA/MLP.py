@@ -2,14 +2,14 @@
 
 Uses the [adiabatic] local density approximations ([A]LDA) and the 
 [time-dependent] SOA to calculate the [time-dependent] electron density 
-[and current] for a system of N electrons.The mixing term, f, is assumed to be 
+[and current] for a system of N electrons. The mixing term, f, is assumed to be 
 constant. It requires the average ELF and has been optimsed for 1D systems.
 
 Computes approximations to V_KS, V_H, V_xc using the MLP self-consistently.
-For ground state calculations the code outputs the MLP orbitals, the ground-state 
-charge density and the Kohn-Sham potential. For time dependent calculations the 
-code also outputs the time-dependent charge and current densities and the 
-time-dependent Kohn-Sham potential.
+For ground state calculations the code outputs the MLP ground-state charge  
+density and the Kohn-Sham potential. For time-dependent calculations the code
+also outputs the time-dependent charge and current densities and the 
+time-dependent Kohn-Sham potential and exchange-correlation potential..
 
 """
 from __future__ import division
@@ -133,9 +133,9 @@ def kinetic(pm):
 
 
 def hamiltonian(pm, v_KS=None, wfs=None):
-    r"""Compute LDA Hamiltonian
+    r"""Compute MLP Hamiltonian
 
-    Computes LDA Hamiltonian from a given Kohn-Sham potential.
+    Computes MLP Hamiltonian from a given Kohn-Sham potential.
 
     parameters
     ----------
@@ -175,7 +175,7 @@ def hartree_potential(pm, density):
 
 
 def CrankNicolson(pm, v_ks, Psi, n, t, A_ks):
-    r"""Solves Crank Nicolson Equation
+    r"""Solves Crank Nicolson Equation to propagate the single-particle wavefunctions
     """
     Mat = LHS(pm, v_ks, t-1, A_ks)
     Mat = Mat.tocsr()
@@ -229,14 +229,14 @@ def ELF(pm, den, KS, posDef=False):
     return elf
 
 def getc_h(den):
-    r"""Scaling term for the approximate ELF
+    r"""Scaling term for the approximate ELF (scaled relative to the HEG)
     """
     c_h = np.arange(den.shape[0])
     c_h = (1.0/6.0)*(np.pi**2)*(den**3)
     return c_h
 
 def extrapolate_edge(pm, A, n):
-    r"""Extrapolate quantity at teh edge of the system
+    r"""Extrapolate quantity at the edge of the system
     """
     edge = int((5.0/100.0)*(pm.space.npt-1)) # Define the edge of the system (%)
     dAdx = np.zeros(pm.space.npt, dtype='float')
@@ -307,7 +307,7 @@ def remove_gauge(pm, A_ks, v_ks, v_ks_gs, j):
 
     # Shift the Kohn-Sham potential to match the ground-state Kohn-Sham
     # potential at the centre of the system
-    shift = v_ks_gs[int((pm.space.npt-1)/2)] - v_ks[int((pm.space.npt-1)/2)]
+    shift = v_ks_gs[int(0.05*pm.space.npt)] - v_ks[int(0.05*pm.space.npt)]
     v_ks[:] += shift
 
     return v_ks[:]
@@ -429,7 +429,7 @@ def main(parameters):
       for i in range(pm.space.npt):
          v_pert[i] = pm.sys.v_pert((i*pm.space.delta-pm.sys.xmax))
       for i in range(int(0.5*(pm.space.npt-1)+1)):
-         damping[i] = math.exp(-0.25*(i*pm.space.delta)**2) # This may need to be tuned for each system
+         damping[i] = math.exp(-0.1*(i*pm.space.delta)**2) # This may need to be tuned for each system
          damping2[i] = math.exp(-0.05*(i*pm.space.delta)**2) # This may need to be tuned for each system
       v_ks_t[0,:] += v_pert[:]
       if pm.mlp.reference_potential=='non':
@@ -455,13 +455,13 @@ def main(parameters):
          S = np.dot(Psi[:,j,:].conj(), Psi[:,j,:].T) * pm.space.delta
          orthogonal = np.allclose(S, np.eye(pm.sys.NE, dtype=np.complex),atol=1e-6)
          if not orthogonal:
-             pm.sprint("MLP: Warning: Orthonormality of orbitals violated at iteration {}".format(j))
+             pm.sprint("MLP: Warning: Orthonormality of orbitals violated at iteration {}".format(j)) 
 
       print()      
-      for j in range(1,pm.sys.imax):
-          st = 'MLP: transforming gauge: t = {}'.format(j*pm.sys.deltat)
-          pm.sprint(st,1,newline=False)
-          if pm.mlp.TDKS == True:
+      if pm.mlp.TDKS == True:
+          for j in range(1,pm.sys.imax):
+              st = 'MLP: transforming gauge: t = {}'.format(j*pm.sys.deltat)
+              pm.sprint(st,1,newline=False)
               # Convert vector potential into scalar potential
               v_ks_t[j,:] = remove_gauge(pm, A_ks, v_ks_t[j,:], v_ks_gs, j)
               v_h_t[j,:] = hartree_potential(pm, n_t[j,:])
