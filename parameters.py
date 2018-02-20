@@ -155,13 +155,12 @@ hyb.RE = False                       #: Calculate the external potential for the
 
 ### MBPT parameters
 mbpt = InputSection()
+mbpt.screening = 'zero'              #: Approximation to P ('zero'=Hartree-Fock, 'static'=static RPA, 'dynamic'=dynamic RPA)
+mbpt.flavour = 'G0W0'                #: Approximation to Sigma ('G0W0', 'GW0', 'GW')
 mbpt.h0 = 'non'                      #: starting hamiltonian: 'non','ha','hf','lda'
 mbpt.tau_max = 40.0                  #: Maximum value of imaginary time
 mbpt.tau_npt = 2001                  #: Number of imaginary time points
 mbpt.norb = 35                       #: Number of orbitals to use
-mbpt.flavour = 'G0W0'                #: 'G0W0', 'GW0', 'GW'
-mbpt.screening = 'dynamic'           #: Use 'dynamic' (frequency dependent) or 'static' (frequency independent) screening.
-                                     #: (Note: must use static if running time-dependent calculation)
 mbpt.hedin_shift = True              #: perform Hedin shift
 mbpt.ssc = False                     #: Correct the self-screening error using our local vertex to the self-energy
 mbpt.den_tol = 1e-06                 #: density tolerance of self-consistent algorithm
