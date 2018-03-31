@@ -6,6 +6,7 @@ from . import results
 from . import input
 import unittest
 import numpy as np
+import numpy.testing as nt
 
 # decimal places for comparison of results
 d = 6
@@ -29,12 +30,13 @@ class resultsTest(unittest.TestCase):
 
         data = np.zeros(10)
         r.add(data, "first_data")
+        nt.assert_array_equal(r.first_data, data)
 
-        self.assertEqual(r.__to_save__,["first_data"])
-        # this would normally be handled by
-        #r.save(pm)
+
+        self.assertEqual(r._not_saved,["first_data"])
+        # here, one would normally do 'r.save(pm)'
         # but we don't want to pollute the filesystem...
-        r.__saved__.append("first_data")
+        r._saved.add("first_data")
 
         r.add(data, "second_data")
-        self.assertEqual(r.__to_save__,["second_data"])
+        self.assertEqual(r._not_saved,["second_data"])
