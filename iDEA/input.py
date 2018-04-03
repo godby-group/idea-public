@@ -364,8 +364,10 @@ class Input(object):
 
         ### RE parameters
         self.hfks = InputSection()
+        hfks = self.hfks
         hfks.mu = 1.0                         #: 1st convergence parameter in the ground-state reverse-engineering algorithm
-        hfks.p = 0.05                        #: 2nd convergence parameter in the ground-state reverse-engineering algorithm
+        hfks.p = 0.05                         #: 2nd convergence parameter in the ground-state reverse-engineering algorithm
+        hfks.con = 1e-10                     #: Tolerance of the error in the ground-state density
 
 
         ### Metrics parameters

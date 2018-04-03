@@ -211,8 +211,9 @@ opt.p = 0.05                         #: 2nd convergence parameter
 
 ### RE parameters
 hfks = InputSection()
-hfks.mu = 1.0                         #: 1st convergence parameter in the ground-state reverse-engineering algorithm
+hfks.mu = 1.0                        #: 1st convergence parameter in the ground-state reverse-engineering algorithm
 hfks.p = 0.05                        #: 2nd convergence parameter in the ground-state reverse-engineering algorithm
+hfks.con = 1e-10                     #: Tolerance of the error in the ground-state density
 
 ### Metrics parameters
 met = InputSection()

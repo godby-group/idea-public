@@ -10,7 +10,7 @@ import scipy as sp
 import scipy.linalg as spla
 import scipy.sparse as sps
 from . import results as rs
-from . import RE_Utilities
+from . import RE_cython
 
 def read_input_density(pm, approx):
     r"""Reads in the electron density that was calculated using the selected
@@ -27,15 +27,9 @@ def read_input_density(pm, approx):
         2D array of the ground-state/time-dependent electron density from the
         approximation, indexed as density_approx[time_index,space_index]
     """
-    if(pm.run.time_dependence == True):
-        density_approx = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float)
-        name = 'td_{}_den'.format(approx)
-        density_approx[:,:] = rs.Results.read(name, pm)
-    else:
-        density_approx = np.zeros((1,pm.space.npt), dtype=np.float)
-        name = 'gs_{}_den'.format(approx)
-        density_approx[0,:] = rs.Results.read(name, pm)
-
+    density_approx = np.zeros((pm.space.npt), dtype=np.float)
+    name = 'gs_{}_den'.format(approx)
+    density_approx[:] = rs.Results.read(name, pm)
     return density_approx
 
 
@@ -185,8 +179,8 @@ def main(parameters, approx):
    den,eigf,eigv = groundstate(pm, H)
 
    density_approx = read_input_density(pm, approx)
-   mu = copy.copy(pm.re.mu)
-   p = copy.copy(pm.re.p)
+   mu = copy.copy(pm.hfks.mu)
+   p = copy.copy(pm.hfks.p)
 
    # Calculate ground state density
    converged = False
@@ -195,8 +189,7 @@ def main(parameters, approx):
 
       # Calculate new potentials form new orbitals
       H_new = hamiltonian(pm, eigf)
-
-      v_c[:] += mu*(den[:]**p-den_ext[:]**p)
+      v_c[:] += mu*(den[:]**p-density_approx[:]**p)
       Vc = sps.diags(v_c, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex)
       H_new += Vc.toarray()
 
@@ -204,23 +197,25 @@ def main(parameters, approx):
       den_new, eigf, eigv = groundstate(pm, H_new)
 
       dn = np.sum(np.abs(den-density_approx))*pm.sys.deltax
-      converged = dn < pm.kshf.con
+      converged = dn < pm.hfks.con
 
       iteration += 1
       H = H_new
       den = den_new
-      string = 'REV: cost= {}'.format(dn)
-      pm.sprint(string,1,newline=False)
+      string = 'HFKS: density error = {}'.format(dn)
+      pm.sprint(string, 1, newline=False)
 
    pm.sprint()
 
    results = rs.Results()
-   results.add(v_c,'gs_hfks_cor')
-   results.add(den,'gs_hfks_den')
+   results.add(v_c,'gs_{}hfks_cor'.format(approx))
+   results.add(den,'gs_{}hfks_den'.format(approx))
 
    if pm.hf.save_eig:
-       results.add(eigf.T, 'gs_hfks_eigf')
-       results.add(eigv, 'gs_hfks_eigv')
+       results.add(eigf.T, 'gs_{}hfks_eigf'.format(approx))
+       results.add(eigv, 'gs_{}hfks_eigv'.format(approx))
 
    if pm.run.save:
       results.save(pm)
+
+   return results
