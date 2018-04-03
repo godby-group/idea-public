@@ -12,17 +12,31 @@ import scipy.sparse as sps
 from . import results as rs
 from . import RE_Utilities
 
-# Function to read inputs -- needs some work!
-def ReadInput(approx,pm):
-   n = np.zeros(pm.sys.grid)
-   # Read in the ground-state first
+def read_input_density(pm, approx):
+    r"""Reads in the electron density that was calculated using the selected
+    approximation.
 
-   name = 'gs_{}_den'.format(approx)
-   data = rs.Results.read(name, pm)
-   
-   n[:] = data
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    approx : string
+        The approximation used to calculate the electron density
 
-   return n
+    returns array_like
+        2D array of the ground-state/time-dependent electron density from the
+        approximation, indexed as density_approx[time_index,space_index]
+    """
+    if(pm.run.time_dependence == True):
+        density_approx = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float)
+        name = 'td_{}_den'.format(approx)
+        density_approx[:,:] = rs.Results.read(name, pm)
+    else:
+        density_approx = np.zeros((1,pm.space.npt), dtype=np.float)
+        name = 'gs_{}_den'.format(approx)
+        density_approx[0,:] = rs.Results.read(name, pm)
+
+    return density_approx
 
 
 def hartree(pm, density):
@@ -46,9 +60,9 @@ def fock(pm, eigf):
    r"""Constructs Fock operator from a set of orbitals
 
     .. math:: F(x,x') = \sum_{k} \psi_{k}(x) U(x,x') \psi_{k}(x')
- 
+
     where U(x,x') denotes the appropriate Coulomb interaction.
-                       
+
    parameters
    ----------
    eigf : array_like
@@ -60,16 +74,10 @@ def fock(pm, eigf):
      Fock matrix
    """
    F = np.zeros((pm.sys.grid,pm.sys.grid), dtype='complex')
-   #for k in range(pm.sys.NE):
-   #   for j in range(pm.sys.grid):
-   #      for i in range(pm.sys.grid):
-   #         F[i,j] += -(np.conjugate(eigf[k,i])*U[i,j]*eigf[k,j])
-
    for i in range(pm.sys.NE):
        orb = eigf[:,i]
        F -= np.tensordot(orb.conj(), orb, axes=0)
    F = F * pm.space.v_int
-
    return F
 
 
@@ -118,10 +126,10 @@ def hamiltonian(pm, wfs, perturb=False):
     if perturb:
       V += pm.space.v_pert
     V = sps.diags(V, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex)
- 
+
     # construct H
     H = (K+V).toarray()
-    
+
     # add fock matrix
     if pm.hf.fock == 1:
        H = H + fock(pm,wfs) * pm.sys.deltax
@@ -133,7 +141,7 @@ def groundstate(pm, H):
 
     .. math:: H = K + V + F \\
               H \psi_{i} = E_{i} \psi_{i}
-                       
+
    parameters
    ----------
    H: array_like
@@ -148,18 +156,14 @@ def groundstate(pm, H):
    eigv: array_like
      orbital energies
 
-   """		
-      
-   # solve eigen equation
+   """
    eigv, eigf = spla.eigh(H)
    eigf = eigf/ np.sqrt(pm.sys.deltax)
-   
-   # calculate density
    n = electron_density(pm,eigf)
 
    return n, eigf, eigv
 
-def main(parameters):
+def main(parameters, approx):
    r"""Performs Hartree-fock calculation
 
    parameters
@@ -180,44 +184,43 @@ def main(parameters):
    H = hamiltonian(pm, waves)
    den,eigf,eigv = groundstate(pm, H)
 
-   den_ext = ReadInput('ext',pm)
+   density_approx = read_input_density(pm, approx)
+   mu = copy.copy(pm.re.mu)
+   p = copy.copy(pm.re.p)
 
-   mu = 1.0
-   p = 0.05
-   
    # Calculate ground state density
    converged = False
    iteration = 1
    while (not converged):
+
       # Calculate new potentials form new orbitals
       H_new = hamiltonian(pm, eigf)
-      
-      v_c[:] += mu*(den[:]**p-den_ext[:]**p)
 
+      v_c[:] += mu*(den[:]**p-den_ext[:]**p)
       Vc = sps.diags(v_c, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex)
       H_new += Vc.toarray()
 
       # Diagonalise Hamiltonian
       den_new, eigf, eigv = groundstate(pm, H_new)
-      
-      dn = np.sum(np.abs(den-den_ext))*pm.sys.deltax
+
+      dn = np.sum(np.abs(den-density_approx))*pm.sys.deltax
       converged = dn < pm.kshf.con
- 
+
       iteration += 1
       H = H_new
       den = den_new
       string = 'REV: cost= {}'.format(dn)
       pm.sprint(string,1,newline=False)
+
    pm.sprint()
-   
+
    results = rs.Results()
-   results.add(v_c,'gs_kshf_cor')
-   results.add(den,'gs_kshf_den')
+   results.add(v_c,'gs_hfks_cor')
+   results.add(den,'gs_hfks_den')
 
    if pm.hf.save_eig:
-       results.add(eigf.T, 'gs_kshf_eigf')
-       results.add(eigv, 'gs_kshf_eigv')
+       results.add(eigf.T, 'gs_hfks_eigf')
+       results.add(eigv, 'gs_hfks_eigv')
 
    if pm.run.save:
       results.save(pm)
-
