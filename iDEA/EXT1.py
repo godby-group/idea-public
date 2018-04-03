@@ -183,12 +183,12 @@ def main(parameters):
     # Solve the Schrodinger equation
     pm.sprint('EXT: calculating ground-state density',1)
     energies, wavefunctions = spla.eig_banded(H, lower=True)
-
+    
     # Normalise the wavefunctions
     wavefunctions /= np.sqrt(pm.space.delta)
-
+ 
     # Calculate the density 
-    density = np.sum(wavefunctions[:,0]**2, axis=1)
+    density = abs(wavefunctions[:,0])**2
 
     # Calculate the energy and print to screen
     string = 'EXT: ground-state energy = {:.5f}'.format(energies[0])
