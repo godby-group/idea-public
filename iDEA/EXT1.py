@@ -181,45 +181,30 @@ def main(parameters):
     H[0,:] += V[:]
 
     # Solve the Schrodinger equation
-    energies, wavefunctions = spla.eig_banded(H, lower=True, select='i', 
-                              select_range=(0,pm.ext.excited_states))
+    pm.sprint('EXT: calculating ground-state density',1)
+    energies, wavefunctions = spla.eig_banded(H, lower=True)
+    
+    # Normalise the wavefunctions
+    wavefunctions /= np.sqrt(pm.space.delta)
+ 
+    # Calculate the density 
+    density = abs(wavefunctions[:,0])**2
 
-    # Normalise the wavefunctions and calculate the densities 
-    densities = np.zeros((pm.ext.excited_states+1,pm.space.npt), dtype=np.float)
-    for j in range(pm.ext.excited_states+1):
-        norm = np.linalg.norm(wavefunctions[:,j])*np.sqrt(pm.space.delta)
-        wavefunctions[:,j] /= norm
-        densities[j,:] = abs(wavefunctions[:,j])**2
-
-    # Print energies to screen
+    # Calculate the energy and print to screen
     string = 'EXT: ground-state energy = {:.5f}'.format(energies[0])
     pm.sprint(string, 1, newline=True)
-    if(pm.ext.excited_states != 0):
-        for j in range(pm.ext.excited_states):
-            string = 'EXT: {0} excited-state energy = {1:.5f}'.format(j+1, energies[j+1])
-            pm.sprint(string, 1, newline=True)
 
     # Save the ground-state density, energy and external potential
     results = rs.Results()
     results.add(V,'gs_ext_vxt')
-    results.add(densities[0,:],'gs_ext_den')
+    results.add(density,'gs_ext_den')
     results.add(energies[0],'gs_ext_E')
 
-    # Save the ground-state wavefunction
-    if (pm.ext.psi_gs == True):
-        results.add(wavefunctions[:,0].T,'gs_ext_psi')
+    # Save the eigenfunctions and eigenvalues
+    results.add(wavefunctions.T,'gs_ext_eigf')
+    results.add(energies,'gs_ext_eigv')
 
-    # Save the excited-state densities and energies 
-    if(pm.ext.excited_states != 0):
-        for j in range(pm.ext.excited_states):
-            results.add(densities[j+1,:],'es_ext_den{}'.format(j+1))
-            results.add(energies[j+1],'es_ext_E{}'.format(j+1))
-  
-            # Save the excited-state wavefunctions
-            if (pm.ext.psi_es == True):
-                results.add(wavefunctions[:,j+1].T,'es_ext_psi{}'.format(j+1))
-
-    # Save results
+    #Save results
     if (pm.run.save):
         results.save(pm)
 
