@@ -24,8 +24,8 @@ def read_input_density(pm, approx):
         The approximation used to calculate the electron density
 
     returns array_like
-        2D array of the ground-state/time-dependent electron density from the
-        approximation, indexed as density_approx[time_index,space_index]
+        Array of the ground-state electron density from the
+        approximation, indexed as density_approx[space_index]
     """
     density_approx = np.zeros((pm.space.npt), dtype=np.float)
     name = 'gs_{}_den'.format(approx)
@@ -158,7 +158,9 @@ def groundstate(pm, H):
    return n, eigf, eigv
 
 def main(parameters, approx):
-   r"""Performs Hartree-fock calculation
+   r"""Reverse-egineers the density to find the corresponding 
+   exact form of the local correlation potential within 
+   Hartree-Fock-Kohn-Sham theory
 
    parameters
    ----------
@@ -208,8 +210,10 @@ def main(parameters, approx):
    pm.sprint()
 
    results = rs.Results()
-   results.add(v_c,'gs_{}hfks_cor'.format(approx))
+   results.add(v_c,'gs_{}hfks_vc'.format(approx))
    results.add(den,'gs_{}hfks_den'.format(approx))
+   results.add(hartree(pm, den),'gs_{}hfks_vh'.format(approx))
+   results.add(fock(pm, eigf),'gs_{}hfks_F'.format(approx))
 
    if pm.hf.save_eig:
        results.add(eigf.T, 'gs_{}hfks_eigf'.format(approx))
