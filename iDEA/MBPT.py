@@ -15,9 +15,12 @@ from __future__ import absolute_import
 import copy
 import numpy as np
 import scipy as sp
+import scipy.linalg as spla
+import scipy.sparse as sps
 from . import results as rs
 from . import continuation
 from .fftwrap import fft_1d, ifft_1d
+import iDEA.HF
 
 class SpaceTimeGrid(object):
     """Stores spatial and frequency grids"""
@@ -203,7 +206,6 @@ def main(parameters):
         save(Sc, "Sc_it")
         if not pm.mbpt.flavour == 'GW0':
             del W # not needed anymore
-
         pm.sprint('MBPT: transforming Sc to imaginary frequency',0)
         Sc = fft_t(Sc, st, dir='it2if')
         save(Sc, "Sc{}_iw".format(cycle))
@@ -349,6 +351,70 @@ def main(parameters):
     l = ["gs_mbpt_den", "gs_mbpt_vh", "gs_mbpt_eigv", "gs_mbpt_IP", "gs_mbpt_AF", "gs_mbpt_GAP"]
     if pm.run.save:
         results.save(pm, list=l)
+
+    if pm.run.time_dependence:
+
+	# check flavour
+        if pm.mbpt.screening == 'dynamic':
+            raise AttributeError('Error: Cannot perform TD-MBPT with dynamic screening, change pm.mbpt.screening to \'static\'')
+
+        # compute starting Hamiltonian
+        sd = pm.space.second_derivative
+        sd_ind = pm.space.second_derivative_indices
+        K = -0.5*sps.diags(sd, sd_ind, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex)
+        Vext = sps.diags(pm.space.v_ext, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
+        Vptrb = sps.diags(pm.space.v_pert, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
+        Sc = Sc[:,:,0]
+        H = K + Vext + Vptrb + H.vh + H.vx + Sc
+
+        # compute starting orbitals
+        den, waves, eigv = iDEA.HF.groundstate(pm, H)
+
+        # initialise TD quantities
+        n_t = np.empty((pm.sys.imax, pm.sys.grid), dtype=np.float)
+        Vh_t = np.empty((pm.sys.imax, pm.sys.grid) , dtype=np.float)
+        Sx_t = np.empty((pm.sys.imax, pm.sys.grid, pm.sys.grid), dtype=np.complex)
+        Sc_t = np.empty((pm.sys.imax, pm.sys.grid, pm.sys.grid), dtype=np.complex)
+        n_t[0] = den
+        Vh_t[0,:] = H.vh
+        Sx_t[0,:,:] = H.vx
+        Sc_t[0,:,:] = Sc
+
+        # perfrom time-dependent iterations
+        for i in range(1, pm.sys.imax):
+            string = 'MBPT: evolving through real time: t = {:.4f}'.format(i*pm.sys.deltat)
+            pm.sprint(string, 1, newline=False)
+
+            # perform a CN timestep
+            waves = iDEA.HF.crank_nicolson_step(pm, waves, H)
+            den = iDEA.HF.electron_density(pm, waves)
+
+            # compute new hamiltonian
+            Sc = td_correlation(pm, waves)
+            H, Vh, Sx, Sc = hamiltonian(pm, waves, den, i, Sc, perturb=True)
+
+            # record time dependent qunatities
+            n_t[i] = den
+            Vh_t[i,:] = Vh
+            Sx_t[i,:,:] = Sx
+            Sc_t[i,:,:] = Sc
+
+        # calculate the current density
+        pm.sprint()
+        current_density = calculate_current_density(pm, n_t)
+
+        # output results
+        pm.sprint('MBPT: saving quantities...', 1, newline=True)
+        results.add(n_t, 'td_mbpt_den')
+        results.add(Vh_t, 'td_mbpt_vh')
+        results.add(Sx_t, 'td_mbpt_Sx')
+        results.add(Sc_t, 'td_mbpt_Sc')
+        results.add(current_density, 'td_mbpt_cur')
+
+	# save results
+        if pm.run.save:
+            l = ['td_mbpt_den','td_mbpt_cur', 'td_mbpt_Sx', 'td_mbpt_Sc', 'td_mbpt_vh']
+            results.save(pm, list=l)
 
     return results
 
@@ -530,6 +596,24 @@ def self_screening_correction(st, den):
     b = 9.20608941
     c = 0.53651521
     return a*den*np.exp(-b*den**c)*(2.0-b*c*den**c)
+
+
+def hamiltonian(pm, wfs, den, iteration, Sc, perturb=False):
+    sd = pm.space.second_derivative
+    sd_ind = pm.space.second_derivative_indices
+
+    # construct kinetic energy
+    K = -0.5*sps.diags(sd, sd_ind, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex)
+
+    # construct H from individual terms
+    Vext = sps.diags(pm.space.v_ext, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
+    Vptrb = sps.diags(pm.space.v_pert, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
+    Vh = sps.diags(iDEA.HF.hartree(pm,n), 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
+    Sx = iDEA.HF.fock(pm,wfs) * pm.sys.deltax
+    if iteration % pm.mbpt.Sc_step == 0:
+         Sc = td_correlation(pm, wfs, den) * pm.sys.deltax
+    H = K + Vext + Vptrb + Vh + Sx + Sc
+    return H, iDEA.HF.hartree(pm,n), Sx, Sc
 
 
 def non_interacting_green_function(orbitals, energies, st, zero='0-'):
@@ -757,6 +841,8 @@ def irreducible_polarizability(st, G, G_pzero, screening):
 
     See equation 3.4 of [Rieger1999]_.
     """
+    if screening == 'zero':
+        return np.zeros(G.shape, dtype=np.complex)
 
     G_rev = copy.copy(G)
     G_rev = G_rev.swapaxes(0,1)
@@ -895,7 +981,35 @@ def self_energy(G, W):
     S = 1J * G * W
     return S
 
+def td_correlation(pm, waves, st):
 
+    # calculate P
+    if pm.mbpt.screening == 'zero':
+        P = np.zeros((st.x_npt, st.x_npt), dtype=np.complex)
+    elif pm.mbpt.screening == 'static':
+        a = np.zeros((st.x_npt, st.x_npt), dtype=np.complex)
+        b = np.zeros((st.x_npt, st.x_npt), dtype=np.complex)
+        for i in range(0, pm.sys.NE):
+            wave = waves[:,i]
+            a += np.tensordot(wave.conj(), wave, axes=0)
+        for j in range(pm.sys.NE, norb):
+            wave = waves[:,j]
+            b += np.tensordot(wave, wave.conj(), axes=0)
+        P = -1.0j*a*b # maybe should be P = 1.0j*a*b ('-' removed via FT?)
+    elif pm.mbpt.screening == 'dynamic':
+        raise AttributeError('Error: Cannot perform TD-MBPT with dynamic screening, change pm.mbpt.screening to \'static\'')
+    else:
+        raise ValueError("Unrecognized screening {} for screened interaction".format(screening))
+    
+    # calculate W
+    dx = st.x_delta
+    I = np.identity(st.x_npt)
+    v = st.coulomb_repulsion
+    W = np.dot(np.inv(I/dx - np.dot(v,P)*dx),v)*dx # maybe should be (1/2*pi) (added via FT?)
+
+    # calculate Sc
+    Sc = -a*W # maybe should be (a*W) ('-' removed via FT?)
+    return Sc
 
 def solve_dyson_equation(G0, S, st):
     r"""Solves the Dyson equation for G
@@ -933,8 +1047,6 @@ def solve_dyson_equation(G0, S, st):
 
     for i in range(st.x_npt):
         A[i,i,:] += 1.0
-
-
 
     # 2. Solve G = (A/dx)**(-1) / dx**2 * G0 * dx <=> A*G = G0
     G = np.empty((st.x_npt,st.x_npt,st.tau_npt), dtype=complex)
@@ -995,117 +1107,117 @@ def extrapolate_to_zero(F, st, dir='from_below', order=6, points=7):
     return vals
 
 
-def analytic_continuation(S, st, pm, n_poles=3, fit_range=None):
-    r"""Fit poles to self-energy along the imaginary frequency axis
+# def analytic_continuation(S, st, pm, n_poles=3, fit_range=None):
+#     r"""Fit poles to self-energy along the imaginary frequency axis
+#
+#     .. math::
+#
+#         \langle \varphi_j | \Sigma(z) | \varphi_j\rangle = a_j^0 + \sum_{k=1}^n \frac{a_j^k}{b_j^k-z}
+#
+#     Since :math:`\Sigma(i\omega)=\Sigma(-i\omega)^*`, it is sufficient to fit
+#     half of the imaginary axis. Note that fitting the while imaginary axis won't
+#     work because our fitting function do *not* share this property.
+#
+#     parameters
+#     ----------
+#     S: array_like
+#       Matrix elements <i|sigma(iw)|j> (which basis is irrelevant)
+#     n_poles: int
+#      Number of poles, i.e. n = n_poles + 1
+#     fit_range: float
+#       - if > 0: fit is restricted to frequencies [0, 1J*fit_range]
+#       - if < 0: fit is restricted to frequencies [1J*fit_range, 0]
+#
+#     Returns
+#     -------
+#       Polefit object, which contains the functions fitted to the
+#       respective matrix elements of the self-energy
+#
+#     See equation 5.1 in [Rieger1999]_.
+#     """
+#
+#     if fit_range is None:
+#         # by default, we fit the upper imaginary axis
+#         fit_range = st.omega_max
+#
+#     if fit_range > 0:
+#         fit_half_plane = 'upper'
+#         # need bitwise and here
+#         select = (st.omega_grid >= 0) & (st.omega_grid <= fit_range)
+#     else:
+#         fit_half_plane = 'lower'
+#         select = (st.omega_grid <= 0) & (st.omega_grid >= -fit_range)
+#
+#     # note: np.where(select).shape is (1,len(indices))
+#     indices = np.where(select)[0]
+#     fit_omega_grid = st.omega_grid[indices]
+#     fit_sigma_iw = S[:,indices]
+#
+#     n_states = len(S)
+#     fits = []
+#     for i_state in range(n_states):
+#         #s = fit_sigma_iw[i_state]
+#         #popt, pconv = so.curve_fit(f, st.tau_grid, S)
+#
+#         x_fit = 1J*fit_omega_grid
+#         y_fit = fit_sigma_iw[i_state]
+#         fit = continuation.Polefit(n_poles=n_poles, fit_half_plane=fit_half_plane)
+#         fit.fit(x=x_fit, y=y_fit)
+#
+#         bad_poles = fit.check_poles()
+#         if bad_poles.size != 0:
+#             msg = "Warning: State {}: Poles {} lie in {} half plane.".format(i_state,bad_poles,fit_half_plane)
+#             pm.sprint(msg)
+#
+#         #p0 = cplx2float(np.array([0.1 for _i in range(2*n_poles+1)]))
+#         # x = 1J*st.omega_grid # fitting on upper imaginary axis
+#         #y = s
+#         #p, cov = so.leastsq(residuals,p0,args=(x, y))
+#         #p = float2cplx(p)
+#
+#         diff = y_fit - fit.f(1J * st.omega_grid[indices])
+#         err = np.sum(np.abs(diff)**2) * st.omega_delta
+#         #pm.sprint(err)
+#         # Note: here, we would have the option to simply repeat the fit
+#         if err > 1e-5:
+#             pm.sprint("Warning: {}-pole fit differs by {:.1e} for state {}"
+#                   .format(n_poles, err, i_state))
+#
+#         fits.append(fit)
+#
+#     return fits
 
-    .. math::
-
-        \langle \varphi_j | \Sigma(z) | \varphi_j\rangle = a_j^0 + \sum_{k=1}^n \frac{a_j^k}{b_j^k-z}
-
-    Since :math:`\Sigma(i\omega)=\Sigma(-i\omega)^*`, it is sufficient to fit
-    half of the imaginary axis. Note that fitting the while imaginary axis won't
-    work because our fitting function do *not* share this property.
-
-    parameters
-    ----------
-    S: array_like
-      Matrix elements <i|sigma(iw)|j> (which basis is irrelevant)
-    n_poles: int
-     Number of poles, i.e. n = n_poles + 1
-    fit_range: float
-      - if > 0: fit is restricted to frequencies [0, 1J*fit_range]
-      - if < 0: fit is restricted to frequencies [1J*fit_range, 0]
-
-    Returns
-    -------
-      Polefit object, which contains the functions fitted to the
-      respective matrix elements of the self-energy
-
-    See equation 5.1 in [Rieger1999]_.
-    """
-
-    if fit_range is None:
-        # by default, we fit the upper imaginary axis
-        fit_range = st.omega_max
-
-    if fit_range > 0:
-        fit_half_plane = 'upper'
-        # need bitwise and here
-        select = (st.omega_grid >= 0) & (st.omega_grid <= fit_range)
-    else:
-        fit_half_plane = 'lower'
-        select = (st.omega_grid <= 0) & (st.omega_grid >= -fit_range)
-
-    # note: np.where(select).shape is (1,len(indices))
-    indices = np.where(select)[0]
-    fit_omega_grid = st.omega_grid[indices]
-    fit_sigma_iw = S[:,indices]
-
-    n_states = len(S)
-    fits = []
-    for i_state in range(n_states):
-        #s = fit_sigma_iw[i_state]
-        #popt, pconv = so.curve_fit(f, st.tau_grid, S)
-
-        x_fit = 1J*fit_omega_grid
-        y_fit = fit_sigma_iw[i_state]
-        fit = continuation.Polefit(n_poles=n_poles, fit_half_plane=fit_half_plane)
-        fit.fit(x=x_fit, y=y_fit)
-
-        bad_poles = fit.check_poles()
-        if bad_poles.size != 0:
-            msg = "Warning: State {}: Poles {} lie in {} half plane.".format(i_state,bad_poles,fit_half_plane)
-            pm.sprint(msg)
-
-        #p0 = cplx2float(np.array([0.1 for _i in range(2*n_poles+1)]))
-        # x = 1J*st.omega_grid # fitting on upper imaginary axis
-        #y = s
-        #p, cov = so.leastsq(residuals,p0,args=(x, y))
-        #p = float2cplx(p)
-
-        diff = y_fit - fit.f(1J * st.omega_grid[indices])
-        err = np.sum(np.abs(diff)**2) * st.omega_delta
-        #pm.sprint(err)
-        # Note: here, we would have the option to simply repeat the fit
-        if err > 1e-5:
-            pm.sprint("Warning: {}-pole fit differs by {:.1e} for state {}"
-                  .format(n_poles, err, i_state))
-
-        fits.append(fit)
-
-    return fits
-
-def optimise_hamiltonian(h0, S_w, st):
-    """Compute optimal non-interacting Hamiltonian for self-energy
-
-    This is quasi-particle self-consistent GW
-    """
-
-    h_opt = np.empty((st.norb,st.norb), dtype=float)
-
-    # need hartree energies of sp_orbitals for new rho
-    h_energies = hartree_energies(pm, orbitals=qp_orbitals, rho=rho)
-    #print(sigma_fits.shape)
-    #print(qp_energies.shape)
-    for i in range(st.norb):
-        for j in range(st.norb):
-            # mode A
-            # note: one could also use the *previous* qp_energies here
-            # in this case, there is no need to solve_for_qp_energies
-            # TODO: check whether this is more stable
-            h_opt[i,j] = 0.5*( S_w[i,j].f(qp_energies[i])\
-                           + S_w[i,j].f(qp_energies[j]))
-
-        #h_opt[i,i] += qp_energies[i].real
-        h_opt[i,i] += h0.sp_energies[i] + hartree_energies
-        h_opt[i,i] -= H.qp_energies[i].real
-
-    # take Hermitian part
-    h_opt = 0.5 * (h_opt + h_opt.H)
-
-    eigv, eigvec = la.eigh(h_opt)
-    qp_energies = eigv
-    # normalization in r-space: 1/sqrt(deltax)
-    # np.dot(a,b) sums over last axis of a and 2nd-to-last axis of b
-    eigvec = eigvec.swapaxes(0,1)
-    qp_orbitals = np.dot(eigvec, h0.orbitals)
+# def optimise_hamiltonian(h0, S_w, st):
+#     """Compute optimal non-interacting Hamiltonian for self-energy
+#
+#     This is quasi-particle self-consistent GW
+#     """
+#
+#     h_opt = np.empty((st.norb,st.norb), dtype=float)
+#
+#     # need hartree energies of sp_orbitals for new rho
+#     h_energies = hartree_energies(pm, orbitals=qp_orbitals, rho=rho)
+#     #print(sigma_fits.shape)
+#     #print(qp_energies.shape)
+#     for i in range(st.norb):
+#         for j in range(st.norb):
+#             # mode A
+#             # note: one could also use the *previous* qp_energies here
+#             # in this case, there is no need to solve_for_qp_energies
+#             # TODO: check whether this is more stable
+#             h_opt[i,j] = 0.5*( S_w[i,j].f(qp_energies[i])\
+#                            + S_w[i,j].f(qp_energies[j]))
+#
+#         #h_opt[i,i] += qp_energies[i].real
+#         h_opt[i,i] += h0.sp_energies[i] + hartree_energies
+#         h_opt[i,i] -= H.qp_energies[i].real
+#
+#     # take Hermitian part
+#     h_opt = 0.5 * (h_opt + h_opt.H)
+#
+#     eigv, eigvec = la.eigh(h_opt)
+#     qp_energies = eigv
+#     # normalization in r-space: 1/sqrt(deltax)
+#     # np.dot(a,b) sums over last axis of a and 2nd-to-last axis of b
+#     eigvec = eigvec.swapaxes(0,1)
+#     qp_orbitals = np.dot(eigvec, h0.orbitals)

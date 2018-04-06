@@ -702,7 +702,7 @@ def calculate_hartree_energy(pm, density_ks, v_h):
 
     .. math::
 
-        E_{\mathrm{H}} = \frac{1}{2} \int \int U(x,x') n(x) n(x') dx dx' 
+        E_{\mathrm{H}} = \frac{1}{2} \int \int U(x,x') n(x) n(x') dx dx'
         = \frac{1}{2} \int V_{\mathrm{H}}(x) n(x) dx
 
     parameters
@@ -714,7 +714,7 @@ def calculate_hartree_energy(pm, density_ks, v_h):
         density_ks[space_index]
     v_h : array_like
         1D array of the ground-state Hartree potential, indexed as
-        v_h[space_index]                                                                                                                                      
+        v_h[space_index]
 
     returns float
         The Hartree energy of the ground-state system
@@ -931,7 +931,7 @@ def main(parameters, approx):
     string = 'RE: Kohn-Sham gap = {0:.3f}'.format(ks_gap)
     pm.sprint(string, 1, newline=True)
 
-    # Calculate the Hartree energy 
+    # Calculate the Hartree energy
     E_h = calculate_hartree_energy(pm, density_ks[0,:], v_h[0,:])
     string = 'RE: Hartree energy = {}'.format(E_h)
     pm.sprint(string, 1, newline=True)

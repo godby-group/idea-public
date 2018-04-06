@@ -72,9 +72,10 @@ ext.rtol_solver = 1e-12              #: Tolerance of linear solver in real time 
 ext.itmax = 2000.0                   #: Total imaginary time
 ext.iimax = 1e5                      #: Imaginary time iterations
 ext.ideltat = ext.itmax/ext.iimax    #: Imaginary time step (DERIVED)
-ext.RE = False                       #: Reverse engineer many-body density
+ext.RE = False                       #: Reverse-engineer ext density to give DFT xc potential
 ext.OPT = False                      #: Calculate the external potential for the exact density
-ext.excited_states = 0               #: Number of 2 or 3 electron excited-states to calculate (0: just calculate the ground-state)
+ext.HFKS = False                     #: Reverse-engineer ext density to give HFKS c potential
+ext.excited_states = 0               #: Number of excited states to calculate (0: just calculate the ground-state)
 ext.elf_gs = False                   #: Calculate ELF for the ground-state of the system
 ext.elf_es = False                   #: Calculate ELF for the excited-states of the system
 ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
@@ -99,6 +100,7 @@ non.rtol_solver = 1e-14              #: Tolerance of linear solver in real time 
 non.save_eig = True                  #: Save eigenfunctions and eigenvalues of Hamiltonian
 non.RE = False                       #: Reverse-engineer non-interacting density
 non.OPT = False                      #: Calculate the external potential for the non-interacting density
+non.HFKS = False                     #: Reverse-engineer non density to give HFKS c potential
 
 
 ### LDA parameters
@@ -114,6 +116,7 @@ lda.etol = 1e-12                     #: convergence tolerance in the energy
 lda.max_iter = 10000                 #: Maximum number of self-consistency iterations
 lda.save_eig = True                  #: Save eigenfunctions and eigenvalues of Hamiltonian
 lda.OPT = False                      #: Calculate the external potential for the LDA density
+lda.HFKS = False                     #: Reverse-engineer lda density to give HFKS c potential
 
 
 ### MLP parameters
@@ -122,9 +125,10 @@ mlp.f = 'e'                          #: f mixing parameter (if f='e' the weight 
 mlp.tol = 1e-12                      #: Self-consistent convergence tollerance
 mlp.mix = 1.0                        #: Self-consistent mixing parameter
 mlp.reference_potential = 'lda'      #: Choice of reference potential for mixing with the SOA
-mlp.OPT = False                      #: Calculate the external potential for the MLP density
 mlp.tdf = 0                          #: Time-dependent bahviour of f (if tdf = 'a' f is adiabatic, default is statis f)
 mlp.TDKS = False                     #: Save the time-dependent KS potential
+mlp.OPT = False                      #: Calculate the external potential for the MLP density
+mlp.HFKS = False                     #: Reverse-engineer mlp density to give HFKS c potential
 
 
 ### HF parameters
@@ -135,6 +139,7 @@ hf.nu = 0.9                          #: Mixing term
 hf.save_eig = True                   #: Save eigenfunctions and eigenvalues of Hamiltonian
 hf.RE = False                        #: Reverse-engineer hf density
 hf.OPT = False                       #: Calculate the external potential for the HF density
+hf.HFKS = False                      #: Reverse-engineer hf density to give HFKS c potential
 
 
 ### HYB parameters
@@ -149,19 +154,19 @@ hyb.mix = 0.5                        #: Mixing parameter for linear  mixing (flo
 hyb.tol = 1e-12                      #: convergence tolerance in the density
 hyb.max_iter = 10000                 #: Maximum number of self-consistency iterations
 hyb.save_eig = True                  #: Save eigenfunctions and eigenvalues of Hamiltonian
+hyb.RE = False                       #: Calculate the external potential for the HYB density
 hyb.OPT = False                      #: Calculate the external potential for the LDA density
-hyb.RE = False                       #: Calculate the external potential for the LDA density
+hyb.HFKS = False                     #: Reverse-engineer hyb density to give HFKS c potential
 
 
 ### MBPT parameters
 mbpt = InputSection()
+mbpt.screening = 'zero'              #: Approximation to P ('zero'=Hartree-Fock, 'static'=static RPA, 'dynamic'=dynamic RPA)
+mbpt.flavour = 'G0W0'                #: Approximation to Sigma ('G0W0', 'GW0', 'GW')
 mbpt.h0 = 'non'                      #: starting hamiltonian: 'non','ha','hf','lda'
 mbpt.tau_max = 40.0                  #: Maximum value of imaginary time
 mbpt.tau_npt = 2001                  #: Number of imaginary time points
 mbpt.norb = 35                       #: Number of orbitals to use
-mbpt.flavour = 'G0W0'                #: 'G0W0', 'GW0', 'GW'
-mbpt.screening = 'dynamic'           #: Use 'dynamic' (frequency dependent) or 'static' (frequency independent) screening.
-                                     #: (Note: must use static if running time-dependent calculation)
 mbpt.hedin_shift = True              #: perform Hedin shift
 mbpt.ssc = False                     #: Correct the self-screening error using our local vertex to the self-energy
 mbpt.den_tol = 1e-06                 #: density tolerance of self-consistent algorithm
@@ -169,8 +174,9 @@ mbpt.max_iter = 100                  #: Maximum iterations of self-consistent al
 mbpt.save_full = []                  #: save space-time quantities (e.g. 'G0_iw', 'S1_it')
 mbpt.save_zero = ['G_it','P_iw','W_iw','Sx_iw','Sxc_iw'] #: save space-time quantities (e.g. 'G0_iw', 'S1_it') at iw/it=0
 mbpt.save_diag = []                  #: save diaginal components of space-time quantities
-mbpt.RE = False                      #: Reverse-engineer mbpt density
+mbpt.RE = False                      #: Reverse-engineer mbpt density to give DFT xc potential
 mbpt.OPT = False                     #: Calculate the external potential for the MBPT density
+mbpt.HFKS = False                    #: Reverse-engineer mbpt density to give HFKS c potential
 
 
 ### LAN parameters
@@ -203,6 +209,11 @@ opt.tol = 1e-4                       #: Tolerance of the error in the density
 opt.mu = 1.0                         #: 1st convergence parameter
 opt.p = 0.05                         #: 2nd convergence parameter
 
+### RE parameters
+hfks = InputSection()
+hfks.mu = 1.0                        #: 1st convergence parameter in the ground-state reverse-engineering algorithm
+hfks.p = 0.05                        #: 2nd convergence parameter in the ground-state reverse-engineering algorithm
+hfks.con = 1e-10                     #: Tolerance of the error in the ground-state density
 
 ### Metrics parameters
 met = InputSection()

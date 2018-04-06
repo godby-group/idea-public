@@ -220,6 +220,7 @@ class Input(object):
         ext.ideltat = ext.itmax/ext.iimax    #: Imaginary time step (DERIVED)
         ext.RE = False                       #: Reverse engineer many-body density
         ext.OPT = False                      #: Calculate the external potential for the exact density
+        ext.HFKS = False                     #: Reverse-engineer ext density to give HFKS c potential
         ext.excited_states = 0               #: Number of excited states to calculate (0: just calculate the ground-state)
         ext.elf_gs = False                   #: Calculate ELF for the ground-state of the system
         ext.elf_es = False                   #: Calculate ELF for the excited-states of the system
@@ -244,6 +245,7 @@ class Input(object):
         non.save_eig = True                  #: Save eigenfunctions and eigenvalues of Hamiltonian
         non.RE = False                       #: Reverse engineer non-interacting density
         non.OPT = False                      #: Calculate the external potential for the non-interacting density
+        non.HFKS = False                     #: Reverse-engineer non density to give HFKS c potential
 
 
         ### LDA parameters
@@ -260,6 +262,8 @@ class Input(object):
         lda.max_iter = 10000                 #: Maximum number of self-consistency iterations
         lda.save_eig = True                  #: Save eigenfunctions and eigenvalues of Hamiltonian
         lda.OPT = False                      #: Calculate the external potential for the LDA density
+        lda.HFKS = False                     #: Reverse-engineer lda density to give HFKS c potential
+
 
         ### MLP parameters
         self.mlp = InputSection()
@@ -271,6 +275,7 @@ class Input(object):
         mlp.OPT = False                      #: Calculate the external potential for the MLP density
         mlp.tdf = 0                          #: Time-dependent bahviour of f (if tdf = 'a' f is adiabatic, default is statis f)
         mlp.TDKS = False                     #: Save the time-dependent KS potential
+        mlp.HFKS = False                     #: Reverse-engineer mlp density to give HFKS c potential
 
 
         ### HF parameters
@@ -282,6 +287,7 @@ class Input(object):
         hf.save_eig = True                   #: Save eigenfunctions and eigenvalues of Hamiltonian
         hf.RE = False                        #: Reverse-engineer hf density
         hf.OPT = False                       #: Calculate the external potential for the HF density
+        hf.HFKS = False                      #: Reverse-engineer hf density to give HFKS c potential
 
 
         ### HYB parameters
@@ -299,6 +305,7 @@ class Input(object):
         hyb.save_eig = True                  #: Save eigenfunctions and eigenvalues of Hamiltonian
         hyb.OPT = False                      #: Calculate the external potential for the LDA density
         hyb.RE = False                       #: Calculate the external potential for the LDA density
+        hyb.HFKS = False                     #: Reverse-engineer hyb density to give HFKS c potential
 
 
         ### MBPT parameters
@@ -319,6 +326,7 @@ class Input(object):
         mbpt.hedin_shift = True              #: whether to perform Hedin shift
         mbpt.RE = False                      #: Reverse-engineer mbpt density
         mbpt.OPT = False                     #: Calculate the external potential for the MBPT density
+        mbpt.HFKS = False                    #: Reverse-engineer mbpt density to give HFKS c potential
 
 
         ### LAN parameters
@@ -353,6 +361,13 @@ class Input(object):
         opt.tol = 1e-4                       #: Tolerance of the error in the density
         opt.mu = 1.0                         #: 1st convergence parameter
         opt.p = 0.05                         #: 2nd convergence parameter
+
+        ### RE parameters
+        self.hfks = InputSection()
+        hfks = self.hfks
+        hfks.mu = 1.0                         #: 1st convergence parameter in the ground-state reverse-engineering algorithm
+        hfks.p = 0.05                         #: 2nd convergence parameter in the ground-state reverse-engineering algorithm
+        hfks.con = 1e-10                     #: Tolerance of the error in the ground-state density
 
 
         ### Metrics parameters
@@ -573,6 +588,9 @@ class Input(object):
         if(pm.non.OPT == True):
               from . import OPT
               results.add(OPT.main(pm,'non'), name='nonopt')
+        if(pm.non.HFKS == True):
+              from . import HFKS
+              results.add(HFKS.main(pm,'non'), name='nonhfks')
 
         if(pm.run.LDA == True):
               from . import LDA
@@ -580,6 +598,9 @@ class Input(object):
         if(pm.lda.OPT == True):
               from . import OPT
               results.add(OPT.main(pm,'lda'), name='ldaopt')
+        if(pm.lda.HFKS == True):
+              from . import HFKS
+              results.add(HFKS.main(pm,'lda'), name='ldahfks')
 
         if(pm.run.MLP == True):
               from . import MLP
@@ -587,6 +608,9 @@ class Input(object):
         if(pm.mlp.OPT == True):
               from . import OPT
               results.add(OPT.main(pm,'mlp'), name='mlpopt')
+        if(pm.mlp.HFKS == True):
+              from . import HFKS
+              results.add(HFKS.main(pm,'mlp'), name='mlphfks')
 
         if(pm.run.HF == True):
               from . import HF
@@ -597,6 +621,9 @@ class Input(object):
         if(pm.hf.OPT == True):
               from . import OPT
               results.add(OPT.main(pm,'hf'), name='hfopt')
+        if(pm.hf.HFKS == True):
+              from . import HFKS
+              results.add(HFKS.main(pm,'hf'), name='hfhfks')
 
         if(pm.run.LAN == True):
               from . import LAN
@@ -612,6 +639,9 @@ class Input(object):
            if(pm.ext.OPT == True):
               from . import OPT
               results.add(OPT.main(pm,'ext'), name='extopt')
+           if(pm.ext.HFKS == True):
+              from . import HFKS
+              results.add(HFKS.main(pm,'ext'), name='exthfks')
         elif(pm.sys.NE == 2):
            if(pm.run.EXT == True):
               from . import EXT2
@@ -619,6 +649,9 @@ class Input(object):
            if(pm.ext.RE == True):
               from . import RE
               results.add(RE.main(pm,'ext'), name='extre')
+           if(pm.ext.HFKS == True):
+              from . import HFKS
+              results.add(HFKS.main(pm,'ext'), name='exthfks')
            if(pm.ext.OPT == True):
               from . import OPT
               results.add(OPT.main(pm,'ext'), name='extopt')
@@ -629,6 +662,9 @@ class Input(object):
            if(pm.ext.RE == True):
               from . import RE
               results.add(RE.main(pm,'ext'), name='extre')
+           if(pm.ext.HFKS == True):
+              from . import HFKS
+              results.add(HFKS.main(pm,'ext'), name='exthfks')
            if(pm.ext.OPT == True):
               from . import OPT
               results.add(OPT.main(pm,'ext'), name='extopt')
@@ -641,6 +677,9 @@ class Input(object):
         if(pm.hyb.RE == True):
               from . import RE
               results.add(RE.main(pm,'hyb{}'.format(pm.hyb.alpha).replace('.','_')), name='hybre')
+        if(pm.hyb.HFKS == True):
+              from . import HFKS
+              results.add(HFKS.main(pm,'hyb'), name='hybhfks')
         if(pm.hyb.OPT == True):
               from . import OPT
               results.add(OPT.main(pm,'hyb'), name='hybopt')
@@ -653,6 +692,9 @@ class Input(object):
         if(pm.mbpt.OPT == True):
               from . import OPT
               results.add(OPT.main(pm,'mbpt'), name='mbptopt')
+        if(pm.mbpt.HFKS == True):
+              from . import HFKS
+              results.add(HFKS.main(pm,'mbpt'), name='mbpthfks')
         if(pm.run.MET == True):
               from . import MET
               results.add(MET.main(pm), name='met')
