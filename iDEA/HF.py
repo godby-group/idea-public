@@ -35,7 +35,6 @@ def hartree(pm, density):
    """
    return np.dot(pm.space.v_int,density)*pm.sys.deltax
 
-
 def fock(pm, eigf):
    r"""Constructs Fock operator from a set of orbitals
 
@@ -61,7 +60,7 @@ def fock(pm, eigf):
 
    for i in range(pm.sys.NE):
        orb = eigf[:,i]
-       F -= np.tensordot(orb.conj(), orb, axes=0)
+       F -= np.tensordot(orb, orb.conj(), axes=0)
    F = F * pm.space.v_int
 
    return F
@@ -226,7 +225,7 @@ def crank_nicolson_step(pm, waves, H):
 
    .. math::
 
-        \left(\mathbb{1} + i\frac{dt}{2}\right) \Psi(x,t+dt) = \left(\mathbb{1} - i \frac{dt}{2} H\right) \Psi(x,t)
+        \left(\mathbb{1} + i\frac{dt}{2} H\right) \Psi(x,t+dt) = \left(\mathbb{1} - i \frac{dt}{2} H\right) \Psi(x,t)
 
    for :math:`\Psi(x,t+dt)`.
 
@@ -268,7 +267,7 @@ def main(parameters):
 
    # take external potential for initial guess
    # (setting wave functions to zero yields V=V_ext)
-   waves = np.zeros((pm.sys.grid,pm.sys.NE))
+   waves = np.zeros((pm.sys.grid,pm.sys.NE), dtype=np.complex)
    H = hamiltonian(pm, waves)
    den,eigf,eigv = groundstate(pm, H)
 
@@ -319,7 +318,7 @@ def main(parameters):
    if pm.run.time_dependence:
 
       # Starting values for wave functions, density
-      waves = eigf
+      waves[:, :pm.sys.NE] = eigf[:, :pm.sys.NE]
       n_t = np.empty((pm.sys.imax, pm.sys.grid), dtype=np.float)
       F_t = np.empty((pm.sys.imax, pm.sys.grid, pm.sys.grid), dtype=np.complex)
       Vh_t = np.empty((pm.sys.imax, pm.sys.grid) , dtype=np.float)
@@ -331,14 +330,15 @@ def main(parameters):
          string = 'HF: evolving through real time: t = {:.4f}'.format(i*pm.sys.deltat)
          pm.sprint(string, 1, newline=False)
 
-         waves = crank_nicolson_step(pm, waves, H)
+         H = hamiltonian(pm, waves, perturb=True)
+
+         waves[:, :pm.sys.NE] = crank_nicolson_step(pm, waves, H)
          S = np.dot(waves.T.conj(), waves) * pm.sys.deltax
          orthogonal = np.allclose(S, np.eye(pm.sys.NE, dtype=np.complex),atol=1e-6)
          if not orthogonal:
              pm.sprint("HF: Warning: Orthonormality of orbitals violated at iteration {}".format(i+1))
 
          den = electron_density(pm, waves)
-         H = hamiltonian(pm, waves, perturb=True)
 
          n_t[i] = den
          F_t[i,:,:] = fock(pm, waves)

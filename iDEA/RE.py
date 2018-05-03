@@ -169,7 +169,7 @@ def construct_damping(pm):
     # Damping term
     for j in range(damping_length):
         x = j*pm.space.delta
-        damping[j] = np.exp(-(1.0e-12)*(pm.re.filter_beta**pm.re.filter_sigma))
+        damping[j] = np.exp(-pm.re.filter_beta*x**2)
 
     return damping
 
@@ -339,7 +339,8 @@ def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
     # Solve the ground-state Kohn-Sham equations and iteratively correct v_ks
     iterations = 0
     mu = pm.re.mu
-    while(mu > 1e-15):
+    error_change = 1
+    while(error_change > 1e-8):
 
         # Save the last iteration
         density_error_old = density_error
@@ -359,9 +360,9 @@ def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
         pm.sprint(string, 1, newline=False)
 
         # Ensure stable convergence
-        error_change = density_error - density_error_old
-        if((error_change > 0.0) or (abs(error_change)<1e-15)):
-            mu /= 2.0
+        error_change = abs(density_error - density_error_old)/density_error
+        #if((error_change > 0.0) or (abs(error_change)<1e-15)):
+        #    mu /= 2.0
 
         iterations +=1
 
@@ -478,6 +479,7 @@ def calculate_time_dependence(pm, A_initial, momentum, A_ks, damping,
     """
     # Create an array to store the A_ks that minimises the error in the current
     # density
+    A_ks[:] = 0
     A_ks_best = np.copy(A_ks)
 
     # Create a copy of the time-dependent Kohn-Sham eigenfunctions at the
@@ -663,8 +665,8 @@ def remove_gauge(pm, A_ks, v_ks, v_ks_gs):
     """
     # Change gauge to calculate the full Kohn-Sham (scalar) potential
     for j in range(pm.space.npt):
-        for k in range(j):
-            v_ks[:] += (A_ks[1,k] - A_ks[0,k])*(pm.space.delta/pm.sys.deltat)
+        for k in range(j+1):
+            v_ks[j] += (A_ks[1,k] - A_ks[0,k])*(pm.space.delta/pm.sys.deltat)
 
     # Shift the Kohn-Sham potential to match the ground-state Kohn-Sham
     # potential at the centre of the system
@@ -1034,6 +1036,12 @@ def main(parameters, approx):
             if(i == pm.sys.imax-1):
                 pm.sprint('', 1, newline=True)
 
+        #Velocity field
+        velocity_field_ks = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float)
+        velocity_field = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float)
+        velocity_field_ks[:,:] = current_density_ks[:,:]/density_ks[:,:]
+        velocity_field[:,:] = current_density_approx[:,:]/density_approx[:,:]
+
         # Save the time-dependent quantities to file
         results.add(density_ks,'td_{}_den'.format(approxre))
         results.add(current_density_ks,'td_{}_cur'.format(approxre))
@@ -1041,6 +1049,8 @@ def main(parameters, approx):
         results.add(v_hxc,'td_{}_vhxc'.format(approxre))
         results.add(v_h,'td_{}_vh'.format(approxre))
         results.add(v_xc,'td_{}_vxc'.format(approxre))
+        results.add(velocity_field_ks,'td_{}_vel'.format(approxre))
+        results.add(velocity_field,'td_ext_vel')
         if(pm.run.save):
             results.save(pm)
 
