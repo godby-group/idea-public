@@ -27,7 +27,7 @@ sys = SystemSection()
 sys.NE = 2                           #: Number of electrons
 sys.grid = 201                       #: Number of grid points (must be odd)
 sys.stencil = 3                      #: Discretisation of 2nd derivative (3 or 5 or 7)
-sys.xmax = 10.0                      #: Size of the system
+sys.xmax = 20.0                      #: Size of the system
 sys.tmax = 1.0                       #: Total real time
 sys.imax = 1001                      #: Number of real time iterations (NB: deltat = tmax/(imax-1))
 sys.acon = 1.0                       #: Smoothing of the Coloumb interaction
@@ -161,18 +161,18 @@ hyb.HFKS = False                     #: Reverse-engineer hyb density to give HFK
 
 ### MBPT parameters
 mbpt = InputSection()
-mbpt.screening = 'zero'              #: Approximation to P ('zero'=Hartree-Fock, 'static'=static RPA, 'dynamic'=dynamic RPA)
-mbpt.flavour = 'G0W0'                #: Approximation to Sigma ('G0W0', 'GW0', 'GW')
-mbpt.h0 = 'non'                      #: starting hamiltonian: 'non','ha','hf','lda'
-mbpt.tau_max = 40.0                  #: Maximum value of imaginary time
-mbpt.tau_npt = 2001                  #: Number of imaginary time points
+mbpt.screening = 'dynamic'           #: Approximation to P ('dynamic'=dynamic RPA, 'static'=COSEX, 'instant'=instant RPA,'zero'=Hartree-Fock)
+mbpt.flavour = 'GW'                  #: Approximation to Sigma ('G0W0', 'GW0', 'GW')
+mbpt.h0 = 'non'                      #: starting hamiltonian: 'non','ha','hf','lda2'
+mbpt.ssc = False                     #: Correct the self-screening error using our local vertex to the self-energy
+mbpt.tau_max = 80.0                  #: Maximum value of imaginary time
+mbpt.tau_npt = 4001                  #: Number of imaginary time points
 mbpt.norb = 35                       #: Number of orbitals to use
 mbpt.hedin_shift = True              #: perform Hedin shift
-mbpt.ssc = False                     #: Correct the self-screening error using our local vertex to the self-energy
 mbpt.den_tol = 1e-06                 #: density tolerance of self-consistent algorithm
 mbpt.max_iter = 100                  #: Maximum iterations of self-consistent algorithm
 mbpt.save_full = []                  #: save space-time quantities (e.g. 'G0_iw', 'S1_it')
-mbpt.save_zero = ['G_it','P_iw','W_iw','Sx_iw','Sxc_iw'] #: save space-time quantities (e.g. 'G0_iw', 'S1_it') at iw/it=0
+mbpt.save_zero = ['G_it','P_iw','W_iw','Sx_iw','Sxc_iw','Sc_iw'] #: save space-time quantities (e.g. 'G0_iw', 'S1_it') at iw/it=0
 mbpt.save_diag = []                  #: save diaginal components of space-time quantities
 mbpt.RE = False                      #: Reverse-engineer mbpt density to give DFT xc potential
 mbpt.OPT = False                     #: Calculate the external potential for the MBPT density
@@ -209,11 +209,13 @@ opt.tol = 1e-4                       #: Tolerance of the error in the density
 opt.mu = 1.0                         #: 1st convergence parameter
 opt.p = 0.05                         #: 2nd convergence parameter
 
+
 ### RE parameters
 hfks = InputSection()
 hfks.mu = 1.0                        #: 1st convergence parameter in the ground-state reverse-engineering algorithm
 hfks.p = 0.05                        #: 2nd convergence parameter in the ground-state reverse-engineering algorithm
 hfks.con = 1e-10                     #: Tolerance of the error in the ground-state density
+
 
 ### Metrics parameters
 met = InputSection()
