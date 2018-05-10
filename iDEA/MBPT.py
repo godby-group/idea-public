@@ -9,6 +9,7 @@ energies and, if desired, the Green function of the system.
 
 """
 
+
 from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
@@ -21,6 +22,7 @@ from . import results as rs
 from . import continuation
 from .fftwrap import fft_1d, ifft_1d
 import iDEA.HF
+
 
 class SpaceTimeGrid(object):
     """Stores spatial and frequency grids"""
@@ -143,11 +145,14 @@ def main(parameters):
                 results.save(pm, list=[name])
 
         if shortname in pm.mbpt.save_zero:
-            name = "gs_mbpt_{}_0".format(shortname)
-            results.add(O[:,:,0], name)
+            try:
+                name = "gs_mbpt_{}_0".format(shortname)
+                results.add(O[:,:,0], name)
+            except IndexError:
+                name = "gs_mbpt_{}_0".format(shortname)
+                results.add(O, name)
             if pm.run.save:
                 results.save(pm, list=[name])
-
 
     # compute G0
     pm.sprint('MBPT: setting up G0(it)',0)
@@ -161,7 +166,7 @@ def main(parameters):
     G_pzero = G0_pzero
     H = copy.deepcopy(h0)
 
-    ####### GW self-consistency loop #######
+    # GW self-consistency loop
     cycle = 0
 
     while True:
@@ -176,134 +181,72 @@ def main(parameters):
             save(P, "P_it")
 
             pm.sprint('MBPT: transforming P to imaginary frequency',0)
-            P = fft_t(P, st, dir='it2if')
+            if pm.mbpt.screening == 'static':
+                # In static screening we still need P along all iw.
+                P = fft_t(P, st, dir='it2if', screening='dynamic')
+            else:
+                P = fft_t(P, st, dir='it2if', screening=pm.mbpt.screening)
             save(P, "P{}_iw".format(cycle))
             save(P, "P_iw")
 
             # compute eps
             pm.sprint('MBPT: setting up eps(iw)',0)
-            eps = dielectric_matrix(P, st)
+            eps = dielectric_matrix(P, pm.mbpt.screening, st)
             save(eps, "eps{}_iw".format(cycle))
             save(eps, "eps_iw")
             del P # not needed anymore
 
             # compute W-v
             pm.sprint('MBPT: setting up W(iw)',0)
-            W = screened_interaction(st, epsilon=eps)  # This is the screening interaction (W-v)
+            W = screened_interaction(st, pm.mbpt.screening, epsilon=eps)  # This is the screening interaction (W-v)
             save(W, "W{}_iw".format(cycle))
             save(W, "W_iw")
             del eps # not needed anymore
 
             pm.sprint('MBPT: transforming W to imaginary time',0)
-            W = fft_t(W, st, dir='if2it')
+            W = fft_t(W, st, dir='if2it', screening=pm.mbpt.screening)
             save(W, "W{}_it".format(cycle))
             save(W, "W_it")
 
         # compute Sc
         pm.sprint('MBPT: computing Sc(it)',0)
-        Sc = self_energy(G, W)
+        Sc = self_energy_correlation(G, W, st, screening=pm.mbpt.screening)
         save(Sc, "Sc{}_it".format(cycle))
         save(Sc, "Sc_it")
-        if not pm.mbpt.flavour == 'GW0':
-            del W # not needed anymore
+
         pm.sprint('MBPT: transforming Sc to imaginary frequency',0)
-        Sc = fft_t(Sc, st, dir='it2if')
+        Sc = fft_t(Sc, st, dir='it2if', screening=pm.mbpt.screening)
         save(Sc, "Sc{}_iw".format(cycle))
         save(Sc, "Sc_iw")
 
-        # compute Sx
-        Sx = np.zeros(Sc.shape, dtype=np.complex)
-        for i in range(st.tau_npt):
-            Sx[:,:,i] = H.vx
+        # compute S
+        S, Sx, Sxc = self_energy(pm, st, H, h0, Sc, W, pm.mbpt.screening)
         save(Sx, "Sx{}_iw".format(cycle))
         save(Sx, "Sx_iw")
-
-        # compute Sxc
-        Sxc = np.zeros(Sc.shape, dtype=np.complex)
-        for i in range(st.tau_npt):
-            Sxc[:,:,i] = Sx[:,:,i] + Sc[:,:,i]    # Sxc = Sx + Sc
         save(Sxc, "Sxc{}_iw".format(cycle))
         save(Sxc, "Sxc_iw")
-        del Sx
-
-        # construct the full S
-        S = np.zeros(Sc.shape, dtype=np.complex)
-        pm.sprint('MBPT: constructing S(iw)',0)
-        Vh = np.diag(H.vh) / st.x_delta
-        for i in range(st.tau_npt):
-            S[:,:,i] = Vh + Sxc[:,:,i] - h0.vhxc  # S = Vh + Sxc - Vhxc0
-        del Sxc
-
-        # remove the self-screening error from S
-        if(pm.mbpt.ssc == True):
-            pm.sprint('MBPT: removing the self-screening error from sigma')
-            den = H.den * st.NE / (np.sum(H.den) * st.x_delta)
-            vssc = self_screening_correction(st, abs(den))
-            vssc_matrix = np.diag(vssc) / st.x_delta
-            for i in range(st.tau_npt):
-                S[:,:,i] = S[:,:,i] + vssc_matrix
         save(S, "S{}_iw".format(cycle))
         save(S, "S_iw")
-
-        #if pm.mbpt.flavour == 'QSGW':
-        #    H.sigma_iw_full = bracket_r(S, h0.orbitals, st, mode='full')
-
-        # Align fermi energy of input and output Green function
-        if pm.mbpt.hedin_shift:
-            pm.sprint('MBPT: performing Hedin shift',0)
-
-            # Get QP energies
-            H.sigma_iw_dg = bracket_r(S, h0.orbitals, st)
-            qp_energies = H.sigma_iw_dg[:,0].real + h0.energies
-
-            # Sort orbitals and energies if required
-            if not all(qp_energies[i] <= qp_energies[i+1] for i in range(0,len(qp_energies)-2)):
-                pm.sprint("MBPT: Warning: QP energies out of order, reordering the following indices...")
-                indices = np.argsort(qp_energies)
-                pm.sprint("MBPT: {}".format(indices))
-                qp_energies = qp_energies[indices]
-                h0.orbitals = h0.orbitals[indices]
-                h0.energies = h0.energies[indices]
-
-            # Do Hedin Shift
-            H.qp_shift = 0.5 * (qp_energies[st.NE-1] + qp_energies[st.NE]) # Quasi-particle shift to keep fermi-energy in HOMO-LUMO gap
-            H.qp_shift = H.qp_shift.real # Take just the real part
-            pm.sprint('MBPT: quasi-particle shift: {:.7f} Ha.'.format(H.qp_shift))
-            for i in range(st.x_npt):
-                S[i,i,:] -= H.qp_shift / st.x_delta # Perfrom hedin shift
-
-            # Print new qp_energies
-            H.sigma_iw_dg = bracket_r(S, h0.orbitals, st)[:,0].real + h0.energies
-            pm.sprint('MBPT: qp_energies after shift: {}...'.format(H.sigma_iw_dg[0:pm.sys.NE+2]),0)
-
-        # Compute quasiparticle energies
-        d = np.gradient(S, st.omega_delta*1.0j, axis=-1) # dS/dw (derivative of sigma wrt imaginary frequency)
-        qp_energies = (h0.energies + bracket_r(S, h0.orbitals, st)[:,0].real +  H.qp_shift) / (1.0 - bracket_r(d, h0.orbitals, st)[:,0].real) # Use 1st order approx to QP energies
-        qp_energies = qp_energies + h0.e_fermi # Take account of the vaccum shift
-        homo = qp_energies[st.NE-1]
-        ip = -homo
-        lumo = qp_energies[st.NE]
-        af = -lumo
-        gap = ip - af
-        pm.sprint('MBPT: IP, AF, GAP: {0:.3f}, {1:.3f}, {2:.3f} Ha'.format(ip, af, gap))
-
-        #if pm.mbpt.flavour == 'QSGW':
-        #    pm.sprint('MBPT: analytic continuation of sigma(iw) to obtain sigma(w)',0)
-        #    S_w = analytic_continuation(H.sigma_iw_full.reshape(st.norb*st.norb,st.tau_npt), st, pm)
-        #    S_w = np.array(S_w).reshape((st.norb,st.norb))
-        #    S_w_dg = np.diagonal(S_w)
-        #    pm.sprint('MBPT: diagonalising quasiparticle Hamiltonian',0)
-        #    h0_qp = optimise_hamiltonian(h0, S_w, st)
-        #    break
+        del Sx # not needed anymore
+        del Sxc # not needed anymore
+        del Sc # not needed anymore
+        if not pm.mbpt.flavour == 'GW0':
+            del W # not needed anymore
 
         cycle = cycle + 1
         pm.sprint('')
         pm.sprint('MBPT: Entering self-consistency cycle #{}'.format(cycle))
 
+        # computing G
         pm.sprint('MBPT: solving the Dyson equation for new G',0)
-        # note: G0 = G0(r,r';iw)
-        G = solve_dyson_equation(G0, S, st)
-        del S # not needed anymore
+        if pm.mbpt.screening == 'dynamic':
+            G = solve_dyson_equation(G0, S, st, pm.mbpt.screening, pm=pm) # note: G0 = G0(r,r';iw)
+        elif pm.mbpt.screening == 'static' or pm.mbpt.screening == 'instant' or pm.mbpt.screening == 'zero':
+            if cycle == 0:
+                H.orbitals = copy.copy(h0.orbitals)
+            G = solve_dyson_equation(G0, S, st, pm.mbpt.screening, pm=pm) # note: G0 = G0(r,r';iw)
+        else:
+            raise ValueError("Unrecognized screening {} for screened interaction".format(pm.mbpt.screening))
 
         pm.sprint('MBPT: transforming G to imaginary time',0)
         G = fft_t(G, st, dir='if2it')
@@ -320,6 +263,9 @@ def main(parameters):
         pm.sprint("MBPT: norm of new density: {:.3f} electrons".format(den_norm))
         den_maxdiff = np.max(np.abs(den_new - H.den))
         H.den = den_new
+
+        # Compute quasiparticle energies and orbitals
+        H.energies, H.orbitals, ip, af, gap = quasiparticle_orbitals(pm, st, S, h0, H, pm.mbpt.screening)
 
         # continue self-consitency?
         if pm.mbpt.flavour == 'G0W0':
@@ -340,81 +286,83 @@ def main(parameters):
             pm.sprint("MBPT: Warning: Discarding real part with max. {:.3e} during extrapolation".format(eps))
         G_pzero = extrapolate_to_zero(G, st, 'from_above')
 
-    # normalise and save density
+    # normalise and save density and all objects
     den = H.den * st.NE / (np.sum(H.den) * st.x_delta)
     results.add(den, "gs_mbpt_den")
     results.add(H.vh, "gs_mbpt_vh")
-    results.add(qp_energies, "gs_mbpt_eigv")
+    results.add(H.orbitals, "gs_mbpt_eigf") # if screening=dynamic will just return starting orbitals
+    results.add(H.energies, "gs_mbpt_eigv")
     results.add(ip, "gs_mbpt_IP")
     results.add(af, "gs_mbpt_AF")
     results.add(gap, "gs_mbpt_GAP")
-    l = ["gs_mbpt_den", "gs_mbpt_vh", "gs_mbpt_eigv", "gs_mbpt_IP", "gs_mbpt_AF", "gs_mbpt_GAP"]
+    l = ["gs_mbpt_den", "gs_mbpt_vh", "gs_mbpt_eigf", "gs_mbpt_eigv", "gs_mbpt_IP", "gs_mbpt_AF", "gs_mbpt_GAP"]
     if pm.run.save:
         results.save(pm, list=l)
 
-    if pm.run.time_dependence:
-
-	# check flavour
-        if pm.mbpt.screening == 'dynamic':
-            raise AttributeError('Error: Cannot perform TD-MBPT with dynamic screening, change pm.mbpt.screening to \'static\'')
-
-        # compute starting Hamiltonian
-        sd = pm.space.second_derivative
-        sd_ind = pm.space.second_derivative_indices
-        K = -0.5*sps.diags(sd, sd_ind, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex)
-        Vext = sps.diags(pm.space.v_ext, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
-        Vptrb = sps.diags(pm.space.v_pert, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
-        Sc = Sc[:,:,0]
-        H = K + Vext + Vptrb + H.vh + H.vx + Sc
-
-        # compute starting orbitals
-        den, waves, eigv = iDEA.HF.groundstate(pm, H)
-
-        # initialise TD quantities
-        n_t = np.empty((pm.sys.imax, pm.sys.grid), dtype=np.float)
-        Vh_t = np.empty((pm.sys.imax, pm.sys.grid) , dtype=np.float)
-        Sx_t = np.empty((pm.sys.imax, pm.sys.grid, pm.sys.grid), dtype=np.complex)
-        Sc_t = np.empty((pm.sys.imax, pm.sys.grid, pm.sys.grid), dtype=np.complex)
-        n_t[0] = den
-        Vh_t[0,:] = H.vh
-        Sx_t[0,:,:] = H.vx
-        Sc_t[0,:,:] = Sc
-
-        # perfrom time-dependent iterations
-        for i in range(1, pm.sys.imax):
-            string = 'MBPT: evolving through real time: t = {:.4f}'.format(i*pm.sys.deltat)
-            pm.sprint(string, 1, newline=False)
-
-            # perform a CN timestep
-            waves = iDEA.HF.crank_nicolson_step(pm, waves, H)
-            den = iDEA.HF.electron_density(pm, waves)
-
-            # compute new hamiltonian
-            Sc = td_correlation(pm, waves)
-            H, Vh, Sx, Sc = hamiltonian(pm, waves, den, i, Sc, perturb=True)
-
-            # record time dependent qunatities
-            n_t[i] = den
-            Vh_t[i,:] = Vh
-            Sx_t[i,:,:] = Sx
-            Sc_t[i,:,:] = Sc
-
-        # calculate the current density
-        pm.sprint()
-        current_density = calculate_current_density(pm, n_t)
-
-        # output results
-        pm.sprint('MBPT: saving quantities...', 1, newline=True)
-        results.add(n_t, 'td_mbpt_den')
-        results.add(Vh_t, 'td_mbpt_vh')
-        results.add(Sx_t, 'td_mbpt_Sx')
-        results.add(Sc_t, 'td_mbpt_Sc')
-        results.add(current_density, 'td_mbpt_cur')
-
-	# save results
-        if pm.run.save:
-            l = ['td_mbpt_den','td_mbpt_cur', 'td_mbpt_Sx', 'td_mbpt_Sc', 'td_mbpt_vh']
-            results.save(pm, list=l)
+    # TDGW still a work in progress
+    # if pm.run.time_dependence:
+    #
+	# # check flavour
+    #     if pm.mbpt.screening == 'dynamic':
+    #         raise AttributeError('Error: Cannot perform TD-MBPT with dynamic screening, change pm.mbpt.screening to \'static\'')
+    #
+    #     # compute starting Hamiltonian
+    #     sd = pm.space.second_derivative
+    #     sd_ind = pm.space.second_derivative_indices
+    #     K = -0.5*sps.diags(sd, sd_ind, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex)
+    #     Vext = sps.diags(pm.space.v_ext, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
+    #     Vptrb = sps.diags(pm.space.v_pert, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
+    #     Sc = Sc[:,:,0]
+    #     H = K + Vext + Vptrb + H.vh + H.vx + Sc
+    #
+    #     # compute starting orbitals
+    #     den, waves, eigv = iDEA.HF.groundstate(pm, H)
+    #
+    #     # initialise TD quantities
+    #     n_t = np.empty((pm.sys.imax, pm.sys.grid), dtype=np.float)
+    #     Vh_t = np.empty((pm.sys.imax, pm.sys.grid) , dtype=np.float)
+    #     Sx_t = np.empty((pm.sys.imax, pm.sys.grid, pm.sys.grid), dtype=np.complex)
+    #     Sc_t = np.empty((pm.sys.imax, pm.sys.grid, pm.sys.grid), dtype=np.complex)
+    #     n_t[0] = den
+    #     Vh_t[0,:] = H.vh
+    #     Sx_t[0,:,:] = H.vx
+    #     Sc_t[0,:,:] = Sc
+    #
+    #     # perfrom time-dependent iterations
+    #     for i in range(1, pm.sys.imax):
+    #         string = 'MBPT: evolving through real time: t = {:.4f}'.format(i*pm.sys.deltat)
+    #         pm.sprint(string, 1, newline=False)
+    #
+    #         # perform a CN timestep
+    #         waves = iDEA.HF.crank_nicolson_step(pm, waves, H)
+    #         den = iDEA.HF.electron_density(pm, waves)
+    #
+    #         # compute new hamiltonian
+    #         Sc = td_correlation(pm, waves)
+    #         H, Vh, Sx, Sc = hamiltonian(pm, waves, den, i, Sc, perturb=True)
+    #
+    #         # record time dependent qunatities
+    #         n_t[i] = den
+    #         Vh_t[i,:] = Vh
+    #         Sx_t[i,:,:] = Sx
+    #         Sc_t[i,:,:] = Sc
+    #
+    #     # calculate the current density
+    #     pm.sprint()
+    #     current_density = calculate_current_density(pm, n_t)
+    #
+    #     # output results
+    #     pm.sprint('MBPT: saving quantities...', 1, newline=True)
+    #     results.add(n_t, 'td_mbpt_den')
+    #     results.add(Vh_t, 'td_mbpt_vh')
+    #     results.add(Sx_t, 'td_mbpt_Sx')
+    #     results.add(Sc_t, 'td_mbpt_Sc')
+    #     results.add(current_density, 'td_mbpt_cur')
+    #
+	# # save results
+    #     if pm.run.save:
+    #         l = ['td_mbpt_den','td_mbpt_cur', 'td_mbpt_Sx', 'td_mbpt_Sc', 'td_mbpt_vh']
+    #         results.save(pm, list=l)
 
     return results
 
@@ -475,7 +423,7 @@ def read_input_quantities(pm, st):
     lumo = energies[st.NE]
     gap = lumo - homo
     pm.sprint('MBPT: single-particle gap: {:.3f} Ha'.format(gap),0)
-    e_fermi = homo + gap / 2
+    e_fermi = (homo + lumo) / 2
     pm.sprint('MBPT: single-particle Fermi energy: {:.3f} Ha'.format(e_fermi),0)
     energies -= e_fermi
 
@@ -533,6 +481,18 @@ def hartree_potential(st, den=None, G=None):
 
     Note: :math:`V_H(r,r';i\tau) = \delta(r-r')\delta(i\tau)V_H(r)` with
     :math:`\delta(i\tau)=i\delta(\tau)`.
+
+    parameters
+    ----------
+    st : object
+       space-time grid
+    den : array_like
+       density
+    G: array_like
+        Green function G(r,r';it)
+
+    Returns array_like
+       vH(r)
     """
     if den is not None:
         pass
@@ -598,24 +558,6 @@ def self_screening_correction(st, den):
     return a*den*np.exp(-b*den**c)*(2.0-b*c*den**c)
 
 
-def hamiltonian(pm, wfs, den, iteration, Sc, perturb=False):
-    sd = pm.space.second_derivative
-    sd_ind = pm.space.second_derivative_indices
-
-    # construct kinetic energy
-    K = -0.5*sps.diags(sd, sd_ind, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex)
-
-    # construct H from individual terms
-    Vext = sps.diags(pm.space.v_ext, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
-    Vptrb = sps.diags(pm.space.v_pert, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
-    Vh = sps.diags(iDEA.HF.hartree(pm,n), 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
-    Sx = iDEA.HF.fock(pm,wfs) * pm.sys.deltax
-    if iteration % pm.mbpt.Sc_step == 0:
-         Sc = td_correlation(pm, wfs, den) * pm.sys.deltax
-    H = K + Vext + Vptrb + Vh + Sx + Sc
-    return H, iDEA.HF.hartree(pm,n), Sx, Sc
-
-
 def non_interacting_green_function(orbitals, energies, st, zero='0-'):
     r"""Calculates non-interacting Green function G0(r,r';it).
 
@@ -655,7 +597,6 @@ def non_interacting_green_function(orbitals, energies, st, zero='0-'):
     coef_zero = np.zeros(st.norb, dtype=complex)
     for i in range(st.norb):
         en = energies[i]
-
         # first handle special case tau=0 (k=0)
         if zero == '0+' and en > 0:
             # put empty states into tau=0
@@ -670,18 +611,15 @@ def non_interacting_green_function(orbitals, energies, st, zero='0-'):
             elif en < 0:
                 # put occupied states into tau=0
                 coef[i,0] = +1J
-
         # note: this could still be vectorized
         for k in range(1,st.tau_npt):
             tau = st.tau_grid[k]
-
             if en > 0 and tau > 0:
                 # tau > 0, empty states
                 coef[i,k] = -1J * np.exp(-en * tau)
             elif en < 0 and tau <= 0:
                 # tau < 0, occupied states
                 coef[i,k] = +1J * np.exp(-en * tau)
-
     # one call to np.dot with reshape
     orb_mat = np.empty( (st.x_npt, st.x_npt, st.norb), dtype=complex )
     for i in range(st.norb):
@@ -691,11 +629,9 @@ def non_interacting_green_function(orbitals, energies, st, zero='0-'):
     orb_mat_r = orb_mat.reshape(st.x_npt*st.x_npt, st.norb)
     #G0 = np.einsum('ij,jl->il',orb_mat.reshape(st.x_npt*st.x_npt, norb),coef)
     G0 = np.dot(orb_mat_r,coef).reshape(st.x_npt,st.x_npt,st.tau_npt)
-
     if zero == 'both':
         G0_pzero = np.dot(orb_mat_r,coef_zero).reshape(st.x_npt, st.x_npt)
         return G0, G0_pzero
-
     else:
         return G0
 
@@ -714,8 +650,8 @@ def bracket_r(O, orbitals, st, mode='diagonal'):
         Operator O(r,r';t)
     orbitals: array
         Array of shape (norb, grid) containing orbtials
-    pm: object
-        Parameters object
+    st: object
+        space-time object
     mode: string
         - if 'diagonal': computes <j|O|j> for all j (default)
         - if 'full': computes <i|O|j> for all i,j
@@ -729,16 +665,13 @@ def bracket_r(O, orbitals, st, mode='diagonal'):
         i,j orbital indices, k index of temporal grid
     """
     orbs = copy.copy(orbitals) * st.x_delta  # factor needed for integration
-
     # Performing one matrix-matrix multiplication is substantially faster than
     # performing t matrix-vector multiplications.
     # Note: If we do not reshape, np.dot internally performs matrix-vector
     # multiplications here.
-
     # numpy.dot(a,b) sums over last axis of a and 2nd-to-last axis of b
     # tmp.shape == (norb, x_npt*tau_npt)
     tmp = np.dot(orbs, O.reshape((st.x_npt, st.x_npt * st.tau_npt)))
-
     if mode == 'diagonal':
         # Then, we do element-wise multiplication + summation over the grid axis
         # to get the scalar product.
@@ -748,11 +681,10 @@ def bracket_r(O, orbitals, st, mode='diagonal'):
         bracket_r  = np.dot(orbs.conj(), tmp.reshape((st.norb,st.x_npt,st.tau_npt)))
     else:
         raise ValueError("Unknown mode {}".format(mode))
-
     return bracket_r
 
 
-def fft_t(F, st, dir, phase_shift=False):
+def fft_t(F, st, dir, screening='dynamic', phase_shift=False):
     r"""Performs 1d Fourier transform of F(r,r';t) along time dimension.
 
     Can handle forward & backward transforms in real & imaginary time.
@@ -779,47 +711,58 @@ def fft_t(F, st, dir, phase_shift=False):
     ----------
     F: array
       will be transformed along last axis
+    st: object
+        space-time object
     dir: string
       - 't2f': time to frequency domain
       - 'f2t': frequency to time domain
       - 'it2if': imaginary time to imaginary frequency domain
       - 'if2it': imaginary frequency to imaginary time domain
+    screening : string
+        Use 'dynamic' (frequency dependent), 'static' (frequency independent averaged), 'instant' (frequency independent at zero) or 'zero' no screening.
     phase_shift: bool
       - True: use with shifted tau grid (tau_grid[0] = tau_delta/2)
       - False: use with unshifted tau grid (tau_grid[0] = 0)
     """
-
-    n = float(F.shape[-1])
-
-    # Crazy - taking out the prefactors p really makes it faster
-    if dir == 't2f':
-        out = ifft_1d(F) * st.tau_delta
-        #out = np.fft.ifft(F, axis=-1) * n * st.tau_delta
-        if phase_shift:
-            out *= st.phase_backward
-    elif dir == 'f2t':
-        p = 1 / (n * st.tau_delta)
-        if phase_shift:
-            out = fft_1d(F * st.phase_forward) * p
-        else:
+    if screening == 'dynamic':
+        n = float(F.shape[-1])
+        # Crazy - taking out the prefactors p really makes it faster
+        if dir == 't2f':
+            out = ifft_1d(F) * st.tau_delta
+            #out = np.fft.ifft(F, axis=-1) * n * st.tau_delta
+            if phase_shift:
+                out *= st.phase_backward
+        elif dir == 'f2t':
+            p = 1 / (n * st.tau_delta)
+            if phase_shift:
+                out = fft_1d(F * st.phase_forward) * p
+            else:
+                out = fft_1d(F) * p
+                #out = np.fft.fft(F, axis=-1) / (n * st.tau_delta)
+        elif dir == 'it2if':
+            p = -1J * st.tau_delta
             out = fft_1d(F) * p
-            #out = np.fft.fft(F, axis=-1) / (n * st.tau_delta)
-    elif dir == 'it2if':
-        p = -1J * st.tau_delta
-        out = fft_1d(F) * p
-        #out = -1J * np.fft.fft(F, axis=-1) * st.tau_delta
-        if phase_shift:
-            out *= st.phase_forward
-    elif dir == 'if2it':
-        p = 1J / (n * st.tau_delta)
-        if phase_shift:
-            out = ifft_1d(F * st.phase_backward) * p
+            #out = -1J * np.fft.fft(F, axis=-1) * st.tau_delta
+            if phase_shift:
+                out *= st.phase_forward
+        elif dir == 'if2it':
+            p = 1J / (n * st.tau_delta)
+            if phase_shift:
+                out = ifft_1d(F * st.phase_backward) * p
+            else:
+                out = ifft_1d(F) * p
+                #out = 1J * np.fft.ifft(F, axis=-1) / st.tau_delta
         else:
-            out = ifft_1d(F) * p
-            #out = 1J * np.fft.ifft(F, axis=-1) / st.tau_delta
+            raise IOError("FFT direction {} not recognized.".format(dir))
+    elif screening == 'instant' or screening == 'static' or screening == 'zero':
+        if dir == 'it2if':
+            out = -1J * F * st.tau_delta
+        elif dir == 'if2it':
+            out = 1J * F / st.tau_delta
+        else:
+            raise IOError("FFT direction {} not recognized.".format(dir))
     else:
-        raise IOError("FFT direction {} not recognized.".format(dir))
-
+        raise ValueError("Unrecognized screening {} for screened interaction".format(screening))
     return out
 
 
@@ -835,36 +778,30 @@ def irreducible_polarizability(st, G, G_pzero, screening):
     G_pzero : array
         it=0 component of Green function with :math:`G(0) = \lim_{t\downarrow 0}G(it)`
     screening : string
-        Use 'dynamic' (frequency dependent) or 'static' (frequency independent) screening.
+        Use 'dynamic' (frequency dependent), 'static' (frequency independent averaged), 'instant' (frequency independent at zero) or 'zero' no screening.
 
     FLOPS: grid**2 * tau_npt * 3
 
     See equation 3.4 of [Rieger1999]_.
     """
     if screening == 'zero':
-        return np.zeros(G.shape, dtype=np.complex)
-
-    G_rev = copy.copy(G)
-    G_rev = G_rev.swapaxes(0,1)
-    G_rev[:,:,0] = G_pzero
-    # need t=0 to become the *last* index for ::-1
-    G_rev = np.roll(G_rev, -1, axis=2)
-    P =  -1J * G * G_rev[:,:,::-1]
-
-    # Note: this is done inefficiently yes, to be optimised soon...
-    if screening == 'dynamic':
-        pass
-    elif screening == 'static':
-        for i in range(1, st.tau_npt):
-            P[:,:,i] = 0.0
+        P = np.zeros((st.x_npt,st.x_npt), dtype=np.complex)
+    elif screening == 'dynamic' or screening == 'static':
+        G_rev = copy.copy(G)
+        G_rev = G_rev.swapaxes(0,1)
+        G_rev[:,:,0] = G_pzero
+        # need t=0 to become the *last* index for ::-1
+        G_rev = np.roll(G_rev, -1, axis=2)
+        P =  -1J * G * G_rev[:,:,::-1]
+    elif screening == 'instant':
+        P =  -1J * G[:,:,0] * G_pzero
         P = P / st.tau_delta
     else:
         raise ValueError("Unrecognized screening {} for screened interaction".format(screening))
-
     return P
 
 
-def dielectric_matrix(P, st):
+def dielectric_matrix(P, screening, st):
     r"""Calculates dielectric matrix eps(r,r';iw) from polarizability.
 
     .. math::
@@ -879,32 +816,38 @@ def dielectric_matrix(P, st):
     ----------
     P: array_like
       irreducible polarizability P(r,r';iw)
+    screening : string
+        Use 'dynamic' (frequency dependent), 'static' (frequency independent averaged), 'instant' (frequency independent at zero) or 'zero' no screening.
     st: object
       space-time grid
     """
     v = st.coulomb_repulsion
-
-    # Note: dot + reshape is a tiny bit faster than tensordot...
-    #eps = - np.tensordot(v, P, axes=(1,1)) * st.x_delta
-    eps = - np.dot(v, P.reshape(st.x_npt, st.x_npt*st.tau_npt)) * st.x_delta
-    eps = eps.reshape(st.x_npt, st.x_npt, st.tau_npt)
-
-    # add delta(r-r')
-    tmp = 1 / st.x_delta
-    for i in range(st.x_npt):
-        eps[i, i, :] += tmp
-
-    # for information, the same loop in python, significantly slower but equivalent to the above code
-    #for k in range(st.tau_npt):
-    #    eps[:, :, k] = -np.dot(v, P[:, :, k]) * st.x_delta
-    #    # add delta(r-r')
-    #    for i in range(st.x_npt):
-    #        eps[i, i, k] += 1 / st.x_delta
-
+    if screening == 'zero':
+        eps = np.zeros((st.x_npt,st.x_npt), dtype=np.complex)
+        tmp = 1.0 / st.x_delta
+        for i in range(st.x_npt):
+            eps[i, i] += tmp
+    elif screening == 'dynamic' or screening == 'static':
+        # Note: dot + reshape is a tiny bit faster than tensordot...
+        #eps = - np.tensordot(v, P, axes=(1,1)) * st.x_delta
+        eps = - np.dot(v, P.reshape(st.x_npt, st.x_npt*st.tau_npt)) * st.x_delta
+        eps = eps.reshape(st.x_npt, st.x_npt, st.tau_npt)
+        # add delta(r-r')
+        tmp = 1.0 / st.x_delta
+        for i in range(st.x_npt):
+            eps[i, i, :] += tmp
+    elif screening == 'instant':
+        eps = np.zeros((st.x_npt,st.x_npt), dtype=np.complex)
+        eps[:, :] = -np.dot(v, P[:, :]) * st.x_delta
+        # add delta(r-r')
+        for i in range(st.x_npt):
+            eps[i, i] += 1 / st.x_delta
+    else:
+        raise ValueError("Unrecognized screening {} for screened interaction".format(screening))
     return eps
 
 
-def screened_interaction(st, epsilon_inv=None, epsilon=None):
+def screened_interaction(st, screening, epsilon):
     r"""Calculates screened interaction W(r,r';iw).
 
     Input is the (inverse) dielectric function.
@@ -919,9 +862,10 @@ def screened_interaction(st, epsilon_inv=None, epsilon=None):
 
     parameters
     ----------
-    epsilon_inv: array_like
-        inverse dielectric matrix eps_inv(r,r',iw).
-        If provided, we compute W = epsilon_inv v
+    st: object
+        space-time object
+    screening : string
+        Use 'dynamic' (frequency dependent), 'static' (frequency independent averaged), 'instant' (frequency independent at zero) or 'zero' no screening.
     epsilon: array_like
         dielectric matrix eps(r,r',iw).
         If provided, we solve epsilon W = v instead
@@ -930,35 +874,33 @@ def screened_interaction(st, epsilon_inv=None, epsilon=None):
     -------
         screened interaction W
     """
-    W = np.empty((st.x_npt, st.x_npt, st.tau_npt), dtype=complex)
-    v = st.coulomb_repulsion
-
-    if epsilon_inv is not None:
-        # calculate only dynamical part of S: W = (eps_inv-1) v
-        tmp = 1.0 / st.x_delta
-        for i in range(st.x_npt):
-            epsilon_inv[i,i,:] -= tmp
-
-        for k in range(st.tau_npt):
-            W[:, :, k] = np.dot(epsilon_inv[:, :, k], v) * st.x_delta
-        # for some strange reason, above loop is slightly *faster* than np.tensordot
-        #W = np.tensordot(v, epsilon_inv, axes=(0,1)) * st.x_delta
-
-    elif epsilon is not None:
-        # solve linear system
+    if screening == 'zero':
+        W = np.zeros((st.x_npt, st.x_npt), dtype=complex)
+    elif screening == 'dynamic':
+        W = np.empty((st.x_npt, st.x_npt, st.tau_npt), dtype=complex)
+        v = st.coulomb_repulsion
+        # solve eps*(W+v) = v/dx
         v_dx = v / st.x_delta
-
-        # solve eps * (W+v) = v/dx
         for k in range(st.tau_npt):
-            W[:, :, k] = np.linalg.solve(epsilon[:,:,k], v_dx) - v
-
+            W[:, :, k] = np.linalg.solve(epsilon[:,:,k], v_dx) - v # Dynamic screening W(iw)=e^-1(iw)*v
+    elif screening == 'static':
+        W = np.empty((st.x_npt, st.x_npt), dtype=complex)
+        v = st.coulomb_repulsion
+        # solve eps*(W+v) = v/dx
+        v_dx = v / st.x_delta
+        W[:, :] = np.linalg.solve(epsilon[:,:,0], v_dx) - v # Static screening W=e^-1(iw=0)*v
+    elif screening == 'instant':
+        W = np.empty((st.x_npt, st.x_npt), dtype=complex)
+        v = st.coulomb_repulsion
+        # solve eps*(W+v) = v/dx
+        v_dx = v / st.x_delta
+        W[:, :] = np.linalg.solve(epsilon[:,:], v_dx) - v # Instant screening W=e_instant^-1*v
     else:
-        raise ValueError("Need to provide either epsilon or epsilon_inv")
-
+        raise ValueError("Unrecognized screening {} for screened interaction".format(screening))
     return W
 
 
-def self_energy(G, W):
+def self_energy_correlation(G, W, st, screening):
     r"""Calculate the self-energy S(it) within the GW approximation.
 
     .. math::
@@ -975,43 +917,135 @@ def self_energy(G, W):
        Green function G(it)
     W: array_like
        Screened interaction W(it)
+    st: object
+        space-time object
+    screening : string
+        Use 'dynamic' (frequency dependent), 'static' (frequency independent averaged), 'instant' (frequency independent at zero) or 'zero' no screening.
 
     return S
     """
-    S = 1J * G * W
-    return S
-
-def td_correlation(pm, waves, st):
-
-    # calculate P
-    if pm.mbpt.screening == 'zero':
-        P = np.zeros((st.x_npt, st.x_npt), dtype=np.complex)
-    elif pm.mbpt.screening == 'static':
-        a = np.zeros((st.x_npt, st.x_npt), dtype=np.complex)
-        b = np.zeros((st.x_npt, st.x_npt), dtype=np.complex)
-        for i in range(0, pm.sys.NE):
-            wave = waves[:,i]
-            a += np.tensordot(wave.conj(), wave, axes=0)
-        for j in range(pm.sys.NE, norb):
-            wave = waves[:,j]
-            b += np.tensordot(wave, wave.conj(), axes=0)
-        P = -1.0j*a*b # maybe should be P = 1.0j*a*b ('-' removed via FT?)
-    elif pm.mbpt.screening == 'dynamic':
-        raise AttributeError('Error: Cannot perform TD-MBPT with dynamic screening, change pm.mbpt.screening to \'static\'')
+    if screening == 'zero':
+        Sc = np.zeros((st.x_npt, st.x_npt), dtype=complex)
+    elif screening == 'dynamic':
+        Sc = 1J * G * W
+    elif screening == 'static':
+        Sc = 1J * G[:,:,0] * W
+    elif screening == 'instant':
+        Sc = 1J * G[:,:,0] * W
     else:
         raise ValueError("Unrecognized screening {} for screened interaction".format(screening))
-    
-    # calculate W
-    dx = st.x_delta
-    I = np.identity(st.x_npt)
-    v = st.coulomb_repulsion
-    W = np.dot(np.inv(I/dx - np.dot(v,P)*dx),v)*dx # maybe should be (1/2*pi) (added via FT?)
-
-    # calculate Sc
-    Sc = -a*W # maybe should be (a*W) ('-' removed via FT?)
     return Sc
 
-def solve_dyson_equation(G0, S, st):
+
+def self_energy(pm, st, H, h0, Sc, W, screening):
+    r"""Calculate the full self-energy S(iw) within the GW approximation.
+
+    parameters
+    ----------
+    pm: object
+       parameters object
+    st: object
+       space-time object
+    H: object
+       interacting Hamiltonian
+    h0: object
+       non-interacting Hamiltonain
+    G: array_like
+       Green function G(it)
+    W: array_like
+       Screened interaction W(it)
+    screening : string
+        Use 'dynamic' (frequency dependent), 'static' (frequency independent averaged), 'instant' (frequency independent at zero) or 'zero' no screening.
+
+    return S
+    """
+    # compute Sx
+    if screening == 'dynamic':
+        Sx = np.zeros(Sc.shape, dtype=np.complex)
+        for i in range(st.tau_npt):
+            Sx[:,:,i] = H.vx
+    elif screening == 'static' or screening == 'instant' or screening == 'zero':
+        Sx = np.zeros(Sc.shape, dtype=np.complex)
+        Sx[:,:] = H.vx
+    else:
+        raise ValueError("Unrecognized screening {} for screened interaction".format(screening))
+
+    # compute Sxc = Sx + Sc
+    Sxc = Sx + Sc
+
+    # construct the full S
+    if screening == 'dynamic':
+        S = np.zeros(Sc.shape, dtype=np.complex)
+        pm.sprint('MBPT: constructing S(iw)',0)
+        Vh = np.diag(H.vh) / st.x_delta
+        for i in range(st.tau_npt):
+            S[:,:,i] = Vh[:,:] + Sxc[:,:,i] - h0.vhxc[:,:]  # S = Vh + Sxc - Vhxc0
+    elif screening == 'static':
+        S = np.zeros(Sc.shape, dtype=np.complex)
+        pm.sprint('MBPT: constructing S(iw)',0)
+        Vh = np.diag(H.vh) / st.x_delta
+        W = fft_t(W, st, dir='it2if', screening=pm.mbpt.screening)
+        COH = 0.5*np.diag(np.diag(W)) / st.x_delta # COH term in the static approximation
+        S = (Vh + Sxc + COH)*pm.sys.deltax
+    elif screening == 'instant':
+        S = np.zeros(Sc.shape, dtype=np.complex)
+        pm.sprint('MBPT: constructing S(iw)',0)
+        Vh = np.diag(H.vh) / st.x_delta
+        S = (Vh + Sxc)*st.x_delta
+    elif screening == 'zero':
+        S = np.zeros(Sc.shape, dtype=np.complex)
+        pm.sprint('MBPT: constructing S(iw)',0)
+        Vh = np.diag(H.vh) / st.x_delta
+        S = (Vh + Sxc)*pm.sys.deltax
+    else:
+        raise ValueError("Unrecognized screening {} for screened interaction".format(screening))
+
+    # remove the self-screening error from S
+    if(pm.mbpt.ssc == True):
+        pm.sprint('MBPT: removing the self-screening error from sigma')
+        den = H.den * st.NE / (np.sum(H.den) * st.x_delta)
+        vssc = self_screening_correction(st, abs(den))
+        vssc_matrix = np.diag(vssc) / st.x_delta
+        if screening == 'dynamic':
+            for i in range(st.tau_npt):
+                S[:,:,i] = S[:,:,i] + vssc_matrix
+        elif screening == 'static' or screening == 'instant' or screening == 'zero':
+            S[:,:] = S[:,:] + vssc_matrix
+        else:
+            raise ValueError("Unrecognized screening {} for screened interaction".format(screening))
+
+    # Align fermi energy of input and output Green function
+    if pm.mbpt.hedin_shift and screening == 'dynamic':
+        pm.sprint('MBPT: performing Hedin shift',0)
+
+        # Get QP energies
+        H.sigma_iw_dg = bracket_r(S, h0.orbitals, st)
+        qp_energies = H.sigma_iw_dg[:,0].real + h0.energies
+
+        # Sort orbitals and energies if required
+        if not all(qp_energies[i] <= qp_energies[i+1] for i in range(0,len(qp_energies)-2)):
+            pm.sprint("MBPT: Warning: QP energies out of order, reordering the following indices...")
+            indices = np.argsort(qp_energies)
+            pm.sprint("MBPT: {}".format(indices))
+            qp_energies = qp_energies[indices]
+            h0.orbitals = h0.orbitals[indices]
+            h0.energies = h0.energies[indices]
+
+        # Do Hedin Shift
+        H.qp_shift = 0.5 * (qp_energies[st.NE-1] + qp_energies[st.NE]) # Quasi-particle shift to keep fermi-energy in HOMO-LUMO gap
+        H.qp_shift = H.qp_shift.real # Take just the real part
+        pm.sprint('MBPT: quasi-particle shift: {:.7f} Ha.'.format(H.qp_shift))
+        for i in range(st.x_npt):
+            S[i,i,:] -= H.qp_shift / st.x_delta # Perfrom hedin shift
+
+        # Print new qp_energies
+        H.sigma_iw_dg = bracket_r(S, h0.orbitals, st)[:,0].real + h0.energies
+        pm.sprint('MBPT: qp_energies after shift: {}...'.format(H.sigma_iw_dg[0:pm.sys.NE+2]),0)
+
+    return S, Sx, Sxc
+
+
+def solve_dyson_equation(G0, S, st, screening, pm=None, orbitals=None):
     r"""Solves the Dyson equation for G
 
     .. math::
@@ -1027,38 +1061,99 @@ def solve_dyson_equation(G0, S, st):
       many-body self-energy S(r,r';iw)
     st: object
       space-time grid parameters
+    screening : string
+        Use 'dynamic' (frequency dependent), 'static' (frequency independent averaged), 'instant' (frequency independent at zero) or 'zero' no screening.
 
     Returns
     -------
         updated Green function G(r,r';iw)
     """
-    # 1. Compute A = (1/dx - G0*S*dx) * dx
-    # note: A could be made just np.empty((st.x_npt,st.x_npt)),
-    # but this would mean we can't use inverse_r
-    A = np.empty((st.x_npt,st.x_npt,st.tau_npt), dtype=complex)
-    pref = st.x_delta**2
-    for k in range(st.tau_npt):
-        A[:,:,k] = -np.dot(G0[:,:,k], S[:,:,k]) * pref
-
-        # Note: the following einsum is equivalent but much slower
-        # (probably einsum first computes scalar products between different k
-        # although it returns only those from the same k in the end)
-        #A = -np.einsum('ijk,jlk->ilk',G0, S) * pref
-
-    for i in range(st.x_npt):
-        A[i,i,:] += 1.0
-
-    # 2. Solve G = (A/dx)**(-1) / dx**2 * G0 * dx <=> A*G = G0
-    G = np.empty((st.x_npt,st.x_npt,st.tau_npt), dtype=complex)
-    for k in range(st.tau_npt):
-        G[:,:,k] = np.linalg.solve(A[:,:,k], G0[:,:,k])
-
-    # using explicit matix inversion: significantly slower but equivalent to the above code
-    #A = inverse_r(A, st)
-    #for k in range(st.tau_npt):
-    #    G[:,:,k] = np.dot(A[:,:,k], G0[:,:,k]) * st.x_delta
-
+    if screening == 'dynamic':
+        # 1. Compute A = (1/dx - G0*S*dx) * dx
+        # note: A could be made just np.empty((st.x_npt,st.x_npt)),
+        # but this would mean we can't use inverse_r
+        A = np.empty((st.x_npt,st.x_npt,st.tau_npt), dtype=complex)
+        pref = st.x_delta**2
+        for k in range(st.tau_npt):
+            A[:,:,k] = -np.dot(G0[:,:,k], S[:,:,k]) * pref
+            # Note: the following einsum is equivalent but much slower
+            # (probably einsum first computes scalar products between different k
+            # although it returns only those from the same k in the end)
+            #A = -np.einsum('ijk,jlk->ilk',G0, S) * pref
+        for i in range(st.x_npt):
+            A[i,i,:] += 1.0
+        # 2. Solve G = (A/dx)**(-1) / dx**2 * G0 * dx <=> A*G = G0
+        G = np.empty((st.x_npt,st.x_npt,st.tau_npt), dtype=complex)
+        for k in range(st.tau_npt):
+            G[:,:,k] = np.linalg.solve(A[:,:,k], G0[:,:,k])
+        # using explicit matix inversion: significantly slower but equivalent to the above code
+        #A = inverse_r(A, st)
+        #for k in range(st.tau_npt):
+        #    G[:,:,k] = np.dot(A[:,:,k], G0[:,:,k]) * st.x_delta
+    elif screening == 'zero' or screening == 'static' or screening == 'instant':
+        H_s = hamiltonian(pm, st, S)
+        den, orbitals, energies = iDEA.HF.groundstate(pm, H_s)
+        e_fermi = (energies[st.NE-1] + energies[st.NE]) / 2
+        energies -= e_fermi
+        G = non_interacting_green_function(-orbitals.T[:st.norb], energies[:st.norb], st)
+        G = fft_t(G, st, dir='it2if')
+    else:
+        raise ValueError("Unrecognized screening {} for screened interaction".format(screening))
     return G
+
+
+def hamiltonian(pm, st, S):
+    r"""Calculates Hamiltonian from a static correlation self-energy.
+
+    .. math ::
+
+        H=K+V_{ext}+V_{H}+\Sigma_{x}+\Sigma_{c}
+
+    parameters
+    ----------
+    pm : array
+      set of single-particle orbitals
+    st: object
+      space-time object
+    S: self-energy
+
+    """
+    # construct kinetic energy
+    sd = pm.space.second_derivative
+    sd_ind = pm.space.second_derivative_indices
+    K = -0.5*sps.diags(sd, sd_ind, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex)
+    # construct H from individual terms
+    Vext = sps.diags(pm.space.v_ext, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
+    H = K + Vext + S
+    return H
+
+
+def quasiparticle_orbitals(pm, st, S, h0, H, screening):
+    if screening == 'dynamic':
+        d = np.gradient(S, st.omega_delta*1.0j, axis=-1) # dS/dw (derivative of sigma wrt imaginary frequency)
+        qp_energies = (h0.energies + bracket_r(S, h0.orbitals, st)[:,0].real +  H.qp_shift) / (1.0 - bracket_r(d, h0.orbitals, st)[:,0].real) # Use 1st order approx to QP energies
+        qp_energies = qp_energies + h0.e_fermi # Take account of the vaccum shift
+        homo = qp_energies[st.NE-1]
+        ip = -homo
+        lumo = qp_energies[st.NE]
+        af = -lumo
+        gap = ip - af
+        pm.sprint('MBPT: IP, AF, GAP: {0:.3f}, {1:.3f}, {2:.3f} Ha'.format(ip, af, gap))
+        qp_orbitals = copy.copy(h0.orbitals)
+    elif screening == 'static' or screening == 'instant' or screening == 'zero':
+        H_s = hamiltonian(pm, st, S)
+        den, orbitals, energies = iDEA.HF.groundstate(pm, H_s)
+        qp_energies = copy.copy(energies)
+        homo = qp_energies[st.NE-1]
+        ip = -homo
+        lumo = qp_energies[st.NE]
+        af = -lumo
+        gap = ip - af
+        qp_orbitals = copy.copy(orbitals.T)
+        pm.sprint('MBPT: IP, AF, GAP: {0:.3f}, {1:.3f}, {2:.3f} Ha'.format(ip, af, gap))
+    else:
+        raise ValueError("Unrecognized screening {} for screened interaction".format(screening))
+    return qp_energies, qp_orbitals, ip, af, gap
 
 
 def extrapolate_to_zero(F, st, dir='from_below', order=6, points=7):
@@ -1105,6 +1200,33 @@ def extrapolate_to_zero(F, st, dir='from_below', order=6, points=7):
     vals = vals.reshape((st.x_npt, st.x_npt)) * 1J
 
     return vals
+
+# def td_correlation(pm, waves, st):
+#     # calculate P
+#     if pm.mbpt.screening == 'zero':
+#         P = np.zeros((st.x_npt, st.x_npt), dtype=np.complex)
+#     elif pm.mbpt.screening == 'static':
+#         a = np.zeros((st.x_npt, st.x_npt), dtype=np.complex)
+#         b = np.zeros((st.x_npt, st.x_npt), dtype=np.complex)
+#         for i in range(0, pm.sys.NE):
+#             wave = waves[:,i]
+#             a += np.tensordot(wave.conj(), wave, axes=0)
+#         for j in range(pm.sys.NE, norb):
+#             wave = waves[:,j]
+#             b += np.tensordot(wave, wave.conj(), axes=0)
+#         P = -1.0j*a*b # maybe should be P = 1.0j*a*b ('-' removed via FT?)
+#     elif pm.mbpt.screening == 'dynamic':
+#         raise AttributeError('Error: Cannot perform TD-MBPT with dynamic screening, change pm.mbpt.screening to \'static\'')
+#     else:
+#         raise ValueError("Unrecognized screening {} for screened interaction".format(screening))
+#     # calculate W
+#     dx = st.x_delta
+#     I = np.identity(st.x_npt)
+#     v = st.coulomb_repulsion
+#     W = np.dot(np.inv(I/dx - np.dot(v,P)*dx),v)*dx # maybe should be (1/2*pi) (added via FT?)
+#     # calculate Sc
+#     Sc = -a*W # maybe should be (a*W) ('-' removed via FT?)
+#     return Sc
 
 
 # def analytic_continuation(S, st, pm, n_poles=3, fit_range=None):
