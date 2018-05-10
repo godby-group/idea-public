@@ -159,7 +159,7 @@ class Input(object):
         run.MBPT = False                     #: Run Many-body pertubation theory
         run.HYB = False                      #: Run Hybrid (HF-LDA) calculation
         run.LAN = False                      #: Run Landauer approximation
-        run.MET = False
+        run.MET = False                      #: Run Metric calculation
 
 
         ### System parameters
@@ -413,7 +413,7 @@ class Input(object):
                 s += input_string(key,value)
         return s
 
-    def sprint(self, string='', priority=1, newline=True, refresh=0.05):
+    def sprint(self, string='', priority=1, newline=True, refresh=0.05, savelog=True):
         """Customized print function
 
         Prints to screen and appends to log.
@@ -434,9 +434,12 @@ class Input(object):
             If False, overwrite the last line
         refresh : float
             If newline == False, print only every "refresh" seconds
+        savelog : bool
+            If True, save string to log file
         """
         verbosity = self.run.verbosity
-        self.log += string + '\n'
+        if(savelog):
+            self.log += string + '\n'
         if priority >= self.priority_dict[verbosity]:
 
             timestamp = time.clock()

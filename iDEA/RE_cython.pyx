@@ -8,7 +8,7 @@ import numpy as np
 #cython: boundscheck=False, wraparound=False, nonecheck=False
 
 
-def continuity_eqn(object pm, double[:] density_new, double[:] density_old):
+def continuity_eqn(object pm, np.ndarray density_new, np.ndarray density_old):
     r"""Calculates the electron current density of the system for a particular
     time step by solving the continuity equation.
 
@@ -30,7 +30,7 @@ def continuity_eqn(object pm, double[:] density_new, double[:] density_old):
     cdef double deltax = pm.space.delta
     cdef double deltat = pm.sys.deltat
     cdef double prefactor 
-    cdef double[:] current_density = np.zeros(pm.sys.grid, dtype=np.float)
+    cdef np.ndarray current_density = np.zeros(pm.sys.grid, dtype=np.float)
 
     # Parameters
     prefactor = deltax/deltat

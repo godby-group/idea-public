@@ -255,7 +255,7 @@ def main(parameters, approx, target_density_array=None,
             # Propagate through imaginary time
             energy, wavefunction = EXT.solve_imaginary_time(pm, A_reduced, 
                                    C_reduced, wavefunction_reduced, 
-                                   reduction_matrix, expansion_matrix)
+                                   expansion_matrix)
 
             # Calculate the electron density
             if(pm.sys.NE == 2):
