@@ -8,7 +8,7 @@ import numpy as np
 #cython: boundscheck=False, wraparound=False, nonecheck=False
 
 
-def wavefunction_two(double[:] eigenstate_1, double[:] eigenstate_2):           
+def wavefunction_two(np.ndarray eigenstate_1, np.ndarray eigenstate_2):           
     r"""Constructs the two-electron initial wavefunction in reduced form from
     two single-particle eigenstates.
 
@@ -31,7 +31,7 @@ def wavefunction_two(double[:] eigenstate_1, double[:] eigenstate_2):
     cdef int i, j, k
     cdef int grid = eigenstate_1.shape[0]
     cdef double normalisation
-    cdef double[:] wavefunction_reduced = np.zeros(int(grid*(grid+1)/2), dtype=np.float)
+    cdef np.ndarray wavefunction_reduced = np.zeros(int(grid*(grid+1)/2), dtype=np.float)
 
     # Normalisation factor
     normalisation = 1.0/np.sqrt(2.0)
@@ -47,10 +47,10 @@ def wavefunction_two(double[:] eigenstate_1, double[:] eigenstate_2):
             # Increase count
             i += 1
 
-    return np.asarray(wavefunction_reduced, dtype=np.float)
+    return wavefunction_reduced
 
 
-def wavefunction_three(double[:] eigenstate_1, double[:] eigenstate_2, double[:] eigenstate_3):           
+def wavefunction_three(np.ndarray eigenstate_1, np.ndarray eigenstate_2, np.ndarray eigenstate_3):           
     r"""Constructs the initial three-electron wavefunction in reduced form from
     three single-particle eigenstates.
 
@@ -76,7 +76,7 @@ def wavefunction_three(double[:] eigenstate_1, double[:] eigenstate_2, double[:]
     cdef int i, j, k, l
     cdef int grid = eigenstate_1.shape[0]
     cdef double normalisation, perm_1, perm_2, perm_3
-    cdef double[:] wavefunction_reduced = np.zeros(int(grid*(grid+1)*(grid+2)/6), dtype=np.float)
+    cdef np.ndarray wavefunction_reduced = np.zeros(int(grid*(grid+1)*(grid+2)/6), dtype=np.float)
 
     # Normalisation factor
     normalisation = 1.0/np.sqrt(6.0)
@@ -96,10 +96,10 @@ def wavefunction_three(double[:] eigenstate_1, double[:] eigenstate_2, double[:]
                 # Increase count
                 i += 1
 
-    return np.asarray(wavefunction_reduced, dtype=np.float)
+    return wavefunction_reduced
 
 
-def reduction_two(np.int64_t[:] coo_1, np.int64_t[:] coo_2, int grid):
+def reduction_two(np.ndarray coo_1, np.ndarray coo_2, int grid):
     r"""Calculates the coordinates and data of the non-zero elements of the 
     two-electron reduction matrix that is used to exploit the exchange exchange 
     antisymmetry of the wavefunction.
@@ -137,7 +137,7 @@ def reduction_two(np.int64_t[:] coo_1, np.int64_t[:] coo_2, int grid):
     return coo_1, coo_2
 
 
-def reduction_three(np.int64_t[:] coo_1, np.int64_t[:] coo_2, int grid):
+def reduction_three(np.ndarray coo_1, np.ndarray coo_2, int grid):
     r"""Calculates the coordinates and data of the non-zero elements of the 
     three-electron reduction matrix that is used to exploit the exchange 
     exchange antisymmetry of the wavefunction.
@@ -176,7 +176,7 @@ def reduction_three(np.int64_t[:] coo_1, np.int64_t[:] coo_2, int grid):
     return coo_1, coo_2
 
 
-def expansion_two(np.int64_t[:] coo_1, np.int64_t[:] coo_2, double[:] coo_data, int grid):
+def expansion_two(np.ndarray coo_1, np.ndarray coo_2, np.ndarray coo_data, int grid):
     r"""Calculates the coordinates and data of the non-zero elements of the 
     two-electron expansion matrix that is used to exploit the exchange exchange 
     antisymmetry of the wavefunction.
@@ -223,10 +223,10 @@ def expansion_two(np.int64_t[:] coo_1, np.int64_t[:] coo_2, double[:] coo_data, 
             # Increase count
             i_plus += 1
 
-    return np.asarray(coo_1, dtype=int), np.asarray(coo_2, dtype=int), np.asarray(coo_data, dtype=np.float)
+    return coo_1, coo_2, coo_data
 
 
-def expansion_three(np.int64_t[:] coo_1, np.int64_t[:] coo_2, double[:] coo_data, int grid):
+def expansion_three(np.ndarray coo_1, np.ndarray coo_2, np.ndarray coo_data, int grid):
     r"""Calculates the coordinates and data of the non-zero elements of the 
     three-electron expansion matrix that is used to exploit the exchange 
     exchange antisymmetry of the wavefunction.
@@ -324,10 +324,10 @@ def expansion_three(np.int64_t[:] coo_1, np.int64_t[:] coo_2, double[:] coo_data
                 # Increase count
                 i_plus += 1
 
-    return np.asarray(coo_1, dtype=int), np.asarray(coo_2, dtype=int), np.asarray(coo_data, dtype=np.float)
+    return coo_1, coo_2, coo_data
 
 
-def hamiltonian_two(object pm, np.int64_t[:] coo_1, np.int64_t[:] coo_2, double [:] coo_data, int td):
+def hamiltonian_two(object pm, np.ndarray coo_1, np.ndarray coo_2, np.ndarray coo_data, int td):
     r"""Calculates the coordinates and data of the non-zero elements of the 
     two-electron Hamiltonian matrix.
 
@@ -545,10 +545,10 @@ def hamiltonian_two(object pm, np.int64_t[:] coo_1, np.int64_t[:] coo_2, double 
                     i += 1
 
 
-    return np.asarray(coo_1, dtype=int), np.asarray(coo_2, dtype=int), np.asarray(coo_data, dtype=np.float)
+    return coo_1, coo_2, coo_data
 
 
-def hamiltonian_three(object pm, np.int64_t[:] coo_1, np.int64_t[:] coo_2, double [:] coo_data, int td):
+def hamiltonian_three(object pm, np.ndarray coo_1, np.ndarray coo_2, np.ndarray coo_data, int td):
     r"""Calculates the coordinates and data of the non-zero elements of the 
     three-electron Hamiltonian matrix.
 
@@ -929,7 +929,7 @@ def hamiltonian_three(object pm, np.int64_t[:] coo_1, np.int64_t[:] coo_2, doubl
                         i += 1
 
 
-    return np.asarray(coo_1, dtype=int), np.asarray(coo_2, dtype=int), np.asarray(coo_data, dtype=np.float)
+    return coo_1, coo_2, coo_data
 
 
 def imag_pot_two(pm):
@@ -948,8 +948,8 @@ def imag_pot_two(pm):
     # Variable declarations
     cdef int i, j, k
     cdef int grid = pm.space.npt
-    cdef double complex [:] v_pert = pm.space.v_pert
-    cdef double complex [:] imag_pot = np.zeros((grid**2), dtype=np.cfloat)
+    cdef np.ndarray v_pert = pm.space.v_pert
+    cdef np.ndarray imag_pot = np.zeros((grid**2), dtype=np.cfloat)
 
     # Loop over each element 
     i = 0
@@ -962,7 +962,7 @@ def imag_pot_two(pm):
             # Increase count
             i += 1
 
-    return np.asarray(imag_pot, dtype=np.cfloat)
+    return imag_pot
 
 
 def imag_pot_three(pm):
@@ -981,8 +981,8 @@ def imag_pot_three(pm):
     # Variable declarations
     cdef int i, j, k, l
     cdef int grid = pm.space.npt
-    cdef double complex [:] v_pert = pm.space.v_pert
-    cdef double complex [:] imag_pot = np.zeros((grid**3), dtype=np.cfloat)
+    cdef np.ndarray v_pert = pm.space.v_pert
+    cdef np.ndarray imag_pot = np.zeros((grid**3), dtype=np.cfloat)
 
     # Loop over each element 
     i = 0
@@ -996,76 +996,7 @@ def imag_pot_three(pm):
                 # Increase count
                 i += 1
 
-    return np.asarray(imag_pot, dtype=np.cfloat)
-
-
-def change_pot_two(pm, double[:] deltav_ext):
-    r"""Calculates the change in the main diagonal of the two-electron 
-    Hamiltonian matrix from the change in the external potential if running the
-    OPT code.
-
-    parameters
-    ----------
-    pm : object
-        Parameters object
-    dv_ext : array_like
-        1D array of the change in the external potential
-
-    returns array_like
-        1D array of the change in the main diagonal of the Hamiltonian matrix
-    """
-    # Variable declarations
-    cdef int i, j, k
-    cdef int grid = pm.space.npt
-    cdef double [:] deltaH = np.zeros((grid**2), dtype=np.cfloat)
-
-    # Loop over each element 
-    i = 0
-    for j in range(grid):
-        for k in range(grid):
-
-            # Calculate element
-            deltaH[i] = deltav_ext[j] + deltav_ext[k]
-  
-            # Increase count
-            i += 1
-
-    return np.asarray(deltaH, dtype=np.cfloat)
-
-
-def change_pot_three(pm, double[:] deltav_ext):
-    r"""Calculates the change in the main diagonal of the three-electron 
-    Hamiltonian matrix from the change in the external potential if running the
-    OPT code.
-
-    parameters
-    ----------
-    pm : object
-        Parameters object
-    dv_ext : array_like
-        1D array of the change in the external potential
-
-    returns array_like
-        1D array of the change in the main diagonal of the Hamiltonian matrix
-    """
-    # Variable declarations
-    cdef int i, j, k, l
-    cdef int grid = pm.space.npt
-    cdef double [:] deltaH = np.zeros((grid**3), dtype=np.cfloat)
-
-    # Loop over each element 
-    i = 0
-    for j in range(grid):
-        for k in range(grid): 
-            for l in range(grid):
-
-                # Calculate element
-                deltaH[i] = deltav_ext[j] + deltav_ext[k] + deltav_ext[l]
-  
-                # Increase count
-                i += 1
-
-    return np.asarray(deltaH, dtype=np.cfloat)
+    return imag_pot
 
 
 def single_index_two(int j, int k, int grid):

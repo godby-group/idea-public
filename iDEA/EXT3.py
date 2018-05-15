@@ -180,7 +180,7 @@ def initial_wavefunction(pm, state):
 
             # File does not exist
             except:
-                raise IOError("Cannot find file containing HF orbitals.")
+                raise IOError("EXT: Cannot find file containing HF orbitals.")
 
         # Read the three lowest LDA eigenstates of the system
         elif(pm.ext.initial_gspsi == 'lda'):
@@ -192,7 +192,7 @@ def initial_wavefunction(pm, state):
 
             # File does not exist 
             except:
-                raise IOError("Cannot find file containing LDA orbitals.")
+                raise IOError("EXT: Cannot find file containing LDA orbitals.")
 
         # Read the three lowest non-interacting eigenstates of the system
         elif(pm.ext.initial_gspsi == 'non'):
@@ -220,7 +220,7 @@ def initial_wavefunction(pm, state):
             
             # File does not exist
             except:
-                raise IOError("Cannot find file containting many-body" + \
+                raise IOError("EXT: Cannot find file containting many-body" + \
                 " wavefunction.")
 
         # Read an exact many-body wavefunction from a different directory
@@ -232,7 +232,7 @@ def initial_wavefunction(pm, state):
  
             # File does not exist
             except:
-                raise IOError("Cannot find file containing many-body" + \
+                raise IOError("EXT: Cannot find file containing many-body" + \
                 " wavefunction.")
 
     # If calculating excited-state wavefunctions
@@ -245,9 +245,9 @@ def initial_wavefunction(pm, state):
             
             # File does not exist
             except:
-                string = "Cannot find file containting many-body" + \
+                string = "EXT: Cannot find file containting many-body" + \
                 " wavefunction. Starting from the quantum harmonic oscillator"
-                pm.sprint(string, 1, newline=True)
+                pm.sprint(string, 1)
                 eigenstate_1 = qho_approx(pm, 0)
                 eigenstate_2 = qho_approx(pm, 1)
                 eigenstate_3 = qho_approx(pm, 2)
@@ -267,9 +267,9 @@ def initial_wavefunction(pm, state):
  
             # File does not exist
             except:
-                string = "Cannot find file containting many-body" + \
+                string = "EXT: Cannot find file containting many-body" + \
                 " wavefunction. Starting from the quantum harmonic oscillator"
-                pm.sprint(string, 1, newline=True)
+                pm.sprint(string, 1)
                 eigenstate_1 = qho_approx(pm, 0)
                 eigenstate_2 = qho_approx(pm, 1)
                 eigenstate_3 = qho_approx(pm, 2)
@@ -428,17 +428,17 @@ def calculate_current_density(pm, density):
         2D array of the current density, indexed as 
         current_density[time_index,space_index]
     """
-    pm.sprint('', 1, newline=True)
+    pm.sprint('', 1)
     current_density = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float)
     string = 'EXT: calculating current density'
-    pm.sprint(string, 1, newline=True)
+    pm.sprint(string, 1)
     for i in range(1, pm.sys.imax):
          string = 'EXT: t = {:.5f}'.format(i*pm.sys.deltat)
          pm.sprint(string, 1, newline=False)
          J = np.zeros(pm.space.npt, dtype=np.float)
          J = RE_cython.continuity_eqn(pm, density[i,:], density[i-1,:])
          current_density[i,:] = J[:]
-    pm.sprint('', 1, newline=True)
+    pm.sprint('', 1)
 
     return current_density
 
@@ -484,8 +484,7 @@ def gram_schmidt(pm, wavefunction_reduced, eigenstates_array, excited_state):
 
 
 def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced, 
-                         reduction_matrix, expansion_matrix, 
-                         eigenstates_array=None):
+                         expansion_matrix, eigenstates_array=None):
     r"""Propagates the initial wavefunction through imaginary time using the 
     Crank-Nicholson method to find the ground-state of the system. 
 
@@ -510,9 +509,6 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced,
     wavefunction_reduced : array_like
         1D array of the reduced wavefunction, indexed as 
         wavefunction_reduced[space_index_1_2_3]
-    reduction_matrix : sparse_matrix
-        Sparse matrix used to reduce the wavefunction (remove indistinct 
-        elements) by exploiting the exchange antisymmetry
     expansion_matrix : sparse_matrix
         Sparse matrix used to expand the reduced wavefunction (insert 
         indistinct elements) to get back the full wavefunction
@@ -529,7 +525,7 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced,
 
     # Print to screen
     string = 'EXT: imaginary time propagation'
-    pm.sprint(string, 1, newline=True)
+    pm.sprint(string, 1)
 
     # If calculating excited states
     if(eigenstates_array is not None):
@@ -542,7 +538,10 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced,
         # Begin timing the iteration
         start = time.time()
         string = 'imaginary time = {:.5f}'.format(i*pm.ext.ideltat) 
-        pm.sprint(string, 0, newline=True)
+        if(i % 1000 == 0):
+            pm.sprint(string, 0)
+        else:
+            pm.sprint(string, 0, savelog=False)
 
         # Save the previous time step 
         wavefunction_reduced_old[:] = wavefunction_reduced[:]
@@ -567,29 +566,41 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced,
         # Stop timing the iteration
         finish = time.time()
         string = 'time to complete step: {:.5f}'.format(finish - start)
-        pm.sprint(string, 0, newline=True)
+        if(i % 1000 == 0):
+            pm.sprint(string, 0)
+        else:
+            pm.sprint(string, 0, savelog=False)
 
         # Calculate the convergence of the wavefunction
         wavefunction_convergence = np.linalg.norm(wavefunction_reduced_old - 
                                    wavefunction_reduced)
         string = 'wavefunction convergence: {}'.format(wavefunction_convergence)
-        pm.sprint(string, 0, newline=True) 
+        if(i % 1000 == 0):
+            pm.sprint(string, 0)
+        else:
+            pm.sprint(string, 0, savelog=False) 
         if(pm.run.verbosity=='default'):
             string = 'EXT: t = {:.5f}, convergence = {}' \
                     .format(i*pm.ext.ideltat, wavefunction_convergence)
-            pm.sprint(string, 1, newline=False)
+            if(i % 1000 == 0):
+                pm.sprint(string, 1, newline=False)
+            else:
+                pm.sprint(string, 1, newline=False, savelog=False)
         if(wavefunction_convergence < pm.ext.itol):
             i = pm.ext.iimax
-            pm.sprint('', 1, newline=True)
+            pm.sprint('', 1)
             if(eigenstates_array is None):
                 string = 'EXT: ground-state converged' 
             else: 
                 string = 'EXT: {} excited state converged'.format(
                          excited_state)
-            pm.sprint(string, 1, newline=True)
+            pm.sprint(string, 1)
         string = '--------------------------------------------------------' + \
                  '----------'
-        pm.sprint(string, 0, newline=True)
+        if(i % 1000 == 0):
+            pm.sprint(string, 0)
+        else:
+            pm.sprint(string, 0, savelog=False)
         
         # Iterate
         i += 1
@@ -603,7 +614,7 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced,
     else:
         string = 'EXT: {0} excited state energy = {1:.5f}'.format(
                  excited_state, energy)
-    pm.sprint(string, 1, newline=True)
+    pm.sprint(string, 1)
  
     # Expand the wavefunction and normalise
     wavefunction = expansion_matrix*wavefunction_reduced
@@ -664,7 +675,7 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
 
     # Print to screen
     string = 'EXT: real time propagation'
-    pm.sprint(string, 1, newline=True)
+    pm.sprint(string, 1)
 
     # Perform iterations
     for i in range(1, pm.sys.imax):
@@ -673,7 +684,10 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
         start = time.time()
         string = 'real time = {:.5f}'.format(i*pm.sys.deltat) + '/' + \
                  '{:.5f}'.format((pm.sys.imax)*pm.sys.deltat)
-        pm.sprint(string, 0, newline=True)
+        if(i % 100 == 0):
+            pm.sprint(string, 0)
+        else:
+            pm.sprint(string, 0, savelog=False)
      
         # Construct the vector b and its reduction vector
         b_reduced = C_reduced*wavefunction_reduced
@@ -699,21 +713,32 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix,
         # Stop timing the iteration
         finish = time.time()
         string = 'time to complete step: {:.5f}'.format(finish - start)
-        pm.sprint(string, 0, newline=True)
+        if(i % 100 == 0):
+            pm.sprint(string, 0)
+        else:
+            pm.sprint(string, 0, savelog=False)
       
         # Print to screen
         if(pm.run.verbosity == 'default'):
             string = 'EXT: ' + 't = {:.5f}'.format(i*pm.sys.deltat)
-            pm.sprint(string, 1, newline=False)
+            if(i % 100 == 0):
+                pm.sprint(string, 1, newline=False)
+            else:
+                pm.sprint(string, 1, newline=False, savelog=False)
         else:
-            string = 'residual: {:.5f}'.format(np.linalg.norm(
-                     A_reduced*wavefunction_reduced - b_reduced))
-            pm.sprint(string, 0, newline=True)
-            string = 'normalisation: {:.5f}'.format(norm**2)
-            pm.sprint(string, 0, newline=True)
-            string = '----------------------------------------------------' + \
-                     '----------'
-            pm.sprint(string, 0, newline=True)
+            string_one = 'residual: {:.5f}'.format(np.linalg.norm(
+                         A_reduced*wavefunction_reduced - b_reduced))
+            string_two = 'normalisation: {:.5f}'.format(norm**2)
+            string_three = '---------------------------------------------' + \
+                           '-----------------'
+            if(i % 100 == 0):
+                pm.sprint(string_one, 0)
+                pm.sprint(string_two, 0)
+                pm.sprint(string_three, 0)
+            else:
+                pm.sprint(string_one, 0, savelog=False)
+                pm.sprint(string_two, 0, savelog=False)
+                pm.sprint(string_three, 0, savelog=False)
     
     # Calculate the current density
     current_density = calculate_current_density(pm, density)
@@ -736,7 +761,7 @@ def main(parameters):
     # Array initialisations
     pm = parameters 
     string = 'EXT: constructing arrays'
-    pm.sprint(string, 1, newline=True)
+    pm.sprint(string, 1)
     pm.setup_space()
 
     # Construct the reduction and expansion matrices
@@ -752,8 +777,7 @@ def main(parameters):
 
     # Propagate through imaginary time
     energy, wavefunction = solve_imaginary_time(pm, A_reduced, C_reduced,
-                           wavefunction_reduced, reduction_matrix,
-                           expansion_matrix) 
+                           wavefunction_reduced, expansion_matrix) 
  
     # Calculate ground-state density
     wavefunction_3D = wavefunction.reshape(pm.space.npt, pm.space.npt, 
@@ -795,7 +819,7 @@ def main(parameters):
             # Propagate through imaginary time
             energy, wavefunction = solve_imaginary_time(pm, A_reduced,
                                    C_reduced, wavefunction_reduced, 
-                                   reduction_matrix, expansion_matrix, 
+                                   expansion_matrix, 
                                    eigenstates_array=eigenstates_array[0:j+1,:])
 
             # Calculate the excited-state density
@@ -825,7 +849,7 @@ def main(parameters):
 
         # Array initialisations
         string = 'EXT: constructing arrays'
-        pm.sprint(string, 1, newline=True)
+        pm.sprint(string, 1)
         wavefunction = wavefunction.astype(np.cfloat)
 
         # Construct the reduced form of the sparse matrices A and C 
