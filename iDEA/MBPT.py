@@ -986,7 +986,7 @@ def self_energy(pm, st, H, h0, Sc, W, screening):
         Vh = np.diag(H.vh) / st.x_delta
         W = fft_t(W, st, dir='it2if', screening=pm.mbpt.screening)
         COH = 0.5*np.diag(np.diag(W)) / st.x_delta # COH term in the static approximation
-        S = (Vh + Sxc + COH)*pm.sys.deltax
+        S = (Vh + Sxc + COH)*st.x_delta
     elif screening == 'instant':
         S = np.zeros(Sc.shape, dtype=np.complex)
         pm.sprint('MBPT: constructing S(iw)',0)
@@ -996,7 +996,7 @@ def self_energy(pm, st, H, h0, Sc, W, screening):
         S = np.zeros(Sc.shape, dtype=np.complex)
         pm.sprint('MBPT: constructing S(iw)',0)
         Vh = np.diag(H.vh) / st.x_delta
-        S = (Vh + Sxc)*pm.sys.deltax
+        S = (Vh + Sxc)*st.x_delta
     else:
         raise ValueError("Unrecognized screening {} for screened interaction".format(screening))
 
@@ -1131,7 +1131,7 @@ def hamiltonian(pm, st, S):
 def quasiparticle_orbitals(pm, st, S, h0, H, screening):
     if screening == 'dynamic':
         d = np.gradient(S, st.omega_delta*1.0j, axis=-1) # dS/dw (derivative of sigma wrt imaginary frequency)
-        qp_energies = (h0.energies + bracket_r(S, h0.orbitals, st)[:,0].real +  H.qp_shift) / (1.0 - bracket_r(d, h0.orbitals, st)[:,0].real) # Use 1st order approx to QP energies
+        qp_energies = h0.energies + bracket_r(S, h0.orbitals, st)[:,0].real +  H.qp_shift # Use 1st order approx to QP energies
         qp_energies = qp_energies + h0.e_fermi # Take account of the vaccum shift
         homo = qp_energies[st.NE-1]
         ip = -homo
