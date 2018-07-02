@@ -250,7 +250,7 @@ def construct_A(pm, A_initial, A_ks, momentum):
     nbnd = momentum.shape[0]
     prefactor = 0.25j*pm.sys.deltat
 
-    # Assign the main diagonal elements
+    # Assign the main diagonal elements of the matrix
     for j in range(pm.space.npt):
         A[j,j] += prefactor*(A_ks[j]**2)
 
