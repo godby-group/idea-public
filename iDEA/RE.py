@@ -340,7 +340,7 @@ def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
     iterations = 0
     mu = pm.re.mu
     error_change = 1
-    while(error_change > 1e-8):
+    while(error_change > 1e-8 and density_error > pm.re.gs_density_tolerance):
 
         # Save the last iteration
         density_error_old = density_error
