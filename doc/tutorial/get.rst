@@ -17,11 +17,11 @@ Installing iDEA
 .. code-block:: bash
 
    # Clone from the central repository
-   git clone git@github.com:godby-group/idea-private.git
+   git clone git@github.com:godby-group/idea-private.git iDEAL
 
    # Install & compile iDEA for your unix user
    # (including packages for generating the documentation)
-   cd idea-private
+   cd iDEAL
    pip install --user -e .[doc]
 
    # Run example calculation
