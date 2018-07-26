@@ -17,7 +17,7 @@ Installing iDEA
 .. code-block:: bash
 
    # Clone from the central repository
-   git clone git@github.com:godby-group/idea-private.git iDEAL
+   git clone https://github.com/godby-group/idea-private.git iDEAL
 
    # Install & compile iDEA for your unix user
    # (including packages for generating the documentation)
