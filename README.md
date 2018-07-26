@@ -23,8 +23,8 @@ iDEA's main features are:
 
 ## How to get iDEA
 
-    git clone git@github.com:godby-group/idea-private.git
-    cd idea-private
+    git clone https://github.com/godby-group/idea-private.git iDEAL
+    cd iDEAL
     pip install --user -e .[doc]
     python run.py # this runs an example system
 
