@@ -2,10 +2,10 @@ Running ViDEO
 =============
 
 ViDEO is a python script used to process the raw output files generared by iDEA into
-easy to use .dat data files, .png plots and .mp4 animations
+easy to use .dat data files, .pdf plots and .mp4 animations
 
-The old-fashioned way
----------------------
+Using ViDEO directly
+--------------------
 
 Simply naviage to the relevent outputs folder
 
@@ -48,4 +48,3 @@ and run the command
 .. code-block:: bash
 
    ViDEO.py
-

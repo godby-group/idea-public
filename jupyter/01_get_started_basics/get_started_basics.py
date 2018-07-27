@@ -5,11 +5,13 @@
 
 # ## Guide to using jupyter notebooks
 
-# Jupyter notebooks allow code to be edited and run within the notebook using an iPython shell, giving ouputs and error messages. This allows the user to play around with the code as much as they'd like. Much like the iPython shell, one closed and reopened, all the relevent code boxes must be executed. Left of the code box shows the order of execution. If the code is currently executing, it will display an asterisk. **Press 'Shift + Enter' to execute the code**.
+# Jupyter notebooks allow code to be edited and run within the notebook using an iPython shell, giving ouputs and error messages. This allows the user to play around with the code as much as they'd like. Much like the iPython shell, one closed and reopened, all the relevent code boxes must be executed once again (everything will once again be default). Left of the code box shows the order of execution. If the code is currently executing, it will display an asterisk. **Press 'Shift + Enter' to execute the code**.
+# 
+# When exiting the Jupyter notebook, make sure to save the click 'File' then 'Close and Halt' to stop the notebook running. Note that, like a Python shell, all changes made to source code and data created will be lost (apart from whatever the last output was when the code block was ran).
 
 # ## The iDEA code
 
-# The iDEA code can solve the time-independent as well as the time-dependent Schrödinger equation for 2-3 electrons in one-dimensional real space. It can then be compared with known methods for solving many-body problems, such as various flavours of density functional theory and Many-Body Perturbation Theory.
+# The iDEA code can solve the time-independent as well as the time-dependent Schrödinger equation for 2-3 electrons in one-dimensional real space. It can then be compared with known methods for solving many-body problems, such as various flavours of density functional theory and many-body perturbation theory.
 # 
 # Compared to lattice models, such as the Anderson impurity model, this approach allows to treat exchange and correlation throughout the system and provides additional flexibility in bridging the gap between model systems and ab initio descriptions.
 # 
@@ -20,13 +22,12 @@
 
 # ### Setting up
 
-# All iDEA files are found in `my_idea` so this needs to be made the current directory.
+# All iDEA files are found in `iDEAL` so this needs to be made the current directory.
 # 
 # * `parameters.py` contains all the parameters for iDEA and editing the varaibles within this will change what system iDEA will solve for
 # * `iDEA/input.py` in the iDEA folder which will allow 'parameters.py' to be used. Hence:
 
-# In[1]:
-
+# In[2]:
 
 from iDEA.input import Input
 pm = Input.from_python_file('parameters.py')
@@ -36,25 +37,28 @@ pm = Input.from_python_file('parameters.py')
 
 # The parameters file decides exactly what simulation is run. The main parameters are the `run` and `system` parameters. Printing them to the screen, it can be seen what their default setting is. Do not worry about what they all mean for the moment as they will be described, in detail, later on.
 
-# In[2]:
-
+# In[3]:
 
 print(pm.run)
 print(pm.sys)
 
 
-# As can be seen above that the run parameters decide what method is used. It should be noted that multiple methods can be set to true and the iDEA code will do both in a single run.
+# As can be seen above, the run parameters decide what method is used. It should be noted that multiple methods can be set to true and the iDEA code will do both in a single run.
 # The system parameters can alter things like the number of electrons, grid size and maximum time. The potentials cannot be shown, as they are functions. The parameter file needs to be edited directly to change the function.
+# 
+# It is EXTREMELY important to set a run name before you start the simulation. This creates a subdirectory in which all the results are contained. If you do not set a run name, it will default to 'run_name' and before long, it will be hard to keep track of the results and will overwrite previous results of the same time. This is obviously not ideal.
 # 
 # The current setting is solving the time-independent Schrodinger equation for two electrons exactly, finding the ground-state many-electron wavefunction (by propagation in imaginary time) and using DFT with the non-interaction approximation.
 # 
 # The individual parameter values can be overwritten in iPython, and hence this notebook, like so:
 
-# In[5]:
-
+# In[4]:
 
 pm.run.LDA = False
 pm.sys.NE = 2
+# Create a new subdirectory to contain the results onwards from this. Note
+# once the kernal is restarted, all this setup needs to be repeated.
+pm.run.name = 'get_started_basics'
 
 
 # The iDEA code can now be executed. The object 'results' recieves the code output so that the results can be referenced in matplotlib for plotting.
@@ -63,36 +67,56 @@ pm.sys.NE = 2
 # 
 # Now to execute the code:
 
-# In[3]:
-
+# In[5]:
 
 pm.check()  # perform a few sanity checks
 results = pm.execute()
 
 
+# All the data from the simulation will be placed in the outputs directory, specifically: **outputs/run_name/raw** where run_name is the default subdirectory created if the used hasn't changed the
+
 # ##  2. Plotting the results
 
 # Matplotlib integrates well with python so this is recommended. As usual, this needs to be imported:
 
-# In[5]:
-
+# In[6]:
 
 import matplotlib.pyplot as plt
 
 
 # The electron density for the exact solution and DFT with the non-interaction will be plotted. The results are organised by **result.resultType.gs_resultType_info** where in this case, **resultType** is 'ext' (exact) and 'non' (non-interaction) and **info** is 'den' (electron density). *Colour-reference*
 
-# In[10]:
-
+# In[7]:
 
 plt.plot(results.ext.gs_ext_den, label='exact')
 plt.plot(results.non.gs_non_den, label='non')
 plt.legend()
 
 
-# In[11]:
+# In[8]:
+
+plt.show()
 
 
+# Although this is a perfectly acceptable way of plotting results, there is another way, which is in keeping more with the object-oriented approach that has, thus far and in the future, been taken. The results need to be imported as such:
+
+# In[9]:
+
+from iDEA.results import Results as rs
+# Make sure the run name is correct first
+pm.run.name = 'get_started_basics'
+# The data is imported as follows:
+example_plot_ext = rs.read('gs_ext_den',pm)
+example_plot_non = rs.read('gs_non_den',pm)
+
+# Note that a variable needs to be created containing the data. The string,
+# which is the name of the data file does not contain the file extension.
+# Note that pm is also an argument.
+
+# Next, plotted as follows:
+plt.plot(example_plot_ext,label='exact')
+plt.plot(example_plot_non,label='non')
+plt.legend()
 plt.show()
 
 
@@ -135,8 +159,7 @@ plt.show()
 # 
 # The potential functions, such as the external, T-D pertubation and imaginary pertubation potentials can be definined in a function, and set to the parameters as follows:
 
-# In[12]:
-
+# In[10]:
 
 def v_ext(x):
     'Initial external potential'
@@ -150,8 +173,7 @@ pm.sys.v_ext = v_ext
 # 
 # The time-dependent solutions can be found for exact and non-interacting. Let us now set up the parameters in mind for animating the results; extending the imaginary time propagation, number of grid points and total time. Bear in mind that, so the accuracy is not affected, if the imaginary time is increased, the number of grid points need to be scaled with it.
 
-# In[13]:
-
+# In[11]:
 
 pm.run.time_dependence = True
 pm.sys.grid= 301
@@ -168,8 +190,7 @@ pm.check()
 # 
 # This can again be done through matplotlib.
 
-# In[15]:
-
+# In[12]:
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -182,7 +203,6 @@ from iDEA.input import Input
 
 # In[16]:
 
-
 from iDEA.results import Results as rs
 file_name = 'td_ext_den'  #Change this to the ".db" file name you want to see, not including the .db part
 array = rs.read(file_name, pm)
@@ -194,7 +214,6 @@ print(np.shape(array))
 # The background now needs to be created for the animation. The x-axis corresponds to the grid and the y axis the density, in this case.
 
 # In[17]:
-
 
 fig, ax = plt.subplots()
 ax.set_xlim((0, pm.sys.grid))
@@ -223,7 +242,6 @@ animation.FuncAnimation(fig, animate, init_func=init,save_count =int(pm.sys.imax
 # Now that all of the basics have been covered, use the cell below to change the parameters to test your understanding.
 
 # In[ ]:
-
 
 # Use this cell to test understanding of what was covered so far
 
@@ -261,7 +279,6 @@ animation.FuncAnimation(fig, animate, init_func=init,save_count =int(pm.sys.imax
 # Perfom exact many-body calculations for the first excited state and calculate the relevent ELF.
 
 # In[ ]:
-
 
 pm.run.LDA = True
 pm.sys.NE = 3
@@ -308,7 +325,6 @@ results = pm.execute()
 
 
 
-
 # ### Mixed Localisation Potential
 # 
 # This is a new approximation for the Kohn-Sham potential, being particularly useful in systems with electron localisation. For certain systems, the single orbital approximation may be used for the Kohn-Sham potential. This, however, needs to be mixed with a reference potential; the mixed localisation potential (MLP). The parameters are as follows:
@@ -333,34 +349,30 @@ results = pm.execute()
 # * **hf.OPT**      - calculate the external potential from the HF density
 # 
 # ### Many-Body Perturbation Theory
-# Many-body Perturbation Theory is an alternive to density functional theory, based on Green's functions. The parameters are as follows:
+# Many-body perturbation theory (MBPT) is commonly used for calculating the electronic structure of matter. MBPT describes the response of a system to the addition or removal of electrons (or holes), and is most often used to compute exited-state properties of materials, such as optical absorption, photoemittion and inverse-photoemmition spectra and excitation single-particle energies. As the additional electron propagates though the system, the other electrons excite, creating electron-hole pairs, which in turn interact with the electrons in the system. These effects are described by the many-body Green’s function, G. The interaction of the added electron with the system is introduced into G by the irreducible self-energy, Σ. The response of the system’s electrons to the presence of the additional electron in the system leads to screening of the bare Coulomb interaction, v, owing to the electron correlation, termed W. The 'GW' approximation is an approximation to the systems self-energy. GW can be run in many flavours, including various approximations to the self-energy, polerisability and starting orbitals used.
 # 
-# * **mbpt.h0**          - starting hamiltonian: 'non', 'ha', 'hf', 'lda'
-# * **mbpt.tau_max**     - maximum value of imaginary time
-# * **mbpt.tau_npt**     - number of imaginary time points
-# * **mbpt.norb**        - number of orbitals to use
-# * **mbpt.flavour**     - 'G0w0', 'GW0', 'GW'
-# * **mbpt.den_tol**     - density tolerance of self-consistent algorithm
-# * **mbpt.max_iter**    - maximum iterations of self-consistent algorithm
-# * **mbpt.save_full**   - save space_time quantites e.g 'G0_iw', 'S1_it'
-# * **mbpt.save_diag**   - save diagonal components of space_time quantites
-# * **mbpt.w**           - compute 'full' W or 'dynamical' W
-# * **mbpt.hedin_shift** - perform Hedin shift
-# * **mbpt.RE**          - reverse engineer the MBPT density
-# * **mbpt.OPT**         - calculate the external potential for the MBPT density
-# 
-# 'GW' comes from the two main elements of MBPT: Green's functions and the self-screening interaction.
-# 
-# The flavour describes how accurate and, therefore, computational expensive the MBPT calculation is. G0W0 is the least expensive but least accurate (not converged), GW0 a middle ground and GW being the most accurate (fully converged) but very computationally expensive.
-# 
-# The Hedin shift compensates for the error in the band gap between the highest occupied state and the lowest unoccupied state.
+# * **mbpt.screening**            - Approximation to P ('dynamic'=dynamic RPA, 'static'=COSEX, 'instant'=instant RPA,'zero'=Hartree-Fock)
+# * **mbpt.flavour**              - Approximation to Sigma ('G0W0', 'GW0', 'GW')
+# * **mbpt.h0**                   - starting hamiltonian: 'non','ha','hf','lda2'
+# * **mbpt.ssc**                  - Correct the self-screening error using our local vertex to the self-energy
+# * **mbpt.tau_max**              - Maximum value of imaginary time
+# * **mbpt.tau_npt**              - Number of imaginary time points
+# * **mbpt.norb**                 - Number of orbitals to use
+# * **mbpt.hedin_shift**          - Perform Hedin shift
+# * **mbpt.den_tol**              - density tolerance of self-consistent algorithm
+# * **mbpt.max_iter**             - Maximum iterations of self-consistent algorithm
+# * **mbpt.save_full**            - Save space-time quantities (e.g. 'G0_iw', 'S1_it')
+# * **mbpt.save_zero**            - Save space-time quantities (e.g. 'G0_iw', 'S1_it') at iw/it=0
+# * **mbpt.save_diag**            - Save diaginal components of space-time quantities
+# * **mbpt.RE**                   - Reverse-engineer mbpt density to give DFT xc potential
+# * **mbpt.OPT**                  - Calculate the external potential for the MBPT density
+# * **mbpt.HFKS**                 - Reverse-engineer mbpt density to give HFKS c potential
 # 
 # #### Exercise 3
 # 
 # Compare the electron densities for a two electron system with the exact, non-interacting and MBPT with all the flavours.
 
 # In[ ]:
-
 
 
 
@@ -392,27 +404,6 @@ results = pm.execute()
 # Reverse engineer the Kohn-Sham potential from the exact density from one of the previous exercises.
 
 # In[ ]:
-
-
-
-
-
-# ### OPT?
-# 
-# The parameters are as follows:
-# 
-# * **opt.tol** - tolerance of the error in the density
-# * **opt.mu**  - 1st convergence parameter
-# * **opt.p**   - 2nd convergence parameter
-# 
-# For further details on iDEA on the function level, refer to the manual:
-# 
-# *Manual_link*
-
-# ## 7. Hints
-
-# In[ ]:
-
 
 
 

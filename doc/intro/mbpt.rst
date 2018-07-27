@@ -1,4 +1,4 @@
-iDEA MBPT (Many Body Perturbaton Theory)
+iDEA MBPT (Many Body Perturbation Theory)
 ========================================
 
 The purpose of the Many-Body Perturbation theory (MBPT) code is to produce the charge density of a ground-state system using the GW approximation (plus our novel vertex corrections) using

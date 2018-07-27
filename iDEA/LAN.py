@@ -1,20 +1,18 @@
-"""Computes time-dependent charge density of a system using the Landauer-Buttiker approximation. The code outputs the time-dependent charge and current density 
-of the system. 
+"""Computes time-dependent charge density of a system using the Landauer-Buttiker approximation. The code outputs the time-dependent charge and current density
+of the system.
 """
 from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
-
-
 import pickle
 import numpy as np
 import scipy.linalg as spla
 import scipy.sparse as sps
 import scipy.special as spec
 import scipy.sparse.linalg as spsla
-
 from . import RE_cython
 from . import results as rs
+
 
 # Function to read input
 def ReadInput(approx):
@@ -23,6 +21,7 @@ def ReadInput(approx):
    data = rs.Results.read(name, pm)
    V[0,:]=data
    return V
+
 
 # Function to calculate the ground-state potential
 def CalculateGroundstate(V,sqdx,T):
@@ -34,8 +33,9 @@ def CalculateGroundstate(V,sqdx,T):
        Psi[i,0,:] = U[:,i]/sqdx                          # Normalise
    n = np.zeros((pm.sys.imax,pm.sys.grid),dtype='float')
    for i in range(pm.sys.NE):
-       n[0,:]+=abs(Psi[i,0,:])**2                        # Calculate the density from the single-particle wavefunctions 
-   return n,Psi 
+       n[0,:]+=abs(Psi[i,0,:])**2                        # Calculate the density from the single-particle wavefunctions
+   return n,Psi
+
 
 # Function to extrapolate the current density from regions of low density to the system's edges
 def ExtrapolateCD(J,j,n,upper_bound):
@@ -67,6 +67,7 @@ def ExtrapolateCD(J,j,n,upper_bound):
    J[:]=n[j,:]*U[:]
    return J
 
+
 # Function to solve TDKSEs using the Crank-Nicolson method
 def SolveKSE(V,Psi,j,frac1,frac2,z_change):
    Mat=sps.lil_matrix((pm.sys.grid,pm.sys.grid),dtype='complex')
@@ -85,6 +86,7 @@ def SolveKSE(V,Psi,j,frac1,frac2,z_change):
       z_change=z_change*(-1)+1
    return Psi,z_change
 
+
 # Function to calculate the current density
 def CalculateCurrentDensity(n,upper_bound,j):
    J = np.zeros(pm.sys.grid, dtype=np.float)
@@ -92,6 +94,7 @@ def CalculateCurrentDensity(n,upper_bound,j):
    if(pm.sys.im == 0):
        J=ExtrapolateCD(J,j,n,upper_bound)
    return J
+
 
 # Main function
 def main(parameters):
@@ -110,7 +113,7 @@ def main(parameters):
    alpha=1                                                # Strength of noise control
    frac1=1.0/3.0
    frac2=1.0/24.0
-   
+
    # Initalise matrices
    sd = pm.space.second_derivative_band
    nbnd = len(sd)

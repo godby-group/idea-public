@@ -5,7 +5,7 @@ Getting iDEA
 Installation requirements
 -------------------------
 
- * `Python <http://www.python.org>`_ 2.7 or later
+ * `Python <http://www.python.org>`_ 3.3 or later
  * `numpy <http://www.numpy.org>`_ 1.10 or later
  * `scipy <http://www.scipy.org>`_ 0.17 or later
  * `Cython <http://cython.org>`_ 0.22 or later

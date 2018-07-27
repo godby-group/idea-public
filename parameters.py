@@ -136,7 +136,6 @@ hf = InputSection()
 hf.fock = 1                          #: Include Fock term (0 = Hartree approximation, 1 = Hartree-Fock approximation)
 hf.con = 1e-12                       #: Tolerance
 hf.nu = 0.9                          #: Mixing term
-hf.save_eig = True                   #: Save eigenfunctions and eigenvalues of Hamiltonian
 hf.RE = False                        #: Reverse-engineer hf density
 hf.OPT = False                       #: Calculate the external potential for the HF density
 hf.HFKS = False                      #: Reverse-engineer hf density to give HFKS c potential
@@ -153,7 +152,6 @@ hyb.alpha = 1.0                      #: If single alpha run, this defines the al
 hyb.mix = 0.5                        #: Mixing parameter for linear  mixing (float in [0,1])
 hyb.tol = 1e-12                      #: convergence tolerance in the density
 hyb.max_iter = 10000                 #: Maximum number of self-consistency iterations
-hyb.save_eig = True                  #: Save eigenfunctions and eigenvalues of Hamiltonian
 hyb.RE = False                       #: Calculate the external potential for the HYB density
 hyb.OPT = False                      #: Calculate the external potential for the LDA density
 hyb.HFKS = False                     #: Reverse-engineer hyb density to give HFKS c potential
@@ -161,7 +159,7 @@ hyb.HFKS = False                     #: Reverse-engineer hyb density to give HFK
 
 ### MBPT parameters
 mbpt = InputSection()
-mbpt.screening = 'dynamic'           #: Approximation to P ('dynamic'=dynamic RPA, 'static'=COSEX, 'instant'=instant RPA,'zero'=Hartree-Fock)
+mbpt.screening = 'dynamic'           #: Approximation to P ('dynamic'=dynamic RPA, 'static'=COSEX, 'inertial'=inertial RPA,'zero'=Hartree-Fock)
 mbpt.flavour = 'GW'                  #: Approximation to Sigma ('G0W0', 'GW0', 'GW')
 mbpt.h0 = 'non'                      #: starting hamiltonian: 'non','ha','hf','lda2'
 mbpt.ssc = False                     #: Correct the self-screening error using our local vertex to the self-energy
@@ -210,7 +208,7 @@ opt.mu = 1.0                         #: 1st convergence parameter
 opt.p = 0.05                         #: 2nd convergence parameter
 
 
-### RE parameters
+### HFKS parameters
 hfks = InputSection()
 hfks.mu = 1.0                        #: 1st convergence parameter in the ground-state reverse-engineering algorithm
 hfks.p = 0.05                        #: 2nd convergence parameter in the ground-state reverse-engineering algorithm
