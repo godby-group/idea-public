@@ -1,6 +1,9 @@
 Density Functional Theory (DFT)
 ===============================
 
+The following gives a brief overview of density functional theory, for a 
+more detailed set of notes on the topic, please see `these notes <to_be_added_soon>`_.
+
 A functional is a function of a function. This may sound like a scary
 word, but you've definitely worked with them before! (e.g. an integral
 is a functional :math:`\int f(x) dx`). The notation we're going to use
@@ -125,7 +128,7 @@ is worth emphasising that this equation is, in principal, exact.
 
 The KS potential is given by
 
-.. math::  V_{KS}({x}) = V_{ext}({x})+ V_H({x}) + V_x({x}) + V_c({x}), 
+.. math::  V_{KS}({x}) = V_{ext}({x})+ V_H({x}) + V_x({x}) + V_c({x}),
 
 where :math:`V_{ext}` is the external potential arising from the
 electron's interaction with the nuclei, :math:`V_H` is the Hartree
@@ -184,7 +187,7 @@ approximately correct doesn't change the form of the KS potential too
 drastically, which gives accruate KS oribitals and hence the electron
 density given by
 
-.. math:: n({x}) = \sum_i \mid\psi_i({x}) \mid ^2. 
+.. math:: n({x}) = \sum_i \mid\psi_i({x}) \mid ^2.
 
 The alert reader may notice a problem here. We need the KS oribitals to
 get the density by the above equation. To get the orbitals we need to
@@ -212,14 +215,14 @@ In the LDA, the functional only depends on the place where we are
 evaluating the density (hense the 'local' part of its name). The energy
 functional is given by
 
-.. math::  E_{xc}^{LDA}[n({x})] = \int \varepsilon_{xc}^{HEG}(n) \ n({x}) \ d{x}, 
+.. math::  E_{xc}^{LDA}[n({x})] = \int \varepsilon_{xc}^{HEG}(n) \ n({x}) \ d{x},
 
 where :math:`\varepsilon_{xc}^{HEG}(n)` is the exchange-correlation
 energy per particle for the homogenous electron gas. Armed with this
 functional, we can get :math:`V_{xc}^{LDA}` by using a functional
 derivative, which is written as
 
-.. math::  V_{xc}^{LDA} = \frac{\delta E_{xc}^{LDA}}{\delta n}. 
+.. math::  V_{xc}^{LDA} = \frac{\delta E_{xc}^{LDA}}{\delta n}.
 
 Once, we have :math:`V_{xc}^{LDA}`, we can get the KS potential and go
 through the process of finding a self consistent solution.
@@ -232,5 +235,3 @@ Rev. 136, B864
 
 [2] "Self-Consistent Equations Including Exchange and Correlation
 Effects" W. Kohn and L. J. Sham (1965) Phys. Rev. 140, A1133
-
-

@@ -1,11 +1,10 @@
 Running iDEA
 ============
 
-iDEA is slowly evolving from a stand-alone python script to a python package.
-For this reason there are different ways of running iDEA.
+As it is a python package there are many different ways of running iDEA.
 
-The old-fashioned way
----------------------
+Using the iDEA code directly
+----------------------------
 Simply edit the parameters file :code:`parameters.py` and run
 
 .. code-block:: bash
@@ -17,11 +16,10 @@ make sure to choose different run names for different inputs
 
 .. literalinclude:: /../parameters.py
     :lines: 1-20
-    :emphasize-lines: 7
+    :emphasize-lines: 9
 
-
-Checking python knows about iDEA
---------------------------------
+Using the iDEA package in a python script
+-----------------------------------------
 Since iDEA is designed as a python package, it can be run from
 everywhere, if you let your python installation know where the package is located.
 During the installation of iDEA the iDEAL directory should have been
@@ -36,9 +34,6 @@ added to PYTHONPATH. To test this has worked simply perform the following
 
 Here, we are running iDEA much in the same way as before but your
 :code:`$test_folder` can be located anywhere on your computer.
-
-Using the iDEA package in a python script
------------------------------------------
 
 The main advantage of having an iDEA python package is that you can access its
 functionality directly in a python script.
@@ -55,6 +50,31 @@ In order to run this example, do
     cd $path_to_iDEA/examples/ex02
     python run.py  # assuming you already added iDEA to your PYTHONPATH
 
-An easy way to find out what kind of results are returned by iDEA is to work in
-the interactive python shell (:code:`ipython`) and to use the autocompletion
-feature on the :code:`results` object.
+
+Using the iDEA package in an ipython shell
+------------------------------------------
+As iDEA is a python package it can also be run from the interactive python shell
+(:code:`ipython`). This is particularly useful as ipython has a convenient auto-complete
+feature. The following example can be run in an ipython shell line-by-line.
+
+.. code-block:: python
+
+    from iDEA.input import Input
+
+    # import parameters file
+    pm = Input.from_python_file('parameters.py')
+
+    # change parameters
+    pm.run.EXT = True
+    pm.run.NON = True
+    print(pm.run)
+
+    # run jobs
+    results = pm.execute()
+
+    # plot the relevant results
+    x = pm.space.grid
+    plt.plot(x, results.ext.gs_ext_den, label='exact')
+    plt.plot(x, results.non.gs_non_den, label='non-interacting')
+    plt.legend()
+    plt.show()

@@ -1,3 +1,10 @@
+"""Computes ground-state and time-dependent charge density in the Hybrid Hartree-Fock-LDA approximation.
+The code outputs the ground-state charge density, the energy of the system and
+the single-quasiparticle orbitals.
+"""
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 import copy
 import pickle
 import numpy as np
@@ -26,6 +33,8 @@ def hamiltonian(pm, eigf, density, alpha, occupations, perturb=False):
       electron density
    alpha  float
       HF-LDA mixing parameter (1 = all HF, 0 = all LDA)
+   occupations: array_like
+      orbital occupations
    perturb: bool
       If True, add perturbation to external potential (for time-dep. runs)
 
@@ -33,28 +42,27 @@ def hamiltonian(pm, eigf, density, alpha, occupations, perturb=False):
       Hamiltonian matrix
     """
 
-   # construct kinetic energy
+   # Construct kinetic energy
    sd = pm.space.second_derivative
    sd_ind = pm.space.second_derivative_indices
    K = -0.5*sps.diags(sd, sd_ind, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
 
-   # construct external potential
+   # Construct external potential
    Vext = sps.diags(pm.space.v_ext, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
    if perturb == True:
        Vext += sps.diags(pm.space.v_pert, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
 
-   # construct hartree potential
+   # Construct hartree potential
    Vh = iDEA.HF.hartree(pm, density)
 
-   # construct LDA Vxc
+   # Construct LDA Vxc
    if pm.hyb.seperate == False:
       Vxc_LDA = iDEA.LDA.VXC(pm, density, pm.hyb.seperate)
    if pm.hyb.seperate == True:
       Vxc_LDA, Vx_LDA, Vc_LDA = iDEA.LDA.VXC(pm, density, pm.hyb.seperate)
 
+   # Construct the fock operator
    F = np.zeros((pm.sys.grid,pm.sys.grid), dtype='complex')
-
-   # construct the fock operator
    if alpha != 0.0:
       for i in range(pm.sys.NE):
          orb = copy.deepcopy(eigf[:,i])*np.sqrt(occupations[i])
@@ -163,6 +171,7 @@ def calc_with_alpha(pm, alpha, occupations):
       # Calculate charges on grid:
       grid_charge = np.sum(density)*pm.sys.deltax
 
+   # Print iteration values
    pm.sprint('\nHYB: Total charge on grids: {:10.9f}'.format(grid_charge), 1, newline=True)
    pm.sprint('HYB: total energy = {0} converged in {1} iterations'.format(E, counter), 1, newline=True)
    pm.sprint('HYB: HOMO-LUMO gap = {0}\n'.format(eigv[pm.sys.NE]-eigv[pm.sys.NE-1]), 1, newline=True)
@@ -170,6 +179,8 @@ def calc_with_alpha(pm, alpha, occupations):
 
 
 def save_results(pm, results, density, E, eigf, eigv, alpha):
+   r"""Saves hybrid results to outputs directory
+   """
    results.add(density,'gs_hyb{:05.3f}_den'.format(alpha).replace('.','_'))
    results.add(E,'gs_hyb{:05.3f}_E'.format(alpha).replace('.','_'))
    if pm.non.save_eig:
@@ -193,7 +204,6 @@ def optimal_alpha(pm, results, alphas, occupations):
    occupations: array_like
       orbital occupations
    """
-
    pm.sprint('HYB: Finding optimal value of alpha', 1, newline=True)
 
    # Running E(N) calculations:
@@ -253,7 +263,7 @@ def n_minus_one_run(pm, results, alphas, occupations):
       range of alphas to use
    occupations: array_like
       orbital occupations
-    """
+   """
    energies  = np.array([])
    eigsLUMO  = np.array([])
    for alpha in alphas:
@@ -266,14 +276,10 @@ def fractional_run(pm, results, occupations, fractions):
    energies = np.array([])
    eigsHOMO = np.array([])
    eigsLUMO = np.array([])
-
    pm.sprint('\nHYB: running fractional numbers of electrons from {} to {}\n'.format(fractions[0], fractions[-1]), 1, newline=True)
-
    for num_electrons in fractions:
       pm.sprint('HYB: Current total number of electrons = {:05.4f}'.format(num_electrons), 1, newline=True)
-
       pm.sys.NE = int(np.ceil(num_electrons))
-
       if (pm.sys.NE == 0):
          pm.sys.NE = 1
          occupations = np.zeros(pm.sys.NE)
@@ -286,7 +292,6 @@ def fractional_run(pm, results, occupations, fractions):
       eigsHOMO = np.append(eigsHOMO, eigv[pm.sys.NE - 1])
       eigsLUMO = np.append(eigsLUMO, eigv[pm.sys.NE])
       energies = np.append(energies, energy)
-
    results.add(fractions,'gs_hyb_frac{:05.3f}'.format(pm.hyb.alpha).replace('.','_'))
    results.add(eigsHOMO, 'gs_hyb_frac{:05.3f}_HOMO'.format(pm.hyb.alpha).replace('.','_'))
    results.add(eigsLUMO, 'gs_hyb_frac{:05.3f}_LUMO'.format(pm.hyb.alpha).replace('.','_'))
@@ -312,7 +317,7 @@ def main(parameters):
    pm.setup_space()
    results = rs.Results()
 
-   # always use three electron LDA:
+   # Choose type of LDA to be ran:
    if(pm.hyb.seperate == True):
       pm.lda.NE = 'heg'
    if(pm.hyb.seperate == False):
@@ -347,15 +352,12 @@ def main(parameters):
       # Starting values for wave functions, density
       if pm.hyb.alpha == 'o':
           raise ValueError('HYB: ERROR! Cannot optimise hybrid in time-dependence, please give a numerical value from alpha.')
-
       n_t = np.empty((pm.sys.imax, pm.sys.grid), dtype=np.float)
       n_t[0] = density
       H, Vh, Vxc_LDA, F = hamiltonian(pm, eigf, density, pm.hyb.alpha, perturb=False)
-
       for i in range(1, pm.sys.imax):
          string = 'HYB: evolving through real time: t = {:.4f}'.format(i*pm.sys.deltat)
          pm.sprint(string, 1, newline=False)
-
          eigf = iDEA.HF.crank_nicolson_step(pm, eigf, H)
          density = iDEA.HF.electron_density(pm, eigf)
          H, Vh, Vxc_LDA, F = hamiltonian(pm, eigf, density, pm.hyb.alpha, perturb=True)
