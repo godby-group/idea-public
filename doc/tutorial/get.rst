@@ -33,7 +33,7 @@ Updating iDEA
 .. code-block:: bash
 
    # Pull all changes from central git repository
-   git pull
+   git pull origin master
 
    # Remove the compiled cython modules
    python setup.py clean --all
