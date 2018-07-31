@@ -272,8 +272,6 @@ class TestExtrapolation(unittest.TestCase):
             return 0.5*(0.25**2)*(x**2)
         pm.sys.v_ext = v_ext
 
-        pm.non.save_eig = True
-
         pm.mbpt.norb = 5 
 
         self.pm = pm

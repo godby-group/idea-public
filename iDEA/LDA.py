@@ -742,9 +742,8 @@ def main(parameters):
    if(pm.lda.NE == 'heg'):
        results.add(E_x, 'gs_lda{}_Ex'.format(pm.lda.NE))
        results.add(E_c, 'gs_lda{}_Ec'.format(pm.lda.NE))
-   if pm.lda.save_eig:
-       results.add(waves.T,'gs_lda{}_eigf'.format(pm.lda.NE))
-       results.add(energies,'gs_lda{}_eigv'.format(pm.lda.NE))
+   results.add(waves.T,'gs_lda{}_eigf'.format(pm.lda.NE))
+   results.add(energies,'gs_lda{}_eigv'.format(pm.lda.NE))
 
    if pm.run.save:
       results.save(pm)
