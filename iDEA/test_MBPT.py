@@ -20,6 +20,7 @@ class TestFFT(unittest.TestCase):
     def setUp(self):
         """ Sets up harmonic oscillator system """
         pm = input.Input()
+        pm.run.name = 'unittest'
         pm.mbpt.tau_npt = 161
         pm.mbpt.tau_max = 10
         self.pm = pm
@@ -258,6 +259,7 @@ class TestExtrapolation(unittest.TestCase):
     def setUp(self):
         """ Sets up harmonic oscillator system """
         pm = input.Input()
+        pm.run.name = 'unittest'
         pm.run.save = False
         pm.run.verbosity = 'low'
 

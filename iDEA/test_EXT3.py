@@ -22,7 +22,8 @@ class TestHarmonicOscillator(unittest.TestCase):
 
     def setUp(self):                                                                                       
         """ Sets up harmonic oscillator system """                                                         
-        pm = input.Input()                                                                                 
+        pm = input.Input()         
+        pm.run.name = 'unittest'                                                                        
         pm.run.save = False                                                                                
         pm.run.verbosity = 'low'                                                                           
                                                                                                        
@@ -32,8 +33,7 @@ class TestHarmonicOscillator(unittest.TestCase):
         pm.sys.xmax = 7.5                 #: Size of the system                                            
         pm.sys.tmax = 0.1                 #: Total real time                                               
         pm.sys.imax = 101                 #: Number of real time iterations (NB: deltat = tmax/(imax-1))   
-        pm.sys.acon = 1.0                 #: Smoothing of the Coloumb interaction                          
-        pm.sys.interaction_strength = 1.0 #: Scales the strength of the Coulomb interaction                
+        pm.sys.acon = 1.0                 #: Smoothing of the Coloumb interaction                                       
                                                                                                        
         def v_ext(x):                                                                                      
             """Initial external potential"""                                                               
@@ -52,9 +52,9 @@ class TestHarmonicOscillator(unittest.TestCase):
         pm.ext.rtol_solver = 1e-12        #: Tolerance of linear solver in real time propagation
         pm.ext.itmax = 20.0               #: Total imaginary time
         pm.ext.iimax = 1e3                #: Imaginary time iterations
-        pm.ext.initial_gspsi = 'qho'      #: Initial 2 electron ground-state wavefunction                                                                     
-                                  
-        pm.setup_space()                                                                     
+        pm.ext.ideltat = pm.ext.itmax/pm.ext.iimax #: Imaginary time step (DERIVED)
+        pm.ext.initial_gspsi = 'qho'      #: Initial 2 electron ground-state wavefunction                                                                                                       
+                                                                    
         self.pm = pm                                                                                       
                                                                                                        
     def test_non_interacting_system_1(self):                                                               
@@ -67,15 +67,17 @@ class TestHarmonicOscillator(unittest.TestCase):
                                                                                                        
     def test_interacting_system_1(self):                                                                   
         """Test interacting system"""                                                                      
-        pm = self.pm                                                                                       
+        pm = self.pm  
+        pm.sys.interaction_strength = 1.0 #: Scales the strength of the Coulomb interaction                                                                                     
         results = EXT3.main(pm)                                                                            
-                                                                                                         
+                                                                                                 
         nt.assert_allclose(results.gs_ext_E, 3.188, atol=1e-3)                                            
                                                                                                        
     def test_time_dependence(self):                                                                        
         """Test real time propagation"""                                                                   
-        pm = self.pm                                                                                       
-        pm.run.time_dependence = True     #: whether to run time-dependent calculation                                                                    
+        pm = self.pm                                                                                      
+        pm.run.time_dependence = True     #: whether to run time-dependent calculation 
+        pm.sys.interaction_strength = 1.0 #: Scales the strength of the Coulomb interaction                                                                   
         results = EXT3.main(pm)                                                                            
         den_gs = results.gs_ext_den                                                                        
         den_td = results.td_ext_den                                                                        
@@ -99,14 +101,14 @@ class TestDoubleWell(unittest.TestCase):
                                                                                                  
     def setUp(self):                                                                             
         """ Sets up double-well system """                                               
-        pm = input.Input()                                                                       
+        pm = input.Input()  
+        pm.run.name = 'unittest'                                                                     
         pm.run.save = False                                                                      
         pm.run.verbosity = 'low'                                                                 
                                                                                                  
         pm.sys.NE = 3                     #: Number of electrons                                 
-        pm.sys.grid = 51                  #: Number of grid points (must be odd)                 
-        pm.sys.stencil = 3                #: Discretisation of 2nd derivative (3 or 5 or 7)      
-        pm.sys.xmax = 15.0                #: Size of the system                                  
+        pm.sys.grid = 51                  #: Number of grid points (must be odd)                     
+        pm.sys.xmax = 15.0                #: Size of the system                                   
         pm.sys.acon = 1.0                 #: Smoothing of the Coloumb interaction                
         pm.sys.interaction_strength = 1.0 #: Scales the strength of the Coulomb interaction      
                                                                                                  
@@ -115,21 +117,22 @@ class TestDoubleWell(unittest.TestCase):
             return -1.2*np.exp((-1/125)*(x-7.0)**4) - 0.9*np.exp((-1/10)*(x+6.0)**2)             
         pm.sys.v_ext = v_ext                                                                     
 
-        pm.ext.itol = 1e-6                #: Tolerance of imaginary time propagation                 
+        pm.ext.itol = 1e-7                #: Tolerance of imaginary time propagation                 
         pm.ext.itol_solver = 1e-12        #: Tolerance of linear solver in imaginary time propagation     
-        pm.ext.itmax = 20.0               #: Total imaginary time                                    
-        pm.ext.iimax = 1e3                #: Imaginary time iterations                               
+        pm.ext.itmax = 100.0              #: Total imaginary time                                    
+        pm.ext.iimax = 1e4                #: Imaginary time iterations
+        pm.ext.ideltat = pm.ext.itmax/pm.ext.iimax #: Imaginary time step (DERIVED)                               
         pm.ext.initial_gspsi = 'non'      #: Initial 2 electron ground-state wavefunction                                                            
-                          
-        pm.setup_space()                                                                       
+                                                                   
         self.pm = pm                                                                             
                                                                                                  
     def test_stencil_three(self):                                                                
-        """Test 3-point stencil"""                                                               
-        pm = self.pm                                                                             
+        """Test 3-point stencil"""                                                             
+        pm = self.pm              
+        pm.sys.stencil = 3                #: Discretisation of 2nd derivative (3 or 5 or 7)                                                              
         results = EXT3.main(pm)                                                                  
-                                                                                                 
-        nt.assert_allclose(results.gs_ext_E, -2.0848, atol=1e-4)                                
+                                                                                              
+        nt.assert_allclose(results.gs_ext_E, -2.0846, atol=1e-4)                                
                                                                                                  
     def test_stencil_five(self):                                                                 
         """Test 5-point stencil"""                                                               
@@ -137,12 +140,12 @@ class TestDoubleWell(unittest.TestCase):
         pm.sys.stencil = 5                #: Discretisation of 2nd derivative (3 or 5 or 7)                                                    
         results = EXT3.main(pm)                                                                  
                                                                                                  
-        nt.assert_allclose(results.gs_ext_E, -2.0760, atol=1e-4)                                
+        nt.assert_allclose(results.gs_ext_E, -2.0758, atol=1e-4)                                
                                                                                                  
     def test_stencil_seven(self):                                                                
-        """Test 7-point stencil"""                                                               
+        """Test 7-point stencil"""                                                              
         pm = self.pm      
         pm.sys.stencil = 7                #: Discretisation of 2nd derivative (3 or 5 or 7)                                                         
         results = EXT3.main(pm)                                                                  
                                                                                                  
-        nt.assert_allclose(results.gs_ext_E, -2.0756, atol=1e-4)                                
+        nt.assert_allclose(results.gs_ext_E, -2.0753, atol=1e-4)                                

@@ -287,6 +287,7 @@ def main(pm):
     returns object
         Results object
     """
+    pm.setup_space()
     #Check that number of electrons = 2 (only works for 2)
     if (pm.sys.NE != 2):
         pm.sprint("met: Warning: number of electrons not 2 (only works for 2)")

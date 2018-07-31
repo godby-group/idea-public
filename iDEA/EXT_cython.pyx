@@ -33,7 +33,7 @@ def wavefunction_two(object pm, np.ndarray eigenstate_1, np.ndarray eigenstate_2
     cdef int i, j, k
     cdef int grid = pm.space.npt
     cdef double normalisation
-    cdef np.ndarray wavefunction_reduced = np.zeros(int(grid*(grid+1)/2), dtype=np.float)
+    cdef np.ndarray wavefunction_reduced = np.zeros(int(round(grid*(grid+1)/2)), dtype=np.float)
 
     # Normalisation factor
     normalisation = 1.0/np.sqrt(2.0)
@@ -83,7 +83,7 @@ def wavefunction_three(object pm, np.ndarray eigenstate_1, np.ndarray eigenstate
     cdef int i, j, k, l
     cdef int grid = pm.space.npt
     cdef double normalisation, perm_1, perm_2, perm_3
-    cdef np.ndarray wavefunction_reduced = np.zeros(int(grid*(grid+1)*(grid+2)/6), dtype=np.float)
+    cdef np.ndarray wavefunction_reduced = np.zeros(int(round(grid*(grid+1)*(grid+2)/6)), dtype=np.float)
 
     # Normalisation factor
     normalisation = 1.0/np.sqrt(6.0)

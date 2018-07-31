@@ -19,6 +19,7 @@ class resultsTest(unittest.TestCase):
     def setUp(self):
         """ Sets up harmonic oscillator system """
         pm = input.Input()
+        pm.run.name = 'unittest'
         self.pm = pm
 
     def test_save_1(self):

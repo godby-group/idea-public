@@ -302,9 +302,8 @@ def non_approx(pm):
     """
     # Construct the single-electron Hamiltonian
     K = NON.construct_K(pm)
-    V = NON.construct_V(pm, 0)
     H = copy.copy(K)
-    H[0,:] += V[:]
+    H[0,:] += pm.space.v_ext[:]
 
     # Solve the single-electron TISE
     eigenvalues, eigenfunctions = spla.eig_banded(H, lower=True, select='i', select_range=(0,1))
@@ -572,7 +571,7 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced, expansi
                 string = 'EXT: ground-state converged' 
             else: 
                 string = 'EXT: {} excited state converged'.format(excited_state)
-            pm.sprint(string, 1, newline=True)
+            pm.sprint(string, 1)
         string = '------------------------------------------------------------------'
         if(i % 1000 == 0):
             pm.sprint(string, 0)

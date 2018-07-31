@@ -28,6 +28,10 @@ def construct_antisymmetry_matrices(pm):
     r"""Constructs the reduction and expansion matrices that are used to exploit the exchange 
     antisymmetry of the wavefunction.
 
+    .. math::
+
+        \Psi(x_{1},x_{2},x_{3}) = -\Psi(x_{2},x_{1},x_{3}) = \Psi(x_{2},x_{3},x_{1})
+
     parameters
     ----------
     pm : object
@@ -311,13 +315,12 @@ def non_approx(pm):
     returns array_like and array_like and array_like
         1D array of the 1st non-interacting eigenstate, indexed as eigenstate_1[space_index].
         1D array of the 2nd non-interacting eigenstate, indexed as eigenstate_2[space_index]. 
-        1D array of the 3rd non-interacting eigenstate, indexed as eigenstate_2[space_index].
+        1D array of the 3rd non-interacting eigenstate, indexed as eigenstate_3[space_index].
     """
     # Construct the single-electron Hamiltonian
     K = NON.construct_K(pm)
-    V = NON.construct_V(pm, 0)
     H = copy.copy(K)
-    H[0,:] += V[:]
+    H[0,:] += pm.space.v_ext[:]
 
     # Solve the single-electron TISE
     eigenvalues, eigenfunctions = spla.eig_banded(H, lower=True, select='i', select_range=(0,2))
@@ -573,7 +576,7 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced, expansi
             pm.sprint(string, 0)
         else:
             pm.sprint(string, 0, savelog=False) 
-        if(pm.run.verbosity=='default'):
+        if(pm.run.verbosity == 'default'):
             string = 'EXT: t = {:.5f}, convergence = {}'.format(i*pm.ext.ideltat, wavefunction_convergence)
             if(i % 1000 == 0):
                 pm.sprint(string, 1, newline=False)
@@ -753,8 +756,7 @@ def main(parameters):
     wavefunction_reduced = initial_wavefunction(pm, 0)
 
     # Propagate through imaginary time
-    energy, wavefunction = solve_imaginary_time(pm, A_reduced, C_reduced,
-                           wavefunction_reduced, expansion_matrix) 
+    energy, wavefunction = solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced, expansion_matrix) 
  
     # Calculate ground-state density
     wavefunction_3D = wavefunction.reshape(pm.space.npt, pm.space.npt, pm.space.npt)

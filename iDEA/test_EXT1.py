@@ -22,6 +22,7 @@ class TestHarmonicOscillator(unittest.TestCase):
     def setUp(self):
         """ Sets up harmonic oscillator system """
         pm = input.Input()
+        pm.run.name = 'unittest'
         pm.run.save = False
         pm.run.verbosity = 'low'
         pm.run.time_dependence = True
@@ -48,7 +49,6 @@ class TestHarmonicOscillator(unittest.TestCase):
         
         pm.ext.rtol_solver = 1e-12        #: Tolerance of linear solver in real time propagation
 
-        pm.setup_space()
         self.pm = pm
 
     def test_system(self):
@@ -87,26 +87,26 @@ class TestAtom(unittest.TestCase):
                                                                                                          
     def setUp(self):                                                                                     
         """ Sets up atomic system """                                                       
-        pm = input.Input()                                                                               
+        pm = input.Input()      
+        pm.run.name = 'unittest'                                                                         
         pm.run.save = False                                                                              
         pm.run.verbosity = 'low'                                                                        
                                                                                                 
         pm.sys.NE = 1                     #: Number of electrons                                        
-        pm.sys.grid = 31                  #: Number of grid points (must be odd)                        
-        pm.sys.stencil = 3                #: Discretisation of 2nd derivative (3 or 5 or 7)             
+        pm.sys.grid = 31                  #: Number of grid points (must be odd)                                   
         pm.sys.xmax = 12.0                #: Size of the system                  
                                                                                                 
         def v_ext(x):                                                                                   
             """Initial external potential"""                                                            
             return -1.0/(abs(0.1*x)+1)                                          
         pm.sys.v_ext = v_ext                                                                                 
-          
-        pm.setup_space()                                                                                      
+                                                                                              
         self.pm = pm                                                                                    
                                                                               
     def test_stencil_three(self):
         """Test 3-point stencil""" 
         pm = self.pm
+        pm.sys.stencil = 3                #: Discretisation of 2nd derivative (3 or 5 or 7)
         results = EXT1.main(pm)
 
         nt.assert_allclose(results.gs_ext_E, -0.84927, atol=1e-5)
