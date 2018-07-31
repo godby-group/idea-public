@@ -52,7 +52,6 @@ Changelog
    * Added "space grid" class.
      The Input object now provides some useful grids that should be
      useful in almost any iDEA calculation
-
      pm.space.grid    # the spatial grid
      pm.space.v_ext   # the external potential on the grid
      pm.space.v_int   # the coulomb interaction on the grid
@@ -60,7 +59,6 @@ Changelog
      Mike originally fitted the e_xc(n) and then put in
      (numerically computed) values for V_xc(n) that were
      capped after the 2nd or 3rd digit.
-
      We now use only *one* set of parameters, with all others
      derived directly from them (accurate to machine precision).
    * iDEA.py renamed to run.py

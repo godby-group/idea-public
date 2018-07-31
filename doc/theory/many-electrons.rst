@@ -1,6 +1,9 @@
 Many-electron Quantum Mechanics
 ===============================
 
+The following gives a brief overview of many-electron quantum mechanics, for
+a more detailed set of notes on the topic, please see `these notes <to_be_added_soon>`_.
+
 Motivation
 ----------
 
@@ -8,7 +11,7 @@ The theory of interacting electrons is extremely rich and complex. This, along
 with recent advances in computing capabilities, means that more than 10,000
 papers are published on electronic structure theory each year. This research is
 yielding novel understanding in a vast range of fields including physics,
-chemistry and materials science. 
+chemistry and materials science.
 
 This is because, on the atomic level, electrons are the *glue* of matter and if
 we understand how electrons move in their environment *and* how they interact
@@ -19,13 +22,13 @@ properties of materials.
 Notation
 ---------
 
-We are going to use `Hartree atomic units <https://en.wikipedia.org/wiki/Atomic_units>` where
+We are going to use `Hartree atomic units <https://en.wikipedia.org/wiki/Atomic_units>`_ where
 :math:`e = \hbar = m_e = 4 \pi \varepsilon_0 = 1` which saves a lot of
 clutter! This means the standard unit of length is the Bohr radius
 :math:`a_0 = 5.29 \times 10^{-11} \mathrm{m}`, and the unit of energy is
 the Hartree :math:`E_H = 2\mathrm{Ry} = 27.2 \mathrm{eV}`. Also be aware that
 capital :math:`\Psi` refers to a many-body wave function whereas lower
-case :math:`\psi` refers to single particle wave functions. 
+case :math:`\psi` refers to single particle wave functions.
 
 Below, we keep everything in 3 dimensions to keep things general, but be aware
 that iDEA works in 1D only.
@@ -54,8 +57,8 @@ so we simply shift our zero of energy to absorb that term.
 in the case of electrons moving in a potential set up by the nuclei,
 :math:`V_{ext} = -\sum_{i,I} \frac{Z_I}{\mid \textbf{r}_i - \textbf{R}_I\mid }`.
 :math:`V_{ee}` is the electron-electron interaction which in 3
-dimensions takes the form 
-:math:`V_{ee} =\frac{1}{2} \sum_{i \neq j} \frac{1}{\mid \textbf{r$_i$} - \textbf{r$_j$} \mid}`, 
+dimensions takes the form
+:math:`V_{ee} =\frac{1}{2} \sum_{i \neq j} \frac{1}{\mid \textbf{r$_i$} - \textbf{r$_j$} \mid}`,
 but of course has a different 1D form which is implemented in the iDEA code.
 
 The difficulty arises with the third term, the electron-electron
@@ -104,9 +107,9 @@ determinant":
 
 .. math::
 
-    \Psi(\textbf{r}_1, \textbf{r}_2, \ ... , \textbf{r}_N) = \frac{1}{\sqrt{ N!}} 
+    \Psi(\textbf{r}_1, \textbf{r}_2, \ ... , \textbf{r}_N) = \frac{1}{\sqrt{ N!}}
    \begin{vmatrix}
-   \psi_1(\textbf{r}_1) & \psi_1(\textbf{r}_2)  & \dots & \psi_1(\textbf{r}_N) \\ 
+   \psi_1(\textbf{r}_1) & \psi_1(\textbf{r}_2)  & \dots & \psi_1(\textbf{r}_N) \\
    \psi_2(\textbf{r}_1) & \psi_2(\textbf{r}_2)  & \dots & \psi_2(\textbf{r}_N) \\
    \vdots & \vdots & \ddots & \vdots\\
    \psi_N(\textbf{r}_1) & \psi_N(\textbf{r}_2)  & \dots & \psi_N(\textbf{r}_N)

@@ -5,7 +5,7 @@ Getting iDEA
 Installation requirements
 -------------------------
 
- * `Python <http://www.python.org>`_ 2.7 or later
+ * `Python <http://www.python.org>`_ 3.3 or later
  * `numpy <http://www.numpy.org>`_ 1.10 or later
  * `scipy <http://www.scipy.org>`_ 0.17 or later
  * `Cython <http://cython.org>`_ 0.22 or later
@@ -17,7 +17,7 @@ Installing iDEA
 .. code-block:: bash
 
    # Clone from the central repository
-   git clone git@github.com:godby-group/idea-private.git iDEAL
+   git clone https://github.com/godby-group/idea-private.git iDEAL
 
    # Install & compile iDEA for your unix user
    # (including packages for generating the documentation)
@@ -33,7 +33,7 @@ Updating iDEA
 .. code-block:: bash
 
    # Pull all changes from central git repository
-   git pull
+   git pull origin master
 
    # Remove the compiled cython modules
    python setup.py clean --all
