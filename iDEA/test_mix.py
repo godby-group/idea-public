@@ -143,8 +143,6 @@ class TestRPA(unittest.TestCase):
             """Initial external potential"""
             return 0.5*(0.25**2)*(x**2)
         pm.sys.v_ext = v_ext
-        
-        pm.non.save_eig = True
 
         pm.lda.mix = 1.0
 
