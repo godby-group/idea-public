@@ -1,38 +1,38 @@
-"""Calculates the exact Kohn-Sham potential and exchange-correlation potential
-for a given electron density using the reverse-engineering algorithm. This
-works for both a ground-state density and a time-dependent density.
+"""Calculates the exact Kohn-Sham potential and exchange-correlation potential for a given electron
+density using the reverse-engineering algorithm. This works for both a ground-state and time-dependent 
+density.
 """
+
 from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
 import math
-import pickle
 import numpy as np
 import scipy.sparse as sps
 import scipy.linalg as spla
 import scipy.sparse.linalg as spsla
 from scipy.optimize import curve_fit
+
 from . import RE_cython
 from . import results as rs
 
 
-def read_input_density(pm, approx):
-    r"""Reads in the electron density that was calculated using the selected
-    approximation.
+def read_density(pm, approx):
+    r"""Reads in the electron density that was calculated using the selected approximation.
 
     parameters
     ----------
-    pm : object
+    pm : objectmath
         Parameters object
     approx : string
         The approximation used to calculate the electron density
 
     returns array_like
-        2D array of the ground-state/time-dependent electron density from the
-        approximation, indexed as density_approx[time_index,space_index]
+        2D array of the ground-state/time-dependent electron density from the approximation, 
+        indexed as density_approx[time_index,space_index]
     """
-    if(pm.run.time_dependence == True):
+    if(pm.run.time_dependence):
         density_approx = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float)
         name = 'td_{}_den'.format(approx)
         density_approx[:,:] = rs.Results.read(name, pm)
@@ -44,9 +44,8 @@ def read_input_density(pm, approx):
     return density_approx
 
 
-def read_input_current_density(pm, approx):
-    r"""Reads in the electron current density that was calculated using the
-    selected approximation.
+def read_current_density(pm, approx):
+    r"""Reads in the electron current density that was calculated using the selected approximation.
 
     parameters
     ----------
@@ -56,36 +55,34 @@ def read_input_current_density(pm, approx):
         The approximation used to calculate the electron current density
 
     returns array_like
-        2D array of the electron current density from the approximation,
-        indexed as current_density_approx[time_index,space_index]
+        2D array of the electron current density from the approximation, indexed as
+        current_density_approx[time_index,space_index]
     """
-    current_density_approx = np.zeros((pm.sys.imax,pm.space.npt),
-                             dtype=np.float)
+    current_density_approx = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float)
     name = 'td_{}_cur'.format(approx)
     current_density_approx[:,:] = rs.Results.read(name, pm)
 
     return current_density_approx
 
 
-def construct_kinetic_energy(pm):
-    r"""Stores the band elements of the kinetic energy matrix in lower form.
-    The kinetic energy matrix is constructed using a three-point, five-point
-    or seven-point stencil. This yields an NxN band matrix (where N is the
-    number of grid points). For example with N=6 and a three-point stencil:
-
+def construct_K(pm):
+    r"""Stores the band elements of the kinetic energy matrix in lower form. The kinetic energy matrix 
+    is constructed using a three-point, five-point or seven-point stencil. This yields an NxN band 
+    matrix (where N is the number of grid points). For example with N=6 and a three-point stencil:
+   
     .. math::
 
-        K = -i \frac{d^2}{dx^2}=
-        -\frac{1}{2} \begin{pmatrix}
-        -2 & 1 & 0 & 0 & 0 & 0 \\
-        1 & -2 & 1 & 0 & 0 & 0 \\
-        0 & 1 & -2 & 1 & 0 & 0 \\
-        0 & 0 & 1 & -2 & 1 & 0 \\
-        0 & 0 & 0 & 1 & -2 & 1 \\
-        0 & 0 & 0 & 0 & 1 & -2
-        \end{pmatrix}
-        \frac{1}{\delta x^2}
-        = \frac{1}{\delta x^2} \bigg[1,-\frac{1}{2}\bigg]
+        K = -\frac{1}{2} \frac{d^2}{dx^2}=  
+        -\frac{1}{2} \begin{pmatrix}        
+        -2 & 1 & 0 & 0 & 0 & 0 \\           
+        1 & -2 & 1 & 0 & 0 & 0 \\           
+        0 & 1 & -2 & 1 & 0 & 0 \\           
+        0 & 0 & 1 & -2 & 1 & 0 \\           
+        0 & 0 & 0 & 1 & -2 & 1 \\           
+        0 & 0 & 0 & 0 & 1 & -2              
+        \end{pmatrix}                       
+        \frac{1}{\delta x^2}                
+        = [\frac{1}{\delta x^2},-\frac{1}{2 \delta x^2}]  
 
     parameters
     ----------
@@ -93,17 +90,19 @@ def construct_kinetic_energy(pm):
         Parameters object
 
     returns array_like
-        2D array of the kinetic energy matrix, index as
-        kinetic_energy[band,space_index]
+        2D array containing the band elements of the kinetic energy matrix, indexed as 
+        K[band,space_index]
     """
+    # Stencil to use
     sd = pm.space.second_derivative_band
     nbnd = len(sd)
-    kinetic_energy = np.zeros((nbnd, pm.space.npt), dtype=np.float)
 
+    # Band elements
+    K = np.zeros((nbnd, pm.space.npt), dtype=np.float)
     for i in range(nbnd):
-        kinetic_energy[i,:] = -0.5*sd[i]
+        K[i,:] = -0.5 * sd[i]
 
-    return kinetic_energy
+    return K
 
 
 def construct_momentum(pm):
@@ -174,7 +173,7 @@ def construct_damping(pm):
     return damping
 
 
-def construct_A_initial(pm, kinetic_energy, v_ks):
+def construct_A_initial(pm, K, v_ks):
     r"""Constructs the sparse matrix A at t=0, once the external perturbation
     has been applied.
 
@@ -187,9 +186,9 @@ def construct_A_initial(pm, kinetic_energy, v_ks):
     ----------
     pm : object
         Parameters object
-    kinetic_energy : array_like
+    K : array_like
         2D array of the kinetic energy matrix, index as
-        kinetic_energy[band,space_index]
+        K[band,space_index]
     v_ks : array_like
         1D array of the ground-state Kohn-Sham potential + the external
         perturbation, indexed as v_ks[space_index]
@@ -199,18 +198,18 @@ def construct_A_initial(pm, kinetic_energy, v_ks):
         Ax=b
     """
     A_initial = np.zeros((pm.space.npt,pm.space.npt), dtype=np.cfloat)
-    nbnd = kinetic_energy.shape[0]
+    nbnd = K.shape[0]
     prefactor = 0.5j*pm.sys.deltat
 
     # Assign the main-diagonal elements
     for j in range(pm.space.npt):
-        A_initial[j,j] = prefactor*(kinetic_energy[0,j] + v_ks[j])
+        A_initial[j,j] = prefactor*(K[0,j] + v_ks[j])
 
         # Assign the off-diagonal elements
         for k in range(1, nbnd):
             if((j+k) < pm.space.npt):
-                A_initial[j,j+k] = prefactor*kinetic_energy[k,j]
-                A_initial[j+k,j] = prefactor*kinetic_energy[k,j]
+                A_initial[j,j+k] = prefactor*K[k,j]
+                A_initial[j+k,j] = prefactor*K[k,j]
 
     # Add the identity matrix
     A_initial += sps.identity(pm.space.npt, dtype=np.cfloat)
@@ -269,7 +268,7 @@ def construct_A(pm, A_initial, A_ks, momentum):
     return A
 
 
-def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
+def calculate_ground_state(pm, approx, density_approx, v_ext, K):
     r"""Calculates the exact ground-state Kohn-Sham potential by solving the
     ground-state Kohn-Sham equations and iteratively correcting v_ks. The
     exact ground-state Kohn-Sham eigenfunctions, eigenenergies and electron
@@ -292,9 +291,9 @@ def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
     v_ext : array_like
         1D array of the unperturbed external potential, indexed as
         v_ext[space_index]
-    kinetic_energy : array_like
+    K : array_like
         2D array of the kinetic energy matrix, index as
-        kinetic_energy[band,space_index]
+        K[band,space_index]
 
     returns array_like and array_like and array_like and array_like and Boolean
         1D array of the ground-state Kohn-Sham potential, indexed as
@@ -327,7 +326,7 @@ def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
 
     # Construct the Hamiltonian matrix for the initial v_ks and solve the
     # ground-state Kohn-Sham equations
-    hamiltonian = np.copy(kinetic_energy)
+    hamiltonian = np.copy(K)
     hamiltonian[0,:] += v_ks[:]
     wavefunctions_ks, energies_ks, density_ks = solve_gsks_equations(
             pm, hamiltonian)
@@ -378,7 +377,7 @@ def calculate_ground_state(pm, approx, density_approx, v_ext, kinetic_energy):
         pm.sprint(string, 2, newline=True)
 
     # Extract the exact v_ks from the Hamiltonian matrix
-    v_ks[:] = hamiltonian[0,:] - kinetic_energy[0,:]
+    v_ks[:] = hamiltonian[0,:] - K[0,:]
 
     return v_ks, density_ks, wavefunctions_ks, energies_ks, file_exist
 
@@ -398,7 +397,7 @@ def solve_gsks_equations(pm, hamiltonian):
         Parameters object
     hamiltonian : array_like
         2D array of the Hamiltonian matrix, index as
-        kinetic_energy[band,space_index]
+        K[band,space_index]
 
     returns array_like and array_like and array_like
         2D array of the ground-state Kohn-Sham eigenfunctions, indexed as
@@ -589,8 +588,7 @@ def solve_tdks_equations(pm, A, wavefunctions_ks):
         b = C*wavefunctions_ks[:,j]
 
         # Solve Ax=b
-        wavefunctions_ks[:,j], info = spsla.cg(A,b,x0=wavefunctions_ks[:,j],
-                                      tol=pm.re.rtol_solver)
+        wavefunctions_ks[:,j], info = spsla.cg(A, b, x0=wavefunctions_ks[:,j], tol=pm.re.rtol_solver, atol='legacy')
 
         # Normalise each wavefunction
         if(pm.sys.im == 0):
@@ -869,10 +867,9 @@ def calculate_xc_energy(pm, approx, density_ks, v_h, v_xc, energies_ks):
 
 
 def main(parameters, approx):
-    r"""Calculates the exact Kohn-Sham potential and exchange-correlation
-    potential for a given electron density using the reverse-engineering
-    algorithm. This works for both a ground-state density and a time-dependent
-    density.ground-state of the system.
+    r"""Calculates the exact Kohn-Sham potential and exchange-correlation potential for a given 
+    electron density using the reverse-engineering algorithm. This works for both a ground-state 
+    and time-dependent system.
 
     parameters
     ----------
@@ -884,15 +881,14 @@ def main(parameters, approx):
     returns object
         Results object
     """
-    pm = parameters
-    pm.setup_space()
-
     # Array initialisations
+    pm = parameters
     string = 'RE: constructing arrays'
-    pm.sprint(string, 1, newline=True)
+    pm.sprint(string, 1)
+    pm.setup_space()
     v_ext = pm.space.v_ext
-    kinetic_energy = construct_kinetic_energy(pm)
-    if(pm.run.time_dependence == True):
+    K = construct_K(pm)
+    if(pm.run.time_dependence):
         density_ks = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float)
     else:
         density_ks = np.zeros((1,pm.space.npt), dtype=np.float)
@@ -902,16 +898,14 @@ def main(parameters, approx):
     v_xc = np.copy(density_ks)
 
     # Read the density calculated using the approximation
-    density_approx = read_input_density(pm, approx)
+    density_approx = read_density(pm, approx)
 
-    # Calculate the ground-state Kohn-Sham potential, density, occupied
-    # eigenfunctions and their eigenenergies
-    v_ks[0,:], density_ks[0,:], wavefunctions_ks, energies_ks, file_exist = (
-            calculate_ground_state(pm, approx, density_approx[0,:], v_ext,
-            kinetic_energy))
+    # Calculate the ground-state Kohn-Sham system
+    v_ks[0,:], density_ks[0,:], wavefunctions_ks, energies_ks, file_exist = calculate_ground_state(pm, approx, 
+                                                                            density_approx[0,:], v_ext, K)
 
-    # Calculate the ground-state Hartree potential, exchange-correlation
-    # potential and Hartree-exchange-correlation potential
+    # Calculate the ground-state Hartree potential, exchange-correlation potential and 
+    # Hartree-exchange-correlation potential
     v_hxc[0,:] = v_ks[0,:] - v_ext[:]
     v_h[0,:] = calculate_hartree_potential(pm, density_ks[0,:])
     v_xc[0,:] = v_hxc[0,:] - v_h[0,:]
@@ -928,26 +922,25 @@ def main(parameters, approx):
     string = 'RE: ionization potential = {0:.3f} +/- {1:.4f}'.format(IP, correction_error)
     pm.sprint(string, 1, newline=True)
 
-    # Calculate the KS gap
+    # Calculate the Kohn-Sham gap
     ks_gap = energies_ks[pm.sys.NE] - energies_ks[pm.sys.NE-1]
     string = 'RE: Kohn-Sham gap = {0:.3f}'.format(ks_gap)
-    pm.sprint(string, 1, newline=True)
+    pm.sprint(string, 1)
 
     # Calculate the Hartree energy
     E_h = calculate_hartree_energy(pm, density_ks[0,:], v_h[0,:])
     string = 'RE: Hartree energy = {}'.format(E_h)
-    pm.sprint(string, 1, newline=True)
+    pm.sprint(string, 1)
 
     # Calculate the exchange-correlation energy
-    E_xc = calculate_xc_energy(pm, approx, density_ks[0,:], v_h[0,:],
-                               v_xc[0,:], energies_ks)
+    E_xc = calculate_xc_energy(pm, approx, density_ks[0,:], v_h[0,:], v_xc[0,:], energies_ks)
     string = 'RE: exchange-correlation energy = {}'.format(E_xc)
-    pm.sprint(string, 1, newline=True)
+    pm.sprint(string, 1)
 
     # Calculate the Hartree exchange-correlation energy
     E_hxc = E_h + E_xc
     string = 'RE: Hartree exchange-correlation energy = {}'.format(E_hxc)
-    pm.sprint(string, 1, newline=True)
+    pm.sprint(string, 1)
 
     # Save the ground-state quantities to file
     approxre = approx + 're'
@@ -962,18 +955,17 @@ def main(parameters, approx):
     results.add(E_xc,'gs_{}_Exc'.format(approxre))
     results.add(IP,'gs_{}_IP'.format(approxre))
     results.add(ks_gap,'gs_{}_GAP'.format(approxre))
-    if(pm.re.save_eig):
-        results.add(wavefunctions_ks.T,'gs_{}_eigf'.format(approxre))
-        results.add(energies_ks,'gs_{}_eigv'.format(approxre))
+    results.add(wavefunctions_ks.T,'gs_{}_eigf'.format(approxre))
+    results.add(energies_ks,'gs_{}_eigv'.format(approxre))
     if(pm.run.save):
         results.save(pm)
 
     # Reverse-engineer the time-dependent system
-    if(pm.run.time_dependence == True):
+    if(pm.run.time_dependence):
 
         # Array initialisations
         string = 'RE: constructing arrays'
-        pm.sprint(string, 1, newline=True)
+        pm.sprint(string, 1)
         wavefunctions_ks = wavefunctions_ks.astype(np.cfloat)
         if(pm.sys.im == 1):
             v_ks = v_ks.astype(np.cfloat)
@@ -985,10 +977,10 @@ def main(parameters, approx):
         current_density_ks = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float)
         momentum = construct_momentum(pm)
         damping = construct_damping(pm)
-        A_initial = construct_A_initial(pm, kinetic_energy, v_ks[1,:])
+        A_initial = construct_A_initial(pm, K, v_ks[1,:])
 
         # Read the current density calculated using the approximation
-        current_density_approx = read_input_current_density(pm, approx)
+        current_density_approx = read_current_density(pm, approx)
 
         # Reverse-engineer each time step
         for i in range(1, pm.sys.imax):
@@ -996,37 +988,33 @@ def main(parameters, approx):
             # Use A_ks from the last time step as the initial guess
             A_ks[1,:] = A_ks[0,:]
 
-            # Calculate the Kohn-Sham vector potential, the density, the
-            # current density, the eigenfunctions and the errors between the
-            # Kohn-Sham and approximation densities and current densities
+            # Calculate the time-dependent Kohn-Sham system
             A_ks[1,:], density_ks[i,:], current_density_ks[i,:], wavefunctions_ks, density_error, current_density_error = (
                     calculate_time_dependence(pm, A_initial, momentum, A_ks[1,:],
                     damping, wavefunctions_ks, density_ks[i-1:i+1,:],
                     density_approx[i,:], current_density_approx[i,:]))
 
             # Print to screen
-            string = 'RE: t = {0}, current density error = {1}, density error = {2}'\
-                     .format(i*pm.sys.deltat, current_density_error, density_error)
+            string = 'RE: t = {0}, current density error = {1}, density error = {2}'.format(i*pm.sys.deltat,\
+                     current_density_error, density_error)
             pm.sprint(string,1,newline=False)
 
             # If the required tolerance has been reached
-            if((density_error < pm.re.td_density_tolerance) and
-            (current_density_error < pm.re.cdensity_tolerance)):
+            if((density_error < pm.re.td_density_tolerance) and (current_density_error < pm.re.cdensity_tolerance)):
 
                 # Remove the gauge to get the full Kohn-Sham scalar potential
                 v_ks[i,:] = remove_gauge(pm, A_ks, v_ks[i,:], v_ks[0,:])
 
-                # Calculate the Hartree-potential, exchange-correlation
-                # potential and Hartree-exchange-correlation potential
+                # Calculate the Hartree-potential, exchange-correlation potential and 
+                # Hartree-exchange-correlation potential
                 v_hxc[i,:] = v_ks[i,:] - v_ext[:]
                 v_h[i,:] = calculate_hartree_potential(pm, density_ks[i,:])
                 v_xc[i,:] = v_hxc[i,:] - v_h[i,:]
 
             else:
-                pm.sprint('', 1, newline=True)
-                string = 'RE: The minimum tolerance has not been met.' + \
-                ' Stopping at t = {}'.format(i*pm.sys.deltat)
-                pm.sprint(string, 1, newline=True)
+                pm.sprint('', 1)
+                string = 'RE: The minimum tolerance has not been met. Stopping at t = {}'.format(i*pm.sys.deltat)
+                pm.sprint(string, 1)
                 break
 
             # Save the current time step
@@ -1034,9 +1022,9 @@ def main(parameters, approx):
 
             # Print to screen
             if(i == pm.sys.imax-1):
-                pm.sprint('', 1, newline=True)
+                pm.sprint('', 1)
 
-        #Velocity field
+        # Velocity field
         velocity_field_ks = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float)
         velocity_field = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float)
         velocity_field_ks[:,:] = current_density_ks[:,:]/density_ks[:,:]
