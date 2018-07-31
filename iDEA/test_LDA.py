@@ -17,6 +17,7 @@ class LDATestHarmonic(unittest.TestCase):
     def setUp(self):
         """ Sets up harmonic oscillator system """
         pm = input.Input()
+        pm.run.name = 'unittest'
         pm.run.LDA = True
         pm.run.save = False
         pm.run.verbosity = 'low'

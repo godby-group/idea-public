@@ -1,37 +1,39 @@
-"""Contains the cython modules that are called within EXT2 and EXT3. Cython is 
-used for operations that are very expensive to do in Python, and performance 
-speeds are close to C.
+"""Contains the cython modules that are called within EXT2 and EXT3. Cython is used for operations 
+that are very expensive to do in Python, and performance speeds are close to C.
 """
+
 cimport numpy as np
 import numpy as np
 
 #cython: boundscheck=False, wraparound=False, nonecheck=False
 
 
-def wavefunction_two(np.ndarray eigenstate_1, np.ndarray eigenstate_2):           
-    r"""Constructs the two-electron initial wavefunction in reduced form from
-    two single-particle eigenstates.
+def wavefunction_two(object pm, np.ndarray eigenstate_1, np.ndarray eigenstate_2):           
+    r"""Constructs the two-electron initial wavefunction in reduced form from two single-electron 
+    eigenstates.
+
+    .. math::
+
+        \Psi(x_{1},x_{2}) = \frac{1}{\sqrt{2}}\big(\phi_{1}(x_{1})\phi_{2}(x_{2})
+        - \phi_{2}(x_{1})\phi_{1}(x_{2})\big)
 
     parameters
     ----------
+    pm : object
+        Parameters object
     eigenstate_1 : array_like
-        1D array of the 1st single-particle eigenstate, indexed as 
-        eigenstate_1[space_index]
+        1D array of the 1st single-electron eigenstate, indexed as eigenstate_1[space_index]
     eigenstate_2 : array_like
-        1D array of the 2nd single-particle eigenstate, indexed as 
-        eigenstate_2[space_index]
-    grid : integer
-        Number of spatial grid points in the system
+        1D array of the 2nd single-electron eigenstate, indexed as eigenstate_2[space_index]
 
     returns array_like
-        1D array of the reduced wavefunction, indexed as 
-        wavefunction_reduced[space_index_1_2]
+        1D array of the reduced wavefunction, indexed as wavefunction_reduced[space_index_1_2]
     """
     # Variable declarations
     cdef int i, j, k
-    cdef int grid = eigenstate_1.shape[0]
+    cdef int grid = pm.space.npt
     cdef double normalisation
-    cdef np.ndarray wavefunction_reduced = np.zeros(int(grid*(grid+1)/2), dtype=np.float)
+    cdef np.ndarray wavefunction_reduced = np.zeros(int(round(grid*(grid+1)/2)), dtype=np.float)
 
     # Normalisation factor
     normalisation = 1.0/np.sqrt(2.0)
@@ -50,33 +52,38 @@ def wavefunction_two(np.ndarray eigenstate_1, np.ndarray eigenstate_2):
     return wavefunction_reduced
 
 
-def wavefunction_three(np.ndarray eigenstate_1, np.ndarray eigenstate_2, np.ndarray eigenstate_3):           
-    r"""Constructs the initial three-electron wavefunction in reduced form from
-    three single-particle eigenstates.
+def wavefunction_three(object pm, np.ndarray eigenstate_1, np.ndarray eigenstate_2, np.ndarray eigenstate_3):           
+    r"""Constructs the initial three-electron wavefunction in reduced form from three single-electron
+    eigenstates.
+
+    .. math::
+
+        \Psi(x_{1},x_{2},x_{3}) = \frac{1}{\sqrt{6}}\big(\phi_{1}(x_{1})
+        \phi_{2}(x_{2})\phi_{3}(x_{3}) - \phi_{1}(x_{1})\phi_{3}(x_{2})
+        \phi_{2}(x_{3}) + \phi_{3}(x_{1})\phi_{1}(x_{2})\phi_{2}(x_{3}) 
+        - \phi_{3}(x_{1})\phi_{2}(x_{2})\phi_{1}(x_{3}) + \phi_{2}(x_{1})
+        \phi_{3}(x_{2})\phi_{1}(x_{3}) - \phi_{2}(x_{1})\phi_{1}(x_{2})
+        \phi_{3}(x_{3}) \big)
 
     parameters
     ----------
+    pm : object
+        Parameters object
     eigenstate_1 : array_like
-        1D array of the 1st single-particle eigenstate, indexed as 
-        eigenstate_1[space_index]
+        1D array of the 1st single-electron eigenstate, indexed as eigenstate_1[space_index]
     eigenstate_2 : array_like
-        1D array of the 2nd single-particle eigenstate, indexed as 
-        eigenstate_2[space_index]
+        1D array of the 2nd single-electron eigenstate, indexed as eigenstate_2[space_index]
     eigenstate_3 : array_like
-        1D array of the 3rd single-particle eigenstate, indexed as 
-        eigenstate_3[space_index]
-    grid : integer
-        Number of spatial grid points in the system
+        1D array of the 3rd single-electron eigenstate, indexed as eigenstate_3[space_index]
 
     returns array_like
-        1D array of the reduced wavefunction, indexed as 
-        wavefunction_reduced[space_index_1_2_3]
+        1D array of the reduced wavefunction, indexed as wavefunction_reduced[space_index_1_2_3]
     """
     # Variable declarations
     cdef int i, j, k, l
-    cdef int grid = eigenstate_1.shape[0]
+    cdef int grid = pm.space.npt
     cdef double normalisation, perm_1, perm_2, perm_3
-    cdef np.ndarray wavefunction_reduced = np.zeros(int(grid*(grid+1)*(grid+2)/6), dtype=np.float)
+    cdef np.ndarray wavefunction_reduced = np.zeros(int(round(grid*(grid+1)*(grid+2)/6)), dtype=np.float)
 
     # Normalisation factor
     normalisation = 1.0/np.sqrt(6.0)
@@ -99,28 +106,25 @@ def wavefunction_three(np.ndarray eigenstate_1, np.ndarray eigenstate_2, np.ndar
     return wavefunction_reduced
 
 
-def reduction_two(np.ndarray coo_1, np.ndarray coo_2, int grid):
-    r"""Calculates the coordinates and data of the non-zero elements of the 
-    two-electron reduction matrix that is used to exploit the exchange exchange 
-    antisymmetry of the wavefunction.
+def reduction_two(object pm, np.ndarray coo_1, np.ndarray coo_2):
+    r"""Calculates the coordinates and data of the non-zero elements of the two-electron reduction 
+    matrix that is used to exploit the exchange antisymmetry of the two-electron wavefunction.
 
     parameters
     ----------
+    pm : object
+        Parameters object
     coo_1 : array_like
-        1D COOrdinate holding array for the non-zero elements of the reduction 
-        matrix
+        1D COOrdinate holding array for the non-zero elements of the reduction matrix
     coo_2 : array_like
-        1D COOrdinate holding array for the non-zero elements of the reduction  
-        matrix
-    grid : integer
-        Number of spatial grid points in the system
+        1D COOrdinate holding array for the non-zero elements of the reduction matrix
 
     returns array_like and array_like 
-        Populated 1D COOrdinate holding arrays for the non-zero elements of the
-        reduction matrix
+        Populated 1D COOrdinate holding arrays for the non-zero elements of the reduction matrix
     """
     # Variable declarations
     cdef int i, j, k, jk
+    cdef int grid = pm.space.npt
 
     # Loop over each non-zero element of the reduction matrix
     i = 0
@@ -137,28 +141,25 @@ def reduction_two(np.ndarray coo_1, np.ndarray coo_2, int grid):
     return coo_1, coo_2
 
 
-def reduction_three(np.ndarray coo_1, np.ndarray coo_2, int grid):
-    r"""Calculates the coordinates and data of the non-zero elements of the 
-    three-electron reduction matrix that is used to exploit the exchange 
-    exchange antisymmetry of the wavefunction.
+def reduction_three(object pm, np.ndarray coo_1, np.ndarray coo_2):
+    r"""Calculates the coordinates and data of the non-zero elements of the three-electron reduction
+    matrix that is used to exploit the exchange antisymmetry of the three-electron wavefunction.
 
     parameters
     ----------
+    pm : object
+        Parameters object
     coo_1 : array_like
-        1D COOrdinate holding array for the non-zero elements of the reduction 
-        matrix
+        1D COOrdinate holding array for the non-zero elements of the reduction matrix
     coo_2 : array_like
-        1D COOrdinate holding array for the non-zero elements of the reduction  
-        matrix
-    grid : integer
-        Number of spatial grid points in the system
+        1D COOrdinate holding array for the non-zero elements of the reduction matrix
 
     returns array_like and array_like 
-        Populated 1D COOrdinate holding arrays for the non-zero elements of the
-        reduction matrix
+        Populated 1D COOrdinate holding arrays for the non-zero elements of the reduction matrix
     """
     # Variable declarations
     cdef int i, j, k, l, jkl
+    cdef int grid = pm.space.npt
 
     # Loop over each non-zero element of the reduction matrix
     i = 0
@@ -176,30 +177,28 @@ def reduction_three(np.ndarray coo_1, np.ndarray coo_2, int grid):
     return coo_1, coo_2
 
 
-def expansion_two(np.ndarray coo_1, np.ndarray coo_2, np.ndarray coo_data, int grid):
-    r"""Calculates the coordinates and data of the non-zero elements of the 
-    two-electron expansion matrix that is used to exploit the exchange exchange 
-    antisymmetry of the wavefunction.
+def expansion_two(object pm, np.ndarray coo_1, np.ndarray coo_2, np.ndarray coo_data):
+    r"""Calculates the coordinates and data of the non-zero elements of the two-electron expansion 
+    matrix that is used to exploit the exchange antisymmetry of the two-electron wavefunction.
 
     parameters
     ----------
+    pm : object
+        Parameters object
     coo_1 : array_like
-        1D COOrdinate holding array for the non-zero elements of the expansion 
-        matrix
+        1D COOrdinate holding array for the non-zero elements of the expansion matrix
     coo_2 : array_like
-        1D COOrdinate holding array for the non-zero elements of the expansion 
-        matrix
+        1D COOrdinate holding array for the non-zero elements of the expansion matrix
     coo_data : array_like
         1D array of the non-zero elements of the expansion matrix
-    grid : integer
-        Number of spatial grid points in the system
 
     returns array_like and array_like and array_like
-        Populated 1D COOrdinate holding arrays and 1D data holding array for the 
-        non-zero elements of the expansion matrix
+        Populated 1D COOrdinate holding arrays and 1D data holding array for the non-zero elements 
+        of the expansion matrix
     """
     # Variable declarations
     cdef int i_plus, i_minus, j, k, jk, kj, element
+    cdef int grid = pm.space.npt
 
     # Loop over each non-zero element of the expansion matrix
     i_plus = 0
@@ -214,7 +213,7 @@ def expansion_two(np.ndarray coo_1, np.ndarray coo_2, np.ndarray coo_data, int g
 
             # Calculate negative element indices
             if(j != k):
-                element = grid**2-1-i_minus
+                element = grid**2 - 1 - i_minus
                 coo_1[element] = single_index_two(k, j, grid)
                 coo_2[element] = i_plus
                 coo_data[element] = -1.0
@@ -226,30 +225,28 @@ def expansion_two(np.ndarray coo_1, np.ndarray coo_2, np.ndarray coo_data, int g
     return coo_1, coo_2, coo_data
 
 
-def expansion_three(np.ndarray coo_1, np.ndarray coo_2, np.ndarray coo_data, int grid):
-    r"""Calculates the coordinates and data of the non-zero elements of the 
-    three-electron expansion matrix that is used to exploit the exchange 
-    exchange antisymmetry of the wavefunction.
+def expansion_three(object pm, np.ndarray coo_1, np.ndarray coo_2, np.ndarray coo_data):
+    r"""Calculates the coordinates and data of the non-zero elements of the three-electron expansion
+    matrix that is used to exploit the exchange antisymmetry of the three-electron wavefunction.
 
     parameters
     ----------
+    pm : object
+        Parameters object
     coo_1 : array_like
-        1D COOrdinate holding array for the non-zero elements of the expansion 
-        matrix
+        1D COOrdinate holding array for the non-zero elements of the expansion matrix
     coo_2 : array_like
-        1D COOrdinate holding array for the non-zero elements of the expansion 
-        matrix
+        1D COOrdinate holding array for the non-zero elements of the expansion matrix
     coo_data : array_like
         1D array of the non-zero elements of the expansion matrix
-    grid : integer
-        Number of spatial grid points in the system
 
     returns array_like and array_like and array_like
-        Populated 1D COOrdinate holding arrays and 1D data holding array for the 
-        non-zero elements of the expansion matrix
+        Populated 1D COOrdinate holding arrays and 1D data holding array for the non-zero elements 
+        of the expansion matrix
     """
     # Variable declarations
     cdef int i_plus, i_minus, j, k, l, jkl, jlk, klj, kjl, ljk, lkj, element
+    cdef int grid = pm.space.npt
 
     # Loop over each non-zero element of the expansion matrix
     i_plus = 0
@@ -265,7 +262,7 @@ def expansion_three(np.ndarray coo_1, np.ndarray coo_2, np.ndarray coo_data, int
 
                 # Calculate negative element indices
                 if(j != k and k == l):
-                    element = grid**3-1-i_minus
+                    element = grid**3 - 1 - i_minus
                     coo_1[element] = single_index_three(k, j, l, grid)
                     coo_2[element] = i_plus
                     coo_data[element] = -1.0
@@ -278,7 +275,7 @@ def expansion_three(np.ndarray coo_1, np.ndarray coo_2, np.ndarray coo_data, int
                     i_minus += 1
      
                 if(j == k and k != l):
-                    element = grid**3-1-i_minus
+                    element = grid**3 - 1 - i_minus
                     coo_1[element] = single_index_three(j, l, k, grid)
                     coo_2[element] = i_plus
                     coo_data[element] = -1.0
@@ -291,7 +288,7 @@ def expansion_three(np.ndarray coo_1, np.ndarray coo_2, np.ndarray coo_data, int
                     i_minus += 1
 
                 if(j != k and k != l): 
-                    element = grid**3-1-i_minus
+                    element = grid**3 - 1 - i_minus
                     coo_1[element] = single_index_three(j, l, k, grid)
                     coo_2[element] = i_plus
                     coo_data[element] = -1.0
@@ -328,27 +325,30 @@ def expansion_three(np.ndarray coo_1, np.ndarray coo_2, np.ndarray coo_data, int
 
 
 def hamiltonian_two(object pm, np.ndarray coo_1, np.ndarray coo_2, np.ndarray coo_data, int td):
-    r"""Calculates the coordinates and data of the non-zero elements of the 
-    two-electron Hamiltonian matrix.
+    r"""Calculates the coordinates and data of the non-zero elements of the two-electron Hamiltonian
+    matrix.
+
+    .. math::
+
+        \hat{H}=\sum_{i=1}^{2} \hat{K}_{i} + \sum_{i=1}^{2} \hat{V}_{\mathrm{ext}}(x_{i}) 
+        + \sum_{i=1}^{2}\sum_{j > i}^{2}\hat{V}_{\mathrm{int}}(x_{i}, x_{j})
 
     parameters
     ----------
     pm : object
         Parameters object
     coo_1 : array_like
-        1D COOrdinate holding array for the non-zero elements of the Hamiltonian
-        matrix
+        1D COOrdinate holding array for the non-zero elements of the Hamiltonian matrix
     coo_2 : array_like
-        1D COOrdinate holding array for the non-zero elements of the Hamiltonian
-        matrix
+        1D COOrdinate holding array for the non-zero elements of the Hamiltonian matrix
     coo_data : array_like
         1D array of the non-zero elements of the Hamiltonian matrix 
     td : integer
         0 for imaginary time, 1 for real time
   
     returns array_like and array_like and array_like
-        Populated 1D COOrdinate holding arrays and 1D data holding array for the 
-        non-zero elements of the Hamiltonian matrix
+        Populated 1D COOrdinate holding arrays and 1D data holding array for the non-zero elements
+        of the Hamiltonian matrix
     """
     # Variable declarations
     cdef int i, j, k, jk, band
@@ -367,14 +367,14 @@ def hamiltonian_two(object pm, np.ndarray coo_1, np.ndarray coo_2, np.ndarray co
     for j in range(bandwidth-1, grid-bandwidth+1):
         for k in range(bandwidth-1, grid-bandwidth+1):
  
-          # Main diagonal
+            # Main diagonal
             jk = single_index_two(j, k, grid)
             coo_1[i] = jk
             coo_2[i] = jk
             coo_data[i] = 2.0*ke_bands[0] + v_ext[j] + v_ext[k] + v_int[j,k]
             i += 1
 
-          # Off-diagonals
+            # Off-diagonals
             for band in range(1, bandwidth):
                 coo_1[i] = single_index_two(j+band, k, grid)
                 coo_2[i] = jk
@@ -549,27 +549,30 @@ def hamiltonian_two(object pm, np.ndarray coo_1, np.ndarray coo_2, np.ndarray co
 
 
 def hamiltonian_three(object pm, np.ndarray coo_1, np.ndarray coo_2, np.ndarray coo_data, int td):
-    r"""Calculates the coordinates and data of the non-zero elements of the 
-    three-electron Hamiltonian matrix.
+    r"""Calculates the coordinates and data of the non-zero elements of the three-electron Hamiltonian
+    matrix.
+
+    .. math::
+
+        \hat{H}=\sum_{i=1}^{3} \hat{K}_{i} + \sum_{i=1}^{3} \hat{V}_{\mathrm{ext}}(x_{i}) 
+        + \sum_{i=1}^{3}\sum_{j > i}^{3}\hat{V}_{\mathrm{int}}(x_{i}, x_{j})
 
     parameters
     ----------
     pm : object
         Parameters object
     coo_1 : array_like
-        1D COOrdinate holding array for the non-zero elements of the Hamiltonian
-        matrix
+        1D COOrdinate holding array for the non-zero elements of the Hamiltonian matrix
     coo_2 : array_like
-        1D COOrdinate holding array for the non-zero elements of the Hamiltonian
-        matrix
+        1D COOrdinate holding array for the non-zero elements of the Hamiltonian matrix
     coo_data : array_like
         1D array of the non-zero elements of the Hamiltonian matrix 
     td : integer
         0 for imaginary time, 1 for real time
   
     returns array_like and array_like and array_like
-        Populated 1D COOrdinate holding arrays and 1D data holding array for the 
-        non-zero elements of the Hamiltonian matrix
+        Populated 1D COOrdinate holding arrays and 1D data holding array for the non-zero elements 
+        of the Hamiltonian matrix
     """
     # Variable declarations
     cdef int i, j, k, l, jkl, band
@@ -933,9 +936,8 @@ def hamiltonian_three(object pm, np.ndarray coo_1, np.ndarray coo_2, np.ndarray 
 
 
 def imag_pot_two(pm):
-    r"""Calculates the perturbing potential to be added to the main diagonal of 
-    the two-electron Hamiltonian matrix if imaginary boundary conditions are 
-    used.
+    r"""Calculates the perturbing potential to be added to the main diagonal of the two-electron 
+    Hamiltonian matrix if imaginary boundary conditions are used.
 
     parameters
     ----------
@@ -966,9 +968,8 @@ def imag_pot_two(pm):
 
 
 def imag_pot_three(pm):
-    r"""Calculates the perturbing potential to be added to the main diagonal of 
-    the three-electron Hamiltonian matrix if imaginary boundary conditions are 
-    used.
+    r"""Calculates the perturbing potential to be added to the main diagonal of the three-electron
+    Hamiltonian matrix if imaginary boundary conditions are used.
 
     parameters
     ----------
@@ -1000,8 +1001,7 @@ def imag_pot_three(pm):
 
 
 def single_index_two(int j, int k, int grid):
-    r"""Takes every permutation of the two electron indices and creates a 
-    single unique index.
+    r"""Takes every permutation of the two electron indices and creates a single unique index.
 
     parameters
     ----------
@@ -1025,8 +1025,7 @@ def single_index_two(int j, int k, int grid):
 
 
 def single_index_three(int j, int k, int l, int grid):
-    r"""Takes every permutation of the three electron indices and creates a 
-    single unique index.
+    r"""Takes every permutation of the three electron indices and creates a single unique index.
 
     parameters
     ----------
@@ -1049,4 +1048,43 @@ def single_index_three(int j, int k, int l, int grid):
     jkl = l + k*grid + j*grid**2
 
     return jkl
+
+
+def continuity_eqn(object pm, np.ndarray density_new, np.ndarray density_old):
+    r"""Calculates the electron current density of the system at a particular time step by solving 
+    the continuity equation.
+
+    .. math:: 
+
+        \frac{\partial n}{\partial t} + \frac{\partial j}{\partial x} = 0
+
+    parameters
+    ----------
+    pm : object
+        Parameters object
+    density_new : array_like
+        1D array of the electron density at time t
+    density_old : array_like
+        1D array of the electron density at time t-dt
+
+    returns array_like
+        1D array of the electron current density at time t
+    """
+    # Variable declarations
+    cdef int j, k
+    cdef int grid = pm.space.npt
+    cdef double deltax = pm.space.delta
+    cdef double deltat = pm.sys.deltat
+    cdef double prefactor 
+    cdef np.ndarray current_density = np.zeros(pm.sys.grid, dtype=np.float)
+
+    # Parameters
+    prefactor = deltax/deltat
+
+    # Solve the continuity equation
+    for j in range(1, grid):
+        for k in range(j):
+            current_density[j] = current_density[j] - prefactor*(density_new[k]-density_old[k])
+
+    return current_density
     

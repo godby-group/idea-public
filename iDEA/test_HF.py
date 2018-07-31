@@ -16,6 +16,7 @@ class HFTestHarmonic(unittest.TestCase):
     def setUp(self):
         """ Sets up harmonic oscillator system """
         pm = input.Input()
+        pm.run.name = 'unittest'
         pm.run.HF = True
         pm.run.EXT = True
         pm.run.save = False

@@ -413,7 +413,7 @@ class Input(object):
                 s += input_string(key,value)
         return s
 
-    def sprint(self, string='', priority=1, newline=True, refresh=0.05, savelog=True):
+    def sprint(self, string='', priority=1, newline=True, refresh=0.000005, savelog=True):
         """Customized print function
 
         Prints to screen and appends to log.
