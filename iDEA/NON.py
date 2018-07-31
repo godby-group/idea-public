@@ -218,7 +218,7 @@ def main(parameters):
                 b = C*wavefunction
 
                 # Solve Ax=b
-                wavefunction, info = spsla.cg(A, b, x0=wavefunction, tol=pm.non.rtol_solver, atol='legacy')
+                wavefunction, info = spsla.cg(A, b, x0=wavefunction, tol=pm.non.rtol_solver)
 
                 # Normalise the wavefunction 
                 norm = npla.norm(wavefunction)*np.sqrt(pm.space.delta)

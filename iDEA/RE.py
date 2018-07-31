@@ -588,7 +588,7 @@ def solve_tdks_equations(pm, A, wavefunctions_ks):
         b = C*wavefunctions_ks[:,j]
 
         # Solve Ax=b
-        wavefunctions_ks[:,j], info = spsla.cg(A, b, x0=wavefunctions_ks[:,j], tol=pm.re.rtol_solver, atol='legacy')
+        wavefunctions_ks[:,j], info = spsla.cg(A, b, x0=wavefunctions_ks[:,j], tol=pm.re.rtol_solver)
 
         # Normalise each wavefunction
         if(pm.sys.im == 0):

@@ -551,7 +551,7 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced, expansi
         b_reduced = C_reduced*wavefunction_reduced
 
         # Solve Ax=b
-        wavefunction_reduced, info = spsla.cg(A_reduced, b_reduced, x0=wavefunction_reduced, tol=pm.ext.itol_solver, atol='legacy')
+        wavefunction_reduced, info = spsla.cg(A_reduced, b_reduced, x0=wavefunction_reduced, tol=pm.ext.itol_solver)
 
         # Apply Gram-Schmidt orthogonalisation if necessary
         if(eigenstates_array is not None):
@@ -679,7 +679,7 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix, ex
         b_reduced = C_reduced*wavefunction_reduced
      
         # Solve Ax=b
-        wavefunction_reduced, info = spsla.cg(A_reduced, b_reduced, x0=wavefunction_reduced, tol=pm.ext.rtol_solver, atol='legacy')
+        wavefunction_reduced, info = spsla.cg(A_reduced, b_reduced, x0=wavefunction_reduced, tol=pm.ext.rtol_solver)
       
         # Expand the wavefunction and normalise
         wavefunction = expansion_matrix*wavefunction_reduced
