@@ -23,7 +23,7 @@ def hamiltonian(pm, eigf, density, alpha, occupations, perturb=False):
 
    Computes HYB Hamiltonian from a given set of single-particle states.
 
-   .. math:: H(x,x') = K(x,x') + V_{ext}(x)\delta(x-x') + V_{H}(x)\delta(x-x') + \alpha*F(x,x') + (1-\alpha)V_{xc}^{LDA}
+   .. math:: H(x,x') = K(x,x') + V_{ext}(x)\delta(x-x') + V_{H}(x)\delta(x-x') + \alphaF(x,x') + (1-\alpha)V_{xc}^{LDA}
 
    parameters
    ----------
@@ -49,37 +49,36 @@ def hamiltonian(pm, eigf, density, alpha, occupations, perturb=False):
 
    # Construct external potential
    Vext = sps.diags(pm.space.v_ext, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
-   if perturb == True:
-       Vext += sps.diags(pm.space.v_pert, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
+   if perturb:
+      Vext += sps.diags(pm.space.v_pert, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
 
    # Construct hartree potential
-   Vh = iDEA.HF.hartree(pm, density)
+   Vh = np.diag(iDEA.HF.hartree(pm, density))
 
    # Construct LDA Vxc
-   if pm.hyb.seperate == False:
+   if not pm.hyb.seperate:
       Vxc_LDA = iDEA.LDA.VXC(pm, density, pm.hyb.seperate)
-   if pm.hyb.seperate == True:
+   else:
       Vxc_LDA, Vx_LDA, Vc_LDA = iDEA.LDA.VXC(pm, density, pm.hyb.seperate)
 
    # Construct the fock operator
-   F = np.zeros((pm.sys.grid,pm.sys.grid), dtype='complex')
-   if alpha != 0.0:
-      for i in range(pm.sys.NE):
-         orb = copy.deepcopy(eigf[:,i])*np.sqrt(occupations[i])
-         F -= np.tensordot(orb.conj(), orb, axes=0)
-      F = F * pm.space.v_int*pm.sys.deltax
+   if alpha != 0:
+      F = iDEA.HF.fock(pm, eigf)
+      F *= pm.space.delta
+   else:
+      F = np.zeros((pm.sys.grid, pm.sys.grid))
 
    # construct hybrid Vxc
-   if pm.hyb.seperate == False:
+   if not pm.hyb.seperate:
       Vxc = alpha*F + (1-alpha)*np.diag(Vxc_LDA)
-   if pm.hyb.seperate == True:
+   else:
       Vxc = alpha*F + (1-alpha)*np.diag(Vx_LDA) + np.diag(Vc_LDA)
 
    # construct H
-   H = K + Vext + np.diag(Vh) + Vxc
-   if pm.hyb.seperate == False:
+   H = K + Vext + Vh + Vxc
+   if not pm.hyb.seperate:
       return H, Vh, Vxc_LDA, F
-   if pm.hyb.seperate == True:
+   else:
       return H, Vh, Vxc_LDA, Vx_LDA, Vc_LDA, F
 
 def calc_with_alpha(pm, alpha, occupations):
@@ -354,13 +353,13 @@ def main(parameters):
           raise ValueError('HYB: ERROR! Cannot optimise hybrid in time-dependence, please give a numerical value from alpha.')
       n_t = np.empty((pm.sys.imax, pm.sys.grid), dtype=np.float)
       n_t[0] = density
-      H, Vh, Vxc_LDA, F = hamiltonian(pm, eigf, density, pm.hyb.alpha, perturb=False)
+      H, Vh, Vxc_LDA, F = hamiltonian(pm, eigf, density, pm.hyb.alpha, occupations, perturb=False)
       for i in range(1, pm.sys.imax):
          string = 'HYB: evolving through real time: t = {:.4f}'.format(i*pm.sys.deltat)
          pm.sprint(string, 1, newline=False)
          eigf = iDEA.HF.crank_nicolson_step(pm, eigf, H)
          density = iDEA.HF.electron_density(pm, eigf)
-         H, Vh, Vxc_LDA, F = hamiltonian(pm, eigf, density, pm.hyb.alpha, perturb=True)
+         H, Vh, Vxc_LDA, F = hamiltonian(pm, eigf, density, pm.hyb.alpha, occupations, perturb=True)
          n_t[i] = density
 
       # Calculate the current density

@@ -75,7 +75,7 @@ def main():
             timestep = int(eval(input('timestep to save: ')))
         save_anim = bool(eval(input('save to mp4 video (0=no,1=yes): ')))
         if save_anim:
-            step = int(eval(input('skip every n frames: n = ')))
+            step = int(eval(input('sample every n frames: n = ')))
     file_name = str(input('name of output file (leave blank for default): '))
     if file_name == '':
         file_name = None
