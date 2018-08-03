@@ -242,7 +242,6 @@ class Input(object):
         self.non = InputSection()
         non = self.non
         non.rtol_solver = 1e-14              #: Tolerance of linear solver in real time propagation (Recommended: 1e-13)
-        non.save_eig = True                  #: Save eigenfunctions and eigenvalues of Hamiltonian
         non.RE = False                       #: Reverse engineer non-interacting density
         non.OPT = False                      #: Calculate the external potential for the non-interacting density
         non.HFKS = False                     #: Reverse-engineer non density to give HFKS c potential
@@ -260,7 +259,6 @@ class Input(object):
         lda.tol = 1e-12                      #: convergence tolerance in the density
         lda.etol = 1e-12                     #: convergence tolerance in the energy
         lda.max_iter = 10000                 #: Maximum number of self-consistency iterations
-        lda.save_eig = True                  #: Save eigenfunctions and eigenvalues of Hamiltonian
         lda.OPT = False                      #: Calculate the external potential for the LDA density
         lda.HFKS = False                     #: Reverse-engineer lda density to give HFKS c potential
 
@@ -284,7 +282,6 @@ class Input(object):
         hf.fock = 1                          #: Include Fock term (0 = Hartree approximation, 1 = Hartree-Fock approximation)
         hf.con = 1e-12                       #: Tolerance
         hf.nu = 0.9                          #: Mixing term
-        hf.save_eig = True                   #: Save eigenfunctions and eigenvalues of Hamiltonian
         hf.RE = False                        #: Reverse-engineer hf density
         hf.OPT = False                       #: Calculate the external potential for the HF density
         hf.HFKS = False                      #: Reverse-engineer hf density to give HFKS c potential
@@ -302,7 +299,6 @@ class Input(object):
         hyb.mix = 0.5                        #: Mixing parameter for linear  mixing (float in [0,1])
         hyb.tol = 1e-12                      #: convergence tolerance in the density
         hyb.max_iter = 10000                 #: Maximum number of self-consistency iterations
-        hyb.save_eig = True                  #: Save eigenfunctions and eigenvalues of Hamiltonian
         hyb.OPT = False                      #: Calculate the external potential for the LDA density
         hyb.RE = False                       #: Calculate the external potential for the LDA density
         hyb.HFKS = False                     #: Reverse-engineer hyb density to give HFKS c potential
@@ -338,7 +334,6 @@ class Input(object):
         ### RE parameters
         self.re = InputSection()
         re = self.re
-        re.save_eig = True                   #: Save Kohn-Sham eigenfunctions and eigenvalues of reverse-engineered potential
         re.stencil = 5                       #: Discretisation of 1st derivative (5 or 7)
         re.mu = 1.0                          #: 1st convergence parameter in the ground-state reverse-engineering algorithm
         re.p = 0.05                          #: 2nd convergence parameter in the ground-state reverse-engineering algorithm
@@ -352,7 +347,6 @@ class Input(object):
         re.max_iterations = 10               #: Maximum number of iterations per time step to find the Kohn-Sham potential
         re.damping = True                    #: Damping term used to filter out the noise in the time-dependent Kohn-Sham vector potential
         re.filter_beta = 1.8                 #: 1st parameter in the damping term
-        re.filter_sigma = 20.0               #: 2nd parameter in the damping term
 
 
         ### OPT parameters
@@ -413,7 +407,7 @@ class Input(object):
                 s += input_string(key,value)
         return s
 
-    def sprint(self, string='', priority=1, newline=True, refresh=0.05, savelog=True):
+    def sprint(self, string='', priority=1, newline=True, refresh=0.000005, savelog=True):
         """Customized print function
 
         Prints to screen and appends to log.

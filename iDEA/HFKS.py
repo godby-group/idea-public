@@ -214,10 +214,8 @@ def main(parameters, approx):
    results.add(den,'gs_{}hfks_den'.format(approx))
    results.add(hartree(pm, den),'gs_{}hfks_vh'.format(approx))
    results.add(fock(pm, eigf),'gs_{}hfks_F'.format(approx))
-
-   if pm.hf.save_eig:
-       results.add(eigf.T, 'gs_{}hfks_eigf'.format(approx))
-       results.add(eigv, 'gs_{}hfks_eigv'.format(approx))
+   results.add(eigf.T, 'gs_{}hfks_eigf'.format(approx))
+   results.add(eigv, 'gs_{}hfks_eigv'.format(approx))
 
    if pm.run.save:
       results.save(pm)

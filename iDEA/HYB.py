@@ -182,9 +182,8 @@ def save_results(pm, results, density, E, eigf, eigv, alpha):
    """
    results.add(density,'gs_hyb{:05.3f}_den'.format(alpha).replace('.','_'))
    results.add(E,'gs_hyb{:05.3f}_E'.format(alpha).replace('.','_'))
-   if pm.non.save_eig:
-      results.add(eigf.T,'gs_hyb{:05.3f}_eigf'.format(alpha).replace('.','_'))
-      results.add(eigv,'gs_hyb{:05.3f}_eigv'.format(alpha).replace('.','_'))
+   results.add(eigf.T,'gs_hyb{:05.3f}_eigf'.format(alpha).replace('.','_'))
+   results.add(eigv,'gs_hyb{:05.3f}_eigv'.format(alpha).replace('.','_'))
    if (pm.run.save):
       results.save(pm)
 

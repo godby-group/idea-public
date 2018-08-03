@@ -97,7 +97,6 @@ ext.initial_espsi = 'qho'            #: Initial 2 or 3 electron excited-state wa
 ### Non-interacting approximation parameters
 non = InputSection()
 non.rtol_solver = 1e-14              #: Tolerance of linear solver in real time propagation (Recommended: 1e-13)
-non.save_eig = True                  #: Save eigenfunctions and eigenvalues of Hamiltonian
 non.RE = False                       #: Reverse-engineer non-interacting density
 non.OPT = False                      #: Calculate the external potential for the non-interacting density
 non.HFKS = False                     #: Reverse-engineer non density to give HFKS c potential
@@ -114,7 +113,6 @@ lda.kerker_length = 0.5              #: length over which density fluctuations a
 lda.tol = 1e-12                      #: convergence tolerance in the density
 lda.etol = 1e-12                     #: convergence tolerance in the energy
 lda.max_iter = 10000                 #: Maximum number of self-consistency iterations
-lda.save_eig = True                  #: Save eigenfunctions and eigenvalues of Hamiltonian
 lda.OPT = False                      #: Calculate the external potential for the LDA density
 lda.HFKS = False                     #: Reverse-engineer lda density to give HFKS c potential
 
@@ -184,7 +182,6 @@ lan.start = 'non'                    #: Ground-state Kohn-Sham potential to be p
 
 ### RE parameters
 re = InputSection()
-re.save_eig = True                   #: Save Kohn-Sham eigenfunctions and eigenvalues of reverse-engineered potential
 re.stencil = 5                       #: Discretisation of 1st derivative (5 or 7)
 re.mu = 1.0                          #: 1st convergence parameter in the ground-state reverse-engineering algorithm
 re.p = 0.05                          #: 2nd convergence parameter in the ground-state reverse-engineering algorithm
@@ -198,7 +195,6 @@ re.cdensity_tolerance = 1e-7         #: Tolerance of the error in the current de
 re.max_iterations = 10               #: Maximum number of iterations per time step to find the Kohn-Sham potential
 re.damping = True                    #: Damping term used to filter out the noise in the time-dependent Kohn-Sham vector potential
 re.filter_beta = 1.8                 #: 1st parameter in the damping term
-re.filter_sigma = 20.0               #: 2nd parameter in the damping term
 
 
 ### OPT parameters

@@ -23,6 +23,7 @@ class TestCG(unittest.TestCase):
     def setUp(self):
         """ Sets up harmonic oscillator system """
         pm = input.Input()
+        pm.run.name = 'unittest'
         pm.run.save = False
         pm.run.verbosity = 'low'
         pm.lda.NE = 2
@@ -174,6 +175,7 @@ class TestCGLDA(unittest.TestCase):
     def setUp(self):
         """ Sets up harmonic oscillator system """
         pm = input.Input()
+        pm.run.name = 'unittest'
         pm.run.save = False
         pm.run.verbosity = 'low'
 
@@ -188,7 +190,6 @@ class TestCGLDA(unittest.TestCase):
             return 0.5*(0.25**2)*(x**2)
         pm.sys.v_ext = v_ext
         
-        pm.lda.save_eig = True
         pm.lda.NE = 2
         pm.lda.scf_type = 'cg'
 

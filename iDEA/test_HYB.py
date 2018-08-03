@@ -16,6 +16,7 @@ class HYBTestHarmonic(unittest.TestCase):
     def setUp(self):
         """ Sets up harmonic oscillator system """
         pm = input.Input()
+        pm.run.name = 'unittest'
         pm.run.HF = True
         pm.run.HYB = True
         pm.run.save = False
@@ -38,7 +39,6 @@ class HYBTestHarmonic(unittest.TestCase):
             return 0.5*(omega**2)*(x**2)
         sys.v_ext = v_ext
 
-        pm.setup_space()
         self.pm = pm
 
     def test_alpha(self):
