@@ -42,8 +42,6 @@ References
 
 .. [Hodgson2014]  M. J. P. Hodgson, J. D. Ramsden, T. R. Durrant and R. W. Godby, Physical Review B (Rapid Communications) 90 241107(R) (2014).
 
-.. [Entwistle2016] M. T. Entwistle, M. J. P. Hodgson, J. Wetherell, B. Longstaff, J. D. Ramsden, and R. W. Godby, Phys. Rev. B 94, 205134 (2016).
-
 .. [Torelli2018] D. Torelli, M. J. P. Hodgson and R. W. Godby, Unpublished.
 
 .. [Becke1990] A. D. Becke and K. E. Edgecombe, J. Chem. Phys. 92, 5397–5403 (1990).
