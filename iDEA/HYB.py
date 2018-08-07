@@ -346,10 +346,9 @@ def main(parameters):
       pm.sprint('HYB: functionality chosen is not valid - please choose from a, o and f)'.format(pm.sys.NE), 1, newline=True)
 
    if pm.run.time_dependence:
-
       # Starting values for wave functions, density
-      if pm.hyb.alpha == 'o':
-          raise ValueError('HYB: ERROR! Cannot optimise hybrid in time-dependence, please give a numerical value from alpha.')
+      if pm.hyb.functionality == 'o':
+          raise ValueError('HYB: ERROR! Cannot optimise hybrid in time-dependence, please give a numerical value for alpha.')
       n_t = np.empty((pm.sys.imax, pm.sys.grid), dtype=np.float)
       n_t[0] = density
       H, Vh, Vxc_LDA, F = hamiltonian(pm, eigf, density, pm.hyb.alpha, occupations, perturb=False)
