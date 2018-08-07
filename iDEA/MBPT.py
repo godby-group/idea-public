@@ -1128,7 +1128,9 @@ def hamiltonian(pm, st, S):
 def quasiparticle_orbitals(pm, st, S, h0, H, screening):
     if screening == 'dynamic':
         d = np.gradient(S, st.omega_delta*1.0j, axis=-1) # dS/dw (derivative of sigma wrt imaginary frequency)
-        qp_energies = h0.energies + bracket_r(S, h0.orbitals, st)[:,0].real +  H.qp_shift # Use 1st order approx to QP energies
+        qp_energies = h0.energies + bracket_r(S, h0.orbitals, st)[:,0].real # Use 1st order approx to QP energies
+        if pm.mbpt.hedin_shift:
+            qp_energies = qp_energies + H.qp_shift # Take account of the Hedin shift
         qp_energies = qp_energies + h0.e_fermi # Take account of the vaccum shift
         homo = qp_energies[st.NE-1]
         ip = -homo

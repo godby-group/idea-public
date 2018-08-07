@@ -82,7 +82,7 @@ def calculate_pair_density(pm, wavefunction_ND):
 def calculate_D_sigma(pm, density, pair_density):
     r"""Calculates D_sigma from the electron density and the electron pair density.
 
-   .. math:
+    .. math ::
 
        D_{\sigma}(x) = \frac{\Big[\nabla^{2} _{x'} n_{2}(x,x') \Big]_{x'=x}}{2n(x)}
 
@@ -112,7 +112,7 @@ def calculate_D_sigma(pm, density, pair_density):
 def elf_dobson(pm, density, D_sigma):
     r"""Calculate the ELF from the electron density and the electron pair density.
 
-    .. math:
+    .. math ::
 
         \mathrm{ELF}(x) = \frac{1}{1 + \Big(\frac{D_{\sigma}(x)}{D_{\sigma, \mathrm{H}}(x)}\Big)^{2}} \\
 
