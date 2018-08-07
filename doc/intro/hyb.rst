@@ -11,7 +11,7 @@ potential given by
 
 .. math:: w(x, y) = (1 + |x-y|)^{-1} \, .
 
-A perturbing potential may be applied to the ground-state system, and 
+A perturbing potential may be applied to the ground state system, and 
 the time-dependent Hybrid DFT equation solved approximately to 
 calculate the system's time evolution.
 
@@ -24,7 +24,7 @@ for a non-interacting system of :math:`N` electrons are first
 calculated from the single-particle Schrödinger equation with 
 Hamiltonian :math:`\hat{T} + \hat{V}_{\text{ext}}`.
 
-We then proceed to calculate the ground-state electron density of this 
+We then proceed to calculate the ground state electron density of this 
 system:
 
 .. math:: n(x) = \sum_{j=1}^{N} \lvert \varphi_{j}(x) \rvert ^{2} \, .
@@ -46,7 +46,7 @@ defining
 
 .. math:: H_{\alpha}(x,y) = \delta(x-y)\hat{T} + \delta(x-y)v_{\text{ext}}(y) + \delta(x-y)v_{\text{H}}(y) + \alpha\Sigma_{\text{x}}(x,y) + (1-\alpha)\delta(x-y)v_{\text{xc}}^{\text{LDA}}(y) \, ,
 
-the Hybrid Hamiltonian acts via the integral transform
+the Hybrid Hamiltonian :math:`\hat{H}_{\alpha}` acts via the integral transform
 
 .. math:: \hat{H}_{\alpha}\varphi(x) = \int \! H_{\alpha}(x,y)\varphi(y) \, \mathrm{d}y \, .
 
@@ -75,7 +75,7 @@ Time-dependence
 ---------------
 
 A perturbing potential :math:`v_{\text{ptrb}}` is added to the 
-ground-state system so that it now has Hamiltonian 
+ground state system so that it now has Hamiltonian 
 :math:`\hat{T} + \hat{W} + \hat{V}_{\text{ext}} + \hat{V}_{\text{ptrb}}`.
 
 We construct the Time-Dependent Hybrid Hamiltonian, which again acts 
@@ -84,7 +84,7 @@ a perturbation potential term added as
 
 .. math:: H_{\alpha}^{\text{TD}}(x,y) = H_{\alpha}(x,y) + \delta(x-y)v_{\text{ptrb}}(y) \, .
 
-Beginning with the ground-state (initial time) orbitals and energies 
+Beginning with the ground state (initial time) orbitals and energies 
 :math:`\{ \varphi_{j}(t=0), \varepsilon_{j}(t=0) \}_{j=1}^{N}` as 
 already calculated, we apply the Crank--Nicolson method to evolve the 
 system forward in time by a step of size :math:`\delta t`:
