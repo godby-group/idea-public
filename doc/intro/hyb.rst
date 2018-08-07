@@ -5,11 +5,11 @@ The HYB code solves the Hybrid DFT equation (containing a linear
 combination of the LDA exchange-correlation potential and Fock 
 operators) to approximately calculate the ground state density of a 
 one-dimensional finite system of :math:`N` like-spin electrons, with 
-Hamiltonian :math:`\hat{T} + \hat{W} + \hat{V}_{\text{ext}}`, where 
-:math:`\hat{W}` is the operator for the softened Coulomb interaction 
+Hamiltonian :math:`\hat{T} + \hat{U} + \hat{V}_{\text{ext}}`, where 
+:math:`\hat{U}` is the operator for the softened Coulomb interaction 
 potential given by 
 
-.. math:: w(x, y) = (1 + |x-y|)^{-1} \, .
+.. math:: u(x, y) = (1 + |x-y|)^{-1} \, .
 
 A perturbing potential may be applied to the ground state system, and 
 the time-dependent Hybrid DFT equation solved approximately to 
@@ -31,11 +31,11 @@ system:
 
 From this we find the Hartree potential
 
-.. math:: v_{\text{H}}(x) = \int \! n(y)w(x,y) \, \mathrm{d}y \, ,
+.. math:: v_{\text{H}}(x) = \int \! n(y)u(x,y) \, \mathrm{d}y \, ,
 
 the Fock matrix (the self-energy in the exchange-only approximation)
 
-.. math:: \Sigma_{\text{x}}(x,y) = - \sum_{j=1}^{N} \varphi_{j}^{*}(y) \varphi_{j}(x) w(x,y) \, ,
+.. math:: \Sigma_{\text{x}}(x,y) = - \sum_{j=1}^{N} \varphi_{j}^{*}(y) \varphi_{j}(x) u(x,y) \, ,
 
 and the LDA exchange-correlation potential 
 :math:`v_{\text{xc}}^{\text{LDA}}` (see iDEA LDA).
@@ -76,7 +76,7 @@ Time-dependence
 
 A perturbing potential :math:`v_{\text{ptrb}}` is added to the 
 ground state system so that it now has Hamiltonian 
-:math:`\hat{T} + \hat{W} + \hat{V}_{\text{ext}} + \hat{V}_{\text{ptrb}}`.
+:math:`\hat{T} + \hat{U} + \hat{V}_{\text{ext}} + \hat{V}_{\text{ptrb}}`.
 
 We construct the Time-Dependent Hybrid Hamiltonian, which again acts 
 via the same integral transform as explained previously, but now with 

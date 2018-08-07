@@ -23,7 +23,7 @@ def hamiltonian(pm, eigf, density, alpha, occupations, perturb=False):
 
    Computes HYB Hamiltonian from a given set of single-particle states.
 
-   .. math:: H(x,x') = K(x,x') + V_{ext}(x)\delta(x-x') + V_{H}(x)\delta(x-x') + \alphaF(x,x') + (1-\alpha)V_{xc}^{LDA}
+   .. math:: H_{\alpha}(x,y) = \delta(x-y)\hat{T} + \delta(x-y)v_{\text{ext}}(y) + \delta(x-y)v_{\text{H}}(y) + \alpha\Sigma_{\text{x}}(x,y) + (1-\alpha)\delta(x-y)v_{\text{xc}}^{\text{LDA}}(y)
 
    parameters
    ----------
@@ -45,7 +45,7 @@ def hamiltonian(pm, eigf, density, alpha, occupations, perturb=False):
    # Construct kinetic energy
    sd = pm.space.second_derivative
    sd_ind = pm.space.second_derivative_indices
-   K = -0.5*sps.diags(sd, sd_ind, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
+   T = -0.5*sps.diags(sd, sd_ind, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
 
    # Construct external potential
    Vext = sps.diags(pm.space.v_ext, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
@@ -75,7 +75,7 @@ def hamiltonian(pm, eigf, density, alpha, occupations, perturb=False):
       Vxc = alpha*F + (1-alpha)*np.diag(Vx_LDA) + np.diag(Vc_LDA)
 
    # construct H
-   H = K + Vext + np.diag(Vh) + Vxc
+   H = T + Vext + np.diag(Vh) + Vxc
    if not pm.hyb.seperate:
       return H, Vh, Vxc_LDA, F
    else:

@@ -18,9 +18,7 @@ from . import RE_cython
 def hartree(pm, density):
    r"""Computes Hartree potential for a given density
 
-   .. math::
-
-       V_H(r) = = \int U(r,r') n(r')dr'
+   .. math:: v_{\text{H}}(x) = \int \! n(y)u(x,y) \, \mathrm{d}y
 
    parameters
    ----------
@@ -38,21 +36,21 @@ def hartree(pm, density):
 def fock(pm, eigf):
    r"""Constructs Fock operator from a set of orbitals
 
-    .. math:: F(x,x') = \sum_{k} \psi_{k}(x) U(x,x') \psi_{k}(x')
+   .. math:: \Sigma_{\text{x}}(x,y) = - \sum_{j=1}^{N} \varphi_{j}^{*}(y) \varphi_{j}(x) u(x,y)
 
-    where U(x,x') denotes the appropriate Coulomb interaction.
+   where u(x,y) denotes the appropriate Coulomb interaction.
 
    parameters
    ----------
    pm : object
-        Parameters object
+      Parameters object
    eigf : array_like
-        Eigenfunction orbitals
+      Eigenfunction orbitals
 
    returns
    -------
    F: array_like
-        Fock matrix
+      Fock matrix
    """
    F = np.zeros((pm.sys.grid,pm.sys.grid), dtype='complex')
    for i in range(pm.sys.NE):
@@ -102,7 +100,7 @@ def hamiltonian(pm, wfs, perturb=False):
    # Construct kinetic energy
    sd = pm.space.second_derivative
    sd_ind = pm.space.second_derivative_indices
-   K = -0.5*sps.diags(sd, sd_ind, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
+   T = -0.5*sps.diags(sd, sd_ind, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
 
    # Construct potentials
    if perturb:
@@ -116,31 +114,30 @@ def hamiltonian(pm, wfs, perturb=False):
       F = np.zeros(shape=Vh.shape)
 
    # Construct H
-   H = K + Vext + Vh + F*pm.space.delta
+   H = T + Vext + Vh + F*pm.space.delta
    return H
 
 
 def groundstate(pm, H):
    r"""Diagonalises Hamiltonian H
 
-    .. math:: H = K + V + F \\
-              H \psi_{i} = E_{i} \psi_{i}
+   .. math:: \hat{H}\varphi_{j} = \varepsilon_{j}\varphi_{j}
 
    parameters
    ----------
-   pm : object
-         Parameters object
+   pm: object
+      Parameters object
    H: array_like
-     Hamiltonian matrix (band form)
+      Hamiltonian matrix (band form)
 
    returns
    -------
    n: array_like
-     density
+      density
    eigf: array_like
-     normalised orbitals, index as eigf[space_index,orbital_number]
+      normalised orbitals, index as eigf[space_index,orbital_number]
    eigv: array_like
-     orbital energies
+      orbital energies
 
    """
    # Solve eigen equation
