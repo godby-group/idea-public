@@ -87,11 +87,9 @@ def construct_expansion_matrix(pm):
 
     # Populate the COOrdinate holding arrays with the coordinates and data
     if(pm.sys.NE == 2):
-        coo_1, coo_2, coo_data = EXT_cython.expansion_two(coo_1, coo_2, 
-                                 coo_data, pm.space.npt)
+        coo_1, coo_2, coo_data = EXT_cython.expansion_two(pm, coo_1, coo_2, coo_data)
     elif(pm.sys.NE == 3):
-        coo_1, coo_2, coo_data = EXT_cython.expansion_three(coo_1, coo_2, 
-                                 coo_data, pm.space.npt)
+        coo_1, coo_2, coo_data = EXT_cython.expansion_three(pm, coo_1, coo_2, coo_data)
 
     # Convert the holding arrays into COOrdinate sparse matrices
     expansion_matrix = sps.coo_matrix((coo_data,(coo_1,coo_2)), shape=(

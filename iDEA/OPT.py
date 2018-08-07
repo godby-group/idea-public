@@ -12,7 +12,6 @@ import scipy as sp
 import scipy.sparse as sps
 import scipy.linalg as spla
 
-from . import EXT_cython
 from . import results as rs 
 
 
