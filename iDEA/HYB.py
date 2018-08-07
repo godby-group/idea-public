@@ -53,7 +53,7 @@ def hamiltonian(pm, eigf, density, alpha, occupations, perturb=False):
       Vext += sps.diags(pm.space.v_pert, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
 
    # Construct hartree potential
-   Vh = np.diag(iDEA.HF.hartree(pm, density))
+   Vh = iDEA.HF.hartree(pm, density)
 
    # Construct LDA Vxc
    if not pm.hyb.seperate:
@@ -75,7 +75,7 @@ def hamiltonian(pm, eigf, density, alpha, occupations, perturb=False):
       Vxc = alpha*F + (1-alpha)*np.diag(Vx_LDA) + np.diag(Vc_LDA)
 
    # construct H
-   H = K + Vext + Vh + Vxc
+   H = K + Vext + np.diag(Vh) + Vxc
    if not pm.hyb.seperate:
       return H, Vh, Vxc_LDA, F
    else:
@@ -115,9 +115,9 @@ def calc_with_alpha(pm, alpha, occupations):
       H_old =  copy.deepcopy(H)
 
       # Construct hybrid hamiltonian
-      if pm.hyb.seperate == False:
+      if not pm.hyb.seperate:
          H, Vh, Vxc_LDA, F = hamiltonian(pm, eigf, density, alpha, occupations)
-      if pm.hyb.seperate == True:
+      else:
          H, Vh, Vxc_LDA, Vx_LDA, Vc_LDA, F = hamiltonian(pm, eigf, density, alpha, occupations)
 
       # Mix for stability
