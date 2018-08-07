@@ -15,7 +15,7 @@ A perturbing potential may be applied to the ground-state system, and
 the time-dependent Hybrid DFT equation solved approximately to 
 calculate the system's time evolution.
 
-Calculating the ground-state
+Calculating the ground state
 ----------------------------
 
 Orbitals and corresponding non-degenerate 
