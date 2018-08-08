@@ -1,52 +1,96 @@
 iDEA HYB (Hybrid)
 =================
 
-The HYB code solves the Hybrid DFT equations to approximately calculate the ground state density for a one-dimensional finite system (using the softened Coulomb repulsion :math:`(|x-x'|+1)^{-1}`). A perturbing potential is then applied to the ground-state system and its evolution is calculated approximately through solving the time-dependent Hybrid DFT equation.
+The HYB code solves the Hybrid DFT equation (containing a linear 
+combination of the LDA exchange-correlation potential and Fock 
+operators) to approximately calculate the ground state density of a 
+one-dimensional finite system of :math:`N` like-spin electrons, with 
+Hamiltonian :math:`\hat{T} + \hat{U} + \hat{V}_{\text{ext}}`, where 
+:math:`\hat{U}` is the operator for the softened Coulomb interaction 
+potential given by 
 
-Calculating the ground-state
+.. math:: u(x, y) = (1 + |x-y|)^{-1} \, .
+
+A perturbing potential may be applied to the ground state system, and 
+the time-dependent Hybrid DFT equation solved approximately to 
+calculate the system's time evolution.
+
+Calculating the ground state
 ----------------------------
 
-To compute the Hybrid density of a system we follow the same procedure as Hartree-Fock, but we perform a linear mixing of the Fock Operator and the LDA exchange-correlation potential
-We first begin with the non-interacting orbitals, as computed from the single-particle Schrödinger equation:
+Orbitals and corresponding non-degenerate 
+energy eigenvalues :math:`\{ \varphi_{j}, \varepsilon_{j} \}_{j=1}^{N}` 
+for a non-interacting system of :math:`N` electrons are first 
+calculated from the single-particle Schrödinger equation with 
+Hamiltonian :math:`\hat{T} + \hat{V}_{\text{ext}}`.
 
-.. math:: \{ \phi_{i},E_{i} \},
+We then proceed to calculate the ground state electron density of this 
+system:
 
-and from these the density from these orbitals :math:`n(x)`.
+.. math:: n(x) = \sum_{j=1}^{N} \lvert \varphi_{j}(x) \rvert ^{2} \, .
 
-We then calculate the non-local exchange potential (Fock matrix) from these orbitals
+From this we find the Hartree potential
 
-.. math:: F(x,x') = \sum_{k} \phi_{k}(x) U(x,x') \phi^{*}_{k}(x'),
+.. math:: v_{\text{H}}(x) = \int \! n(y)u(x,y) \, \mathrm{d}y \, ,
 
-and the Hartree potential from the density:
+the Fock matrix (the self-energy in the exchange-only approximation)
 
-.. math:: V_{H}(x) = \int n(x') U(x,x') dx'.
+.. math:: \Sigma_{\text{x}}(x,y) = - \sum_{j=1}^{N} \varphi_{j}^{*}(y) \varphi_{j}(x) u(x,y) \, ,
 
-We then compute the Hamiltonian of the system:
+and the LDA exchange-correlation potential 
+:math:`v_{\text{xc}}^{\text{LDA}}` (see iDEA LDA).
 
-.. math:: H(x,x') = K(x,x') + V_{ext}(x)\delta(x-x') + V_{H}(x)\delta(x-x') + \alpha*F(x,x') + (1-\alpha)V_{xc}^{LDA}
+Let :math:`\alpha \in \mathopen[ 0, 1 \mathclose]` be a fixed parameter 
+which determines the linear mixing of Hartree-Fock and LDA. Then 
+defining
 
-We can then find the eigenvalues and eigenfunctions of this Hamiltonian to obtain a new set of orbitals
+.. math:: H_{\alpha}(x,y) = \delta(x-y)\hat{T} + \delta(x-y)v_{\text{ext}}(y) + \delta(x-y)v_{\text{H}}(y) + \alpha\Sigma_{\text{x}}(x,y) + (1-\alpha)\delta(x-y)v_{\text{xc}}^{\text{LDA}}(y) \, ,
 
-.. math:: H\phi_{i} = \phi_{i}E_{i}.
+the Hybrid Hamiltonian :math:`\hat{H}_{\alpha}` acts via the integral transform
 
-From these orbitals we then repeat all of the above steps until the density reaches self-consistency.
-We can either specify a mixing parameter for the code to use.
-Or, it can find the optimal alpha using the generalised Kooperman's constraint (more details in upcoming paper)
+.. math:: \hat{H}_{\alpha}\varphi(x) = \int \! H_{\alpha}(x,y)\varphi(y) \, \mathrm{d}y \, .
 
+When our one-dimensional space is discretized to points on a grid, 
+:math:`H_{\alpha}(x,y)` itself is a two-dimensional array with a 
+parameter :math:`\alpha`, and acts as the Hamiltonian on the now 
+one-dimensional arrays :math:`\{ \varphi_{j} \}_{j=1}^{N}`.
+
+We solve the Hybrid equation
+
+.. math:: \hat{H}_{\alpha}\varphi_{j} = \varepsilon_{j}\varphi_{j}
+
+to obtain a new set of orbitals and their corresponding eigenvalues.
+
+Using these new orbitals the above process is iterated until a 
+self-consistent solution is reached (i.e. until the change in the new 
+electron density :math:`n` is small enough compared to that of the 
+previous iteration).
+
+The parameter :math:`\alpha` may be specified manually, however it is 
+also possible to determine an "optimal" value for :math:`\alpha` by 
+considering the generalized Koopmans' theorem, which gives conditions 
+under which the model best describes a physical system.
 
 Time-dependence
 ---------------
-In order to evolve the Hartree-Fock density in time due to a perturbation we begin with the ground-state Hartree-Fock orbitals
-as calculated above:
 
-.. math:: \{ \phi_{i}\left( t=0\right),E_{i} \left( t=0\right) \},
+A perturbing potential :math:`v_{\text{ptrb}}` is added to the 
+ground state system so that it now has Hamiltonian 
+:math:`\hat{T} + \hat{U} + \hat{V}_{\text{ext}} + \hat{V}_{\text{ptrb}}`.
 
-from these we build the Time-dependence Hartree-Fock Hamiltonian:
+We construct the Time-Dependent Hybrid Hamiltonian, which again acts 
+via the same integral transform as explained previously, but now with 
+a perturbation potential term added as
 
-.. math:: H(x,x') = K(x,x') + V_{ext}(x)\delta(x-x') + V_{ptrb}(x)\delta(x-x') + V_{H}(x)\delta(x-x') + \alpha*F(x,x') + (1-\alpha)V_{xc}^{LDA}
+.. math:: H_{\alpha}^{\text{TD}}(x,y) = H_{\alpha}(x,y) + \delta(x-y)v_{\text{ptrb}}(y) \, .
 
-and using this Hamiltonian we use the Crank-Nicholson method to evolve the orbitals by one time-step:
+Beginning with the ground state (initial time) orbitals and energies 
+:math:`\{ \varphi_{j}(t=0), \varepsilon_{j}(t=0) \}_{j=1}^{N}` as 
+already calculated, we apply the Crank--Nicolson method to evolve the 
+system forward in time by a step of size :math:`\delta t`:
 
-.. math:: \{ \phi_{i}\left(t\right),E_{i} \left(t\right) \} \rightarrow \{ \phi_{i}\left(t=t+\Delta t\right),E_{i} \left(t=t+\Delta t\right) \}.
+.. math:: \{ \varphi_{j}(t) \}_{j=1}^{N} \rightarrow \{ \varphi_{j}(t=t+\delta t) \}_{j=1}^{N} \, .
 
-This precess repeats until the total time is reached, this gives us the time-dependent Hartree-Fock orbitals and density of the system.
+This process is repeated until the desired duration of the 
+time-evolution has been simulated. The electron density of the system 
+is calculated from the orbitals at each time-step.

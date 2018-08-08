@@ -23,7 +23,7 @@ def hamiltonian(pm, eigf, density, alpha, occupations, perturb=False):
 
    Computes HYB Hamiltonian from a given set of single-particle states.
 
-   .. math:: H(x,x') = K(x,x') + V_{ext}(x)\delta(x-x') + V_{H}(x)\delta(x-x') + \alphaF(x,x') + (1-\alpha)V_{xc}^{LDA}
+   .. math:: H_{\alpha}(x,y) = \delta(x-y)\hat{T} + \delta(x-y)v_{\text{ext}}(y) + \delta(x-y)v_{\text{H}}(y) + \alpha\Sigma_{\text{x}}(x,y) + (1-\alpha)\delta(x-y)v_{\text{xc}}^{\text{LDA}}(y)
 
    parameters
    ----------
@@ -45,7 +45,7 @@ def hamiltonian(pm, eigf, density, alpha, occupations, perturb=False):
    # Construct kinetic energy
    sd = pm.space.second_derivative
    sd_ind = pm.space.second_derivative_indices
-   K = -0.5*sps.diags(sd, sd_ind, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
+   T = -0.5*sps.diags(sd, sd_ind, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
 
    # Construct external potential
    Vext = sps.diags(pm.space.v_ext, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
@@ -53,7 +53,7 @@ def hamiltonian(pm, eigf, density, alpha, occupations, perturb=False):
       Vext += sps.diags(pm.space.v_pert, 0, shape=(pm.sys.grid,pm.sys.grid), format='csr', dtype=complex).toarray()
 
    # Construct hartree potential
-   Vh = np.diag(iDEA.HF.hartree(pm, density))
+   Vh = iDEA.HF.hartree(pm, density)
 
    # Construct LDA Vxc
    if not pm.hyb.seperate:
@@ -75,7 +75,7 @@ def hamiltonian(pm, eigf, density, alpha, occupations, perturb=False):
       Vxc = alpha*F + (1-alpha)*np.diag(Vx_LDA) + np.diag(Vc_LDA)
 
    # construct H
-   H = K + Vext + Vh + Vxc
+   H = T + Vext + np.diag(Vh) + Vxc
    if not pm.hyb.seperate:
       return H, Vh, Vxc_LDA, F
    else:
@@ -115,9 +115,9 @@ def calc_with_alpha(pm, alpha, occupations):
       H_old =  copy.deepcopy(H)
 
       # Construct hybrid hamiltonian
-      if pm.hyb.seperate == False:
+      if not pm.hyb.seperate:
          H, Vh, Vxc_LDA, F = hamiltonian(pm, eigf, density, alpha, occupations)
-      if pm.hyb.seperate == True:
+      else:
          H, Vh, Vxc_LDA, Vx_LDA, Vc_LDA, F = hamiltonian(pm, eigf, density, alpha, occupations)
 
       # Mix for stability
@@ -346,10 +346,9 @@ def main(parameters):
       pm.sprint('HYB: functionality chosen is not valid - please choose from a, o and f)'.format(pm.sys.NE), 1, newline=True)
 
    if pm.run.time_dependence:
-
       # Starting values for wave functions, density
-      if pm.hyb.alpha == 'o':
-          raise ValueError('HYB: ERROR! Cannot optimise hybrid in time-dependence, please give a numerical value from alpha.')
+      if pm.hyb.functionality == 'o':
+          raise ValueError('HYB: ERROR! Cannot optimise hybrid in time-dependence, please give a numerical value for alpha.')
       n_t = np.empty((pm.sys.imax, pm.sys.grid), dtype=np.float)
       n_t[0] = density
       H, Vh, Vxc_LDA, F = hamiltonian(pm, eigf, density, pm.hyb.alpha, occupations, perturb=False)
