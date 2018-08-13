@@ -120,7 +120,6 @@ class TestKerker(unittest.TestCase):
         nt.assert_allclose(den, den_cond, 1e-3)
 
 
-
 class TestRPA(unittest.TestCase):
     """Tests for the RPA preconditioner
     
@@ -147,7 +146,6 @@ class TestRPA(unittest.TestCase):
         pm.lda.mix = 1.0
 
         self.pm = pm
-
 
     def test_chi_1(self):
         """Testing potential-density response
