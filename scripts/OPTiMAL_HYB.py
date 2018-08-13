@@ -20,7 +20,6 @@ def optimize():
       print('gs_hyb_{}.db'.format(fn))
       with open('raw/gs_hyb_{}.db'.format(fn), 'rb') as f:
          data[fn] = pickle.load(f)
-   print()
 
    # Ensure all data has the same shape.
    for i in data.values():
@@ -66,7 +65,7 @@ def optimize():
 if __name__ == '__main__':
    optimal_alphas = optimize()
    cond_names = ("LUMO-A", "LUMO-HOMO", "HOMO-I (GKT)")
-   print('Optimal alpha values:')
+   print('\nOptimal alpha values:')
    for index, item in enumerate(optimal_alphas):
       if item is not None:
          print("{:12}: {}".format(cond_names[index], item))
