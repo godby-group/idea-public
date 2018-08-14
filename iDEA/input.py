@@ -689,7 +689,6 @@ class Input(object):
             tmp = copy.deepcopy(pm)
             del tmp.sys.v_ext
             del tmp.sys.v_pert
-            del tmp.sys.v_pert_im
 
             # store pickled version of parameters object
             import pickle
