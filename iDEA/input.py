@@ -223,7 +223,7 @@ class Input(object):
         ### Non-interacting approximation parameters
         self.non = InputSection()
         non = self.non
-        non.rtol_solver = 1e-14              #: Tolerance of linear solver in real time propagation (Recommended: 1e-13)
+        non.rtol_solver = 1e-13              #: Tolerance of linear solver in real time propagation (Recommended: 1e-13)
         non.RE = False                       #: Reverse-engineer non-interacting density
         non.OPT = False                      #: Calculate the external potential for the non-interacting density
         non.HFKS = False                     #: Reverse-engineer non density to give HFKS c potential
@@ -361,21 +361,52 @@ class Input(object):
     def check(self):
         """Checks validity of input parameters."""
         pm = self
+
+        # Time-dependence
         if pm.run.time_dependence == True:
             if pm.run.MBPT == True:
                 self.sprint('MBPT: Warning - time-dependence not implemented!')
+            if pm.run.HYB == True:
+                self.sprint('HYB: Warning - time-dependence not implemented!')
+            if (pm.ext.RE or pm.non.RE or pm.lda.RE or pm.hf.RE or pm.hyb.RE or pm.mbpt.RE):
+                self.sprint('RE: Warning - time-dependence not implemented!')
 
+        # EXT
+        if pm.run.EXT == True:
+            if pm.ext.itol > 1e-6:
+                self.sprint('EXT: Warning - value of ext.itol is much larger than 1e-13, this can yeild poor KS potentials')
+
+        # LDA
+        if pm.run.LDA == True:
+            if pm.lda.scf_type not in [None, 'pulay', 'linear', 'cg', 'mixh']:
+                raise ValueError("LDA: Warning - lda.scf_type must be None, 'linear', 'pulay' or 'cg'")
+            if pm.lda.pulay_preconditioner not in [None, 'kerker', 'rpa']:
+                raise ValueError("LDA: Warning - lda.pulay_preconditioner must be None, 'kerker' or 'rpa'")
+
+        # HF
+        if pm.run.HF == True:
+            if (pm.hf.fock != 1 and pm.hf.fock != 0):
+                raise ValueError('HF: Error - hf.fock must be set to 0 or 1.'.format(pm.mbpt.norb, pm.sys.NE))
+            if (pm.hf.nu > 1 or pm.hf.nu < 0):
+                self.sprint('HF: Warning - Value of nu should be between 0 and 1')
+
+        # HYB
+        if pm.run.HYB == True:
+            if (pm.hyb.alpha  > 1 or pm.hyb.alpha  < 0):
+                self.sprint('HYB: Warning - Value of alpha should be between 0 and 1')
+            if (pm.hyb.mix > 1 or pm.hyb.mix < 0):
+                self.sprint('HYB: Warning - Value of mix should be between 0 and 1')
+
+        # MBPT
         if pm.run.MBPT == True:
             if pm.mbpt.norb < pm.sys.NE:
-                self.sprint('MBPT: Warning - using {} orbitals for {} electrons'\
-                        .format(pm.mbpt.norb, pm.sys.NE))
-
-        if pm.lda.scf_type not in [None, 'pulay', 'linear', 'cg', 'mixh']:
-            raise ValueError("lda.scf_type must be None, 'linear', 'pulay' or 'cg'")
-
-        if pm.lda.pulay_preconditioner not in [None, 'kerker', 'rpa']:
-            raise ValueError("lda.pulay_preconditioner must be None, 'kerker' or 'rpa'")
-
+                raise ValueError('MBPT: Error - using {} orbitals for {} electrons. Raise the value of mbpt.norb to be greater than sys.NE.'.format(pm.mbpt.norb, pm.sys.NE))
+            if pm.mbpt.hedin_shift == False:
+                self.sprint('MBPT: Warning - Hedin shift has been disabled, density normalisation may now be unstable.')
+            if pm.mbpt.screening not in ['dynamic', 'static', 'inertial', 'zero']:
+                raise ValueError("MBPT: Error - mbpt.screening must be 'dynamic', 'static', 'inertial' or 'zero'")
+            if pm.mbpt.flavour not in ['G0W0', 'GW0', 'GW']:
+                raise ValueError("MBPT: Error - mbpt.screening must be 'G0W0', 'GW0' or 'GW'")
 
     def __str__(self):
         """Prints different sections in input file"""

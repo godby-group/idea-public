@@ -80,7 +80,7 @@ ext.initial_espsi = 'qho'            #: Initial 2 or 3 electron excited-state wa
 
 ### Non-interacting approximation parameters
 non = InputSection()
-non.rtol_solver = 1e-14              #: Tolerance of linear solver in real time propagation (Recommended: 1e-13)
+non.rtol_solver = 1e-13              #: Tolerance of linear solver in real time propagation (Recommended: 1e-13)
 non.RE = False                       #: Reverse-engineer non-interacting density
 non.OPT = False                      #: Calculate the external potential for the non-interacting density
 non.HFKS = False                     #: Reverse-engineer non density to give HFKS c potential
