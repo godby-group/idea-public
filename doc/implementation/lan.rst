@@ -1,5 +1,5 @@
-iDEA LAN (Landauer)
-===================
+LAN (Landauer)
+==============
 
 The LAN code implements the Landauer formulation, in which the electrons are non-interacting, to provide an approximate time-dependent electron density.
 

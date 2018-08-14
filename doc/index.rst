@@ -8,7 +8,7 @@ iDEA
    tutorial/index
    examples/index
    theory/index
-   intro/index
+   implementation/index
    dev/index
    API documentation <apidoc/modules>
 

@@ -1,5 +1,5 @@
-iDEA MLP (Mixed Localisation Potential)
-=======================================
+MLP (Mixed Localisation Potential)
+==================================
 
 The mixed localisation potential (MLP) is an approximation to the Kohn-Sham (KS) potential of density functional theory (DFT). It is a combination of the familiar local density approximation (LDA) and the single orbital approximation (SOA); the latter is exact in the limit of complete electron localisation, whereas the former favours delocalised electrons. Hence, the MLP mixes the LDA and the SOA in proportions based of the degree of actual localisation in the system, as such [Hodgson2014]_
 
