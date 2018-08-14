@@ -1,8 +1,8 @@
 #!/bin/bash
 
 echo "### Symlinking Jupyter Notebooks ###"
-src=../../jupyter
-dest=jupyter
+src=../../examples
+dest=examples
 ln -sfn $src/01_get_started_basics/get_started_basics.ipynb $dest
 ln -sfn $src/02_get_started_further/get_started_further.ipynb $dest
 ln -sfn $src/03_well/well.ipynb $dest

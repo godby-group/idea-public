@@ -1,9 +1,6 @@
 Density Functional Theory (DFT)
 ===============================
 
-The following gives a brief overview of density functional theory, for a 
-more detailed set of notes on the topic, please see `these notes <to_be_added_soon>`_.
-
 A functional is a function of a function. This may sound like a scary
 word, but you've definitely worked with them before! (e.g. an integral
 is a functional :math:`\int f(x) dx`). The notation we're going to use
@@ -40,7 +37,7 @@ field. (Add things about SCF)
 Hohenberg-Kohn Theorems
 -------------------------
 
-DFT is built on two main theorems - the Hohenberg-Kohn theorems [1] -
+DFT is built on two main theorems - the Hohenberg-Kohn theorems [Hohenberg1964]_ -
 which we will state without proof here in the interests of brevity, but
 we very much encourage you to look into their proofs - they're really
 not so bad.
@@ -90,7 +87,7 @@ in practice it isn't that easy. The is reason is we often don't know
 we're interested in finding and so have to revert back to the set of
 :math:`N` wavefunctions.
 
-At this point we pick up the *Kohn-Sham* formulation of DFT [2], which is what
+At this point we pick up the *Kohn-Sham* formulation of DFT [Kohn1965]_, which is what
 opened the door for so much progress in this field.
 
 Kohn-Sham DFT
@@ -230,8 +227,6 @@ through the process of finding a self consistent solution.
 References
 ..........
 
-[1] "Inhomogeneous Electron Gas" P. Hohenberg and W. Kohn (1964) Phys.
-Rev. 136, B864
+.. [Hohenberg1964] "Inhomogeneous Electron Gas" P. Hohenberg and W. Kohn (1964) Phys. Rev. 136, B864
 
-[2] "Self-Consistent Equations Including Exchange and Correlation
-Effects" W. Kohn and L. J. Sham (1965) Phys. Rev. 140, A1133
+.. [Kohn1965] "Self-Consistent Equations Including Exchange and Correlation Effects" W. Kohn and L. J. Sham (1965) Phys. Rev. 140, A1133
