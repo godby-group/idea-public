@@ -6,7 +6,7 @@ iDEA
    :hidden:
 
    tutorial/index
-   jupyter/index
+   examples/index
    theory/index
    intro/index
    dev/index
