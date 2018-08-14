@@ -373,13 +373,13 @@ class Input(object):
 
         # EXT
         if pm.run.EXT == True:
-            if ext.itol > 1e-6:
+            if pm.ext.itol > 1e-6:
                 self.sprint('EXT: Warning - value of ext.itol is much larger than 1e-13, this can yeild poor KS potentials')
 
         # LDA
         if pm.run.LDA == True:
             if pm.lda.scf_type not in [None, 'pulay', 'linear', 'cg', 'mixh']:
-                raise ValueError("LDA: Warning - lda.scf_type must be None, 'linear', 'pulay' or 'cg'"
+                raise ValueError("LDA: Warning - lda.scf_type must be None, 'linear', 'pulay' or 'cg'")
             if pm.lda.pulay_preconditioner not in [None, 'kerker', 'rpa']:
                 raise ValueError("LDA: Warning - lda.pulay_preconditioner must be None, 'kerker' or 'rpa'")
 
