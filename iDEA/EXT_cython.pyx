@@ -358,9 +358,9 @@ def hamiltonian_two(object pm, np.ndarray coo_1, np.ndarray coo_2, np.ndarray co
     cdef double[:] v_ext = pm.space.v_ext
     cdef double[:,:] v_int = pm.space.v_int
 
-    # Add the perturbing potential if there is no imaginary part
-    if(td == 1 and pm.sys.im == 0):
-        v_ext += pm.space.v_pert
+    # Add the perturbing potential 
+    if(td == 1):
+        v_ext += pm.space.v_pert.real
 
     # Loop over each non-zero element of the Hamiltonian matrix  
     i = 0
@@ -582,9 +582,9 @@ def hamiltonian_three(object pm, np.ndarray coo_1, np.ndarray coo_2, np.ndarray 
     cdef double[:] v_ext = pm.space.v_ext
     cdef double[:,:] v_int = pm.space.v_int
 
-    # Add the perturbing potential if there is no imaginary part
-    if(td == 1 and pm.sys.im == 0):
-        v_ext += pm.space.v_pert
+    # Add the perturbing potential 
+    if(td == 1):
+        v_ext += pm.space.v_pert.real
 
     # Loop over each non-zero element of the Hamiltonian matrix  
     i = 0
@@ -936,8 +936,8 @@ def hamiltonian_three(object pm, np.ndarray coo_1, np.ndarray coo_2, np.ndarray 
 
 
 def imag_pot_two(pm):
-    r"""Calculates the perturbing potential to be added to the main diagonal of the two-electron 
-    Hamiltonian matrix if imaginary boundary conditions are used.
+    r"""Calculates the imaginary component of the perturbing potential to be added to the main 
+    diagonal of the two-electron Hamiltonian matrix if imaginary potentials are used.
 
     parameters
     ----------
@@ -959,7 +959,7 @@ def imag_pot_two(pm):
         for k in range(grid):
 
             # Calculate element
-            imag_pot[i] = v_pert[j] + v_pert[k]
+            imag_pot[i] = v_pert.imag[j] + v_pert.imag[k]
   
             # Increase count
             i += 1
@@ -968,8 +968,8 @@ def imag_pot_two(pm):
 
 
 def imag_pot_three(pm):
-    r"""Calculates the perturbing potential to be added to the main diagonal of the three-electron
-    Hamiltonian matrix if imaginary boundary conditions are used.
+    r"""Calculates the imaginary component of the perturbing potential to be added to the main 
+    diagonal of the three-electron Hamiltonian matrix if imaginary potentials are used.
 
     parameters
     ----------
@@ -992,7 +992,7 @@ def imag_pot_three(pm):
             for l in range(grid):
 
                 # Calculate element
-                imag_pot[i] = v_pert[j] + v_pert[k] + v_pert[l]
+                imag_pot[i] = v_pert.imag[j] + v_pert.imag[k] + v_pert.imag[l]
   
                 # Increase count
                 i += 1
