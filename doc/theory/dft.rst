@@ -1,9 +1,6 @@
 Density Functional Theory (DFT)
 ===============================
 
-The following gives a brief overview of density functional theory, for a 
-more detailed set of notes on the topic, please see `these notes <to_be_added_soon>`_.
-
 A functional is a function of a function. This may sound like a scary
 word, but you've definitely worked with them before! (e.g. an integral
 is a functional :math:`\int f(x) dx`). The notation we're going to use

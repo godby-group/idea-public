@@ -1,9 +1,6 @@
 Many-electron Quantum Mechanics
 ===============================
 
-The following gives a brief overview of many-electron quantum mechanics, for
-a more detailed set of notes on the topic, please see `these notes <to_be_added_soon>`_.
-
 Motivation
 ----------
 

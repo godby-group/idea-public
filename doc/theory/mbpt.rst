@@ -8,5 +8,3 @@ of the system is approximated using the random-phase approximation (RPA). The :m
 one-shot (:math:`G_{0}W_{0}`), semi self-consistency (:math:`GW_0`) and full self-consistency (:math:`GW`). We use the space-time method to solve Hedin's equations.
 We focus on the computation of the electron density using the GWA, which can be computed from the Green's function in
 the imaginary-time domain.
-
-For a more detailed set of notes on this topic, please see `these notes <to_be_added_soon>`_.
