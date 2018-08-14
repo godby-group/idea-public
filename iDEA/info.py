@@ -23,19 +23,20 @@ def get_sha1():
 
 authors = [
     'Rex Godby',
-    'Piers Lillystone', 
-    'James Ramsden', 
-    'Matt Hodgson', 
+    'Piers Lillystone',
+    'James Ramsden',
+    'Matt Hodgson',
     'Thomas Durrant',
-    'Jacob Chapman', 
-    'Jack Wetherell', 
-    'Mike Entwistle', 
+    'Jacob Chapman',
+    'Jack Wetherell',
+    'Mike Entwistle',
     'Matthew Smith',
     'Leopold Talirz',
     'Aaron Long',
     'Robbie Oliver',
     'Ewan Richardson',
     'Razak Elmaslmane',
+    'Sean Adamson',
 ]
 
 # sort authors alphabetically
@@ -56,4 +57,3 @@ for i in range(na):
     else:
         authors_long += ' and {}'.format(authors[i])
         authors_short += ', {}. {}'.format(first[0].upper(), last)
-
