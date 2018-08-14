@@ -1,5 +1,5 @@
 iDEA HF (Hartree--Fock)
-======================
+=======================
 
 
 The HF code solves the Hartree--Fock equation to approximately 
