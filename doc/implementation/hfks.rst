@@ -1,5 +1,5 @@
-iDEA HFKS (Reverse-Engineering within Hartree-Fock-Kohn-Sham theory)
-====================================================================
+HFKS (Reverse-Engineering within Hartree-Fock-Kohn-Sham theory)
+===============================================================
 The HFKS code calculates the exact ground-state correlation potential :math:`V_{\mathrm{c}}(x)` within Hartree-Fock-Kohn-Sham (HFKS) theory for a given electron density :math:`n(x)`. 
 
 Ground-state correlation potential
