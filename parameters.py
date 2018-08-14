@@ -75,21 +75,11 @@ ext.ideltat = ext.itmax/ext.iimax    #: Imaginary time step (DERIVED)
 ext.RE = False                       #: Reverse-engineer ext density to give DFT xc potential
 ext.OPT = False                      #: Calculate the external potential for the exact density
 ext.HFKS = False                     #: Reverse-engineer ext density to give HFKS c potential
-ext.excited_states = 0               #: Number of excited states to calculate (0: just calculate the ground-state)
-ext.elf_gs = False                   #: Calculate ELF for the ground-state of the system
-ext.elf_es = False                   #: Calculate ELF for the excited-states of the system
-ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
 ext.psi_gs = False                   #: Save the reduced 2 or 3 electron ground-state wavefunction to file
-ext.psi_es = False                   #: Save the reduced 2 or 3 electron  excited-state wavefunctions to file
 ext.initial_gspsi = 'qho'            #: Initial 2 or 3 electron ground-state wavefunction ('qho' by default. 'non' can be selected.
                                      #: 'hf', 'lda1', 'lda2', 'lda3', 'ldaheg' or 'ext' can be selected if the orbitals/wavefunction
                                      #: are available. An ext wavefunction from another run can be used, but specify the run.name
                                      #: instead e.g. 'run_name').
-                                     #: WARNING: If no reliable starting guess can be provided e.g. wrong number of electrons per well,
-                                     #: then choose 'qho' - this will ensure stable convergence to the true ground-state.)
-ext.initial_espsi = 'qho'            #: Initial 2 or 3 electron excited-state wavefunction ('qho' by default. 'ext' can be selected if the
-                                     #: wavefunctions are available. An ext wavefunction from another run can be used, but specify
-                                     #: the run.name instead e.g. 'run_name').
                                      #: WARNING: If no reliable starting guess can be provided e.g. wrong number of electrons per well,
                                      #: then choose 'qho' - this will ensure stable convergence to the true ground-state.)
 
