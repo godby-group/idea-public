@@ -28,11 +28,11 @@ class TestHarmonicOscillator(unittest.TestCase):
         pm.run.verbosity = 'low'                                                                           
                                                                                                        
         pm.sys.NE = 3                     #: Number of electrons                                           
-        pm.sys.grid = 41                  #: Number of grid points (must be odd)                           
-        pm.sys.stencil = 7                #: Discretisation of 2nd derivative (3 or 5 or 7)                
+        pm.sys.grid = 31                  #: Number of grid points (must be odd)                           
+        pm.sys.stencil = 5                #: Discretisation of 2nd derivative (3 or 5 or 7)                
         pm.sys.xmax = 7.5                 #: Size of the system                                            
-        pm.sys.tmax = 0.1                 #: Total real time                                               
-        pm.sys.imax = 101                 #: Number of real time iterations (NB: deltat = tmax/(imax-1))   
+        pm.sys.tmax = 0.05                #: Total real time                                               
+        pm.sys.imax = 51                  #: Number of real time iterations (NB: deltat = tmax/(imax-1))   
         pm.sys.acon = 1.0                 #: Smoothing of the Coloumb interaction                                       
                                                                                                        
         def v_ext(x):                                                                                      
@@ -47,7 +47,7 @@ class TestHarmonicOscillator(unittest.TestCase):
             return -0.05*x                                                                                 
         pm.sys.v_pert = v_pert                                                                             
 
-        pm.ext.itol = 1e-5                #: Tolerance of imaginary time propagation
+        pm.ext.itol = 1e-4                #: Tolerance of imaginary time propagation
         pm.ext.itol_solver = 1e-12        #: Tolerance of linear solver in imaginary time propagation 
         pm.ext.rtol_solver = 1e-12        #: Tolerance of linear solver in real time propagation
         pm.ext.itmax = 20.0               #: Total imaginary time
@@ -63,7 +63,7 @@ class TestHarmonicOscillator(unittest.TestCase):
         pm.sys.interaction_strength = 0.0 #: Scales the strength of the Coulomb interaction                                                               
         results = EXT3.main(pm)                                                                            
                                                                                                        
-        nt.assert_allclose(results.gs_ext_E, 2.250, atol=1e-3)                                            
+        nt.assert_allclose(results.gs_ext_E, 2.250, atol=3e-3)                                            
                                                                                                        
     def test_interacting_system_1(self):                                                                   
         """Test interacting system"""                                                                      
@@ -71,7 +71,7 @@ class TestHarmonicOscillator(unittest.TestCase):
         pm.sys.interaction_strength = 1.0 #: Scales the strength of the Coulomb interaction                                                                                     
         results = EXT3.main(pm)                                                                            
                                                                                                  
-        nt.assert_allclose(results.gs_ext_E, 3.188, atol=1e-3)                                            
+        nt.assert_allclose(results.gs_ext_E, 3.188, atol=2e-3)                                            
                                                                                                        
     def test_time_dependence(self):                                                                        
         """Test real time propagation"""                                                                   
@@ -83,11 +83,11 @@ class TestHarmonicOscillator(unittest.TestCase):
         den_td = results.td_ext_den                                                                        
         cur = results.td_ext_cur                                                                           
                                                                                                        
-        deltan = np.sum(np.absolute(den_td[50,:]-den_gs[:]))                                               
-        deltac = np.sum(np.absolute(cur[50,:]))                                                            
+        deltan = np.sum(np.absolute(den_td[50,:]-den_gs[:]))*pm.space.delta                                               
+        deltac = np.sum(np.absolute(cur[50,:]))*pm.space.delta                                                            
                                                                                                        
-        nt.assert_allclose(deltan,2.44e-4, atol=1e-6)                                                      
-        nt.assert_allclose(deltac,1.98e-2, atol=1e-4)
+        nt.assert_allclose(deltan,8.94e-5, atol=1e-7)                                                      
+        nt.assert_allclose(deltac,7.51e-3, atol=1e-5)
 
 
 class TestDoubleWell(unittest.TestCase):                                                         
@@ -107,7 +107,7 @@ class TestDoubleWell(unittest.TestCase):
         pm.run.verbosity = 'low'                                                                 
                                                                                                  
         pm.sys.NE = 3                     #: Number of electrons                                 
-        pm.sys.grid = 51                  #: Number of grid points (must be odd)                     
+        pm.sys.grid = 31                  #: Number of grid points (must be odd)                     
         pm.sys.xmax = 15.0                #: Size of the system                                   
         pm.sys.acon = 1.0                 #: Smoothing of the Coloumb interaction                
         pm.sys.interaction_strength = 1.0 #: Scales the strength of the Coulomb interaction      
@@ -117,10 +117,10 @@ class TestDoubleWell(unittest.TestCase):
             return -1.2*np.exp((-1/125)*(x-7.0)**4) - 0.9*np.exp((-1/10)*(x+6.0)**2)             
         pm.sys.v_ext = v_ext                                                                     
 
-        pm.ext.itol = 1e-7                #: Tolerance of imaginary time propagation                 
+        pm.ext.itol = 1e-4                #: Tolerance of imaginary time propagation                 
         pm.ext.itol_solver = 1e-12        #: Tolerance of linear solver in imaginary time propagation     
-        pm.ext.itmax = 100.0              #: Total imaginary time                                    
-        pm.ext.iimax = 1e4                #: Imaginary time iterations
+        pm.ext.itmax = 50.0               #: Total imaginary time                                    
+        pm.ext.iimax = 5e3                #: Imaginary time iterations
         pm.ext.ideltat = pm.ext.itmax/pm.ext.iimax #: Imaginary time step (DERIVED)                               
         pm.ext.initial_gspsi = 'non'      #: Initial 2 electron ground-state wavefunction                                                            
                                                                    
@@ -132,7 +132,7 @@ class TestDoubleWell(unittest.TestCase):
         pm.sys.stencil = 3                #: Discretisation of 2nd derivative (3 or 5 or 7)                                                              
         results = EXT3.main(pm)                                                                  
                                                                                               
-        nt.assert_allclose(results.gs_ext_E, -2.0846, atol=1e-4)                                
+        nt.assert_allclose(results.gs_ext_E, -2.08, atol=3e-2)                                
                                                                                                  
     def test_stencil_five(self):                                                                 
         """Test 5-point stencil"""                                                               
@@ -140,7 +140,7 @@ class TestDoubleWell(unittest.TestCase):
         pm.sys.stencil = 5                #: Discretisation of 2nd derivative (3 or 5 or 7)                                                    
         results = EXT3.main(pm)                                                                  
                                                                                                  
-        nt.assert_allclose(results.gs_ext_E, -2.0758, atol=1e-4)                                
+        nt.assert_allclose(results.gs_ext_E, -2.075, atol=5e-3)                                
                                                                                                  
     def test_stencil_seven(self):                                                                
         """Test 7-point stencil"""                                                              
@@ -148,4 +148,4 @@ class TestDoubleWell(unittest.TestCase):
         pm.sys.stencil = 7                #: Discretisation of 2nd derivative (3 or 5 or 7)                                                         
         results = EXT3.main(pm)                                                                  
                                                                                                  
-        nt.assert_allclose(results.gs_ext_E, -2.0753, atol=1e-4)                                
+        nt.assert_allclose(results.gs_ext_E, -2.075, atol=2e-3)                                
