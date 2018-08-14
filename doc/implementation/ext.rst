@@ -1,5 +1,5 @@
-iDEA EXT (Exact)
-================
+EXT (Exact)
+===========
 
 The EXT code solves the many-electron time-independent Schrödinger equation to calculate the fully correlated, ground-state wavefunction (and optionally excited states) for a one-dimensional finite system of 2 or 3 spinless electrons interacting via the softened Coulomb repulsion :math:`(|x-x'|+1)^{-1}`. A perturbing potential is then applied to the ground-state system and its evolution is calculated exactly through solving the many-electron time-dependent Schrödinger equation.
 
