@@ -11,7 +11,7 @@ Simply naviage to the relevent outputs folder
 
 .. code-block:: bash
 
-   cd iDEAL/outputs/run_name/
+   cd outputs/run_name/
 
 and run the script
 

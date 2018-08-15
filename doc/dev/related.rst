@@ -1,7 +1,7 @@
 Related Codes
 =============
 
-Codes related to iDEA can be found in :code:`iDEAL/iDEA/old`. 
+Codes related to iDEA can be found in :code:`iDEA/old`. 
 
  * PERiDEA
 

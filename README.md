@@ -25,8 +25,8 @@ A list of publications based on the iDEA code so far is available on [the iDEA c
 
 ## How to get iDEA
 
-    git clone https://github.com/godby-group/idea-private.git iDEAL
-    cd iDEAL
+    git clone https://github.com/godby-group/idea-public.git
+    cd idea-public
     pip install --user -e .[doc]
     python run.py # this runs an example system
     

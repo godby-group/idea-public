@@ -22,7 +22,7 @@ Using the iDEA package in a python script
 -----------------------------------------
 Since iDEA is designed as a python package, it can be run from
 everywhere, if you let your python installation know where the package is located.
-During the installation of iDEA the iDEAL directory should have been
+During the installation of iDEA the `idea-public` directory should have been
 added to PYTHONPATH. To test this has worked simply perform the following
 
 .. code-block:: bash
