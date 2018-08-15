@@ -222,6 +222,7 @@ class Input(object):
         lda.tol = 1e-12                      #: Convergence tolerance in the density
         lda.etol = 1e-12                     #: Convergence tolerance in the energy
         lda.max_iter = 10000                 #: Maximum number of self-consistency iterations
+        lda.RE = False                       #: Reverse-engineer LDA density
 
 
         ### HF parameters
