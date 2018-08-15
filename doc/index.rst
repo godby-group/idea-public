@@ -36,8 +36,5 @@ iDEA's main features are:
   and energy components
 * Implementation of various approximate functionals (established and novel) for
   comparison
-* Established and novel localisation measures
-* Many-body perturbation theory with implementation of various approximate
-  vertex corrections for comparison
 
 iDEA Contributors: |idea_contributors|
