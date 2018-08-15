@@ -214,7 +214,7 @@ class Input(object):
         self.lda = InputSection()
         lda = self.lda
         lda.NE = 'heg'                       #: Number of electrons used in construction of the LDA (1, 2, 3 or 'heg')
-        lda.scf_type = 'pulay'               #: How to perform scf (None, 'linear', 'pulay', 'cg')
+        lda.scf_type = 'pulay'               #: How to perform scf ('pulay', 'linear', 'cg', 'mixh', 'none')
         lda.mix = 0.2                        #: Mixing parameter for linear & Pulay mixing (float in [0,1])
         lda.pulay_order = 20                 #: Length of history for Pulay mixing (max: lda.max_iter)
         lda.pulay_preconditioner = None      #: Preconditioner for pulay mixing (None, 'kerker', rpa')

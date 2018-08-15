@@ -1,7 +1,7 @@
 LDA (Local Density Approximation)
 =================================
 
-The LDA is the most common approximation to the exchange-correlation (xc) functional in density functional theory (DFT). The LDA code implements 4 different functionals that we have developed - 3 were constructed from slab-like systems of 1, 2 and 3 electrons [Entwistle2016]_, and the other was constructed from the homogeneous electron gas (HEG) with our softened Coulomb interaction. These approximate xc potentials allow us to approximate the electron density of systems, for comparison with exact solutions. 
+The LDA is the most common approximation to the exchange-correlation (xc) functional in density functional theory (DFT). The LDA code implements 4 different functionals that we have developed [Entwistle2018]_- 3 were constructed from slab-like systems of 1, 2 and 3 electrons, and the other was constructed from the homogeneous electron gas (HEG), with our softened Coulomb interaction. These approximate xc potentials allow us to approximate the electron density of systems, for comparison with exact solutions. 
 
 Calculating the ground-state
 ----------------------------
@@ -28,7 +28,7 @@ After an approximate ground-state :math:`V_{\mathrm{KS}}` is found, the perturbi
 References
 ----------
 
-.. [Entwistle2016] M. T. Entwistle, M. J. P. Hodgson, J. Wetherell, B. Longstaff, J. D. Ramsden, and R. W. Godby, Phys. Rev. B 94, 205134 (2016).
+.. [Entwistle2018] M. T. Entwistle, M. Casula, and R. W. Godby, Phys. Rev. B 97, 235143 (2018).
 
 .. [Kresse1996]	Kresse, G. & Furthmüller, J. Efficiency of ab-initio total energy calculations for metals and semiconductors using a plane-wave basis set. Computational Materials Science 6, 15–50 (1996). doi: 10.1016/0927-0256(96)00008-0
 

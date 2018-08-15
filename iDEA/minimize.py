@@ -5,7 +5,6 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 import numpy as np
-#import scipy.optimize as sopt
 import scipy.linalg as spla
 
 machine_epsilon = np.finfo(float).eps
@@ -373,11 +372,7 @@ class CGMinimizer(object):
         and is initialized in the constructor.
         """
         return self._total_energy(self.pm, wfs/self.sqdx)
-
-    #def minimize(self):
-    #    xopt = sopt.fmin_cg(E, R, psi, full_output=True)
-
-     
+  
 
     def subspace_diagonalization(self, v, H):
         """Diagonalise suspace of wfs
