@@ -571,7 +571,7 @@ def calculate_current_density(pm, density):
     pm.sprint(string, 1)
     current_density = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float)
     for i in range(1, pm.sys.imax):
-         string = 'EXT: t = {:.5f}'.format(i*pm.sys.deltat)
+         string = 'LDA: t = {:.5f}'.format(i*pm.sys.deltat)
          pm.sprint(string, 1, newline=False)
          J = np.zeros(pm.space.npt, dtype=np.float)
          J = RE_cython.continuity_eqn(pm, density[i,:], density[i-1,:])
