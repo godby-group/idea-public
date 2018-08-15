@@ -8,7 +8,6 @@ Theory
    many-electrons
    dft
    re
-   mbpt
 
 On these pages we are going to briefly introduce the theory behind the physics
 that the iDEA code is trying to unravel. We aim to cover all the essentials,
