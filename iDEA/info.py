@@ -1,9 +1,9 @@
 """Contains information on version, authors, etc."""
 
 # The short X.Y version.
-version = '2.3'
+version = '0.1'
 # The full version, including alpha/beta/rc tags.
-release = '2.3.0'
+release = '0.1.0'
 
 def get_sha1():
     """Returns sha1 hash of last commit from git
