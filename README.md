@@ -20,6 +20,19 @@ iDEA's main features are:
 * Established and novel localisation measures
 * Many-body perturbation theory with implementation of various approximate
   vertex corrections for comparison
+  
+## iDEA publications
+
+A list of publications based on the iDEA code so far is available on [the iDEA code's home page](https://www-users.york.ac.uk/~rwg3/idea.html). 
+
+## Citing iDEA
+
+If you use iDEA, we would appreciate a reference to the iDEA code's home page, [https://www-users.york.ac.uk/~rwg3/idea.html](https://www-users.york.ac.uk/~rwg3/idea.html), and to one relevant publication from our group: you might consider: 
+
+* For exact solution of the many-particle Schrödinger equation and reverse engineering of the exact DFT/TDDFT Kohn-Sham potential: [Publication 1](http://www-users.york.ac.uk/~rwg3/abst_81-110.html#Paper_87)
+* For Hartree-Fock and hybrid calculations: [Publication 9](http://www-users.york.ac.uk/~rwg3/abst_81-110.html#Paper_97)
+* For the iDEA code's local-density approximations: [Publication 10](http://www-users.york.ac.uk/~rwg3/abst_81-110.html#Paper_98)
+
 
 ## How to get iDEA
 
