@@ -13,13 +13,9 @@ run.save = True                      #: Save results to disk when they are gener
 run.module = 'iDEA'                  #: Specify alternative folder (in this directory) containing modified iDEA module
 run.NON = True                       #: Run Non-Interacting approximation
 run.LDA = False                      #: Run LDA approximation
-run.MLP = False                      #: Run MLP approximation
 run.HF = False                       #: Run Hartree-Fock approximation
-run.EXT = True                       #: Run Exact Many-Body calculation
 run.HYB = False                      #: Run Hybrid (HF-LDA) calculation
-run.MBPT = False                     #: Run Many-body pertubation theory
-run.LAN = False                      #: Run Landauer approximation
-run.MET = False                      #: Run Metric calculation
+run.EXT = True                       #: Run Exact Many-Body calculation
 
 
 ### System parameters
@@ -33,7 +29,6 @@ sys.imax = 1001                      #: Number of real time iterations (NB: delt
 sys.acon = 1.0                       #: Smoothing of the Coloumb interaction
 sys.interaction_strength = 1.0       #: Scales the strength of the Coulomb interaction
 sys.im = 0                           #: Are there imaginary terms in the perturbing potential? (0: no, 1: yes)
-
 
 def v_ext(x):
     """Ground-state external potential
@@ -57,8 +52,6 @@ ext.itmax = 2000.0                   #: Total imaginary time
 ext.iimax = 1e5                      #: Imaginary time iterations
 ext.ideltat = ext.itmax/ext.iimax    #: Imaginary time step (DERIVED)
 ext.RE = False                       #: Reverse-engineer ext density to give DFT xc potential
-ext.OPT = False                      #: Calculate the external potential for the exact density
-ext.HFKS = False                     #: Reverse-engineer ext density to give HFKS c potential
 ext.psi_gs = False                   #: Save the reduced 2 or 3 electron ground-state wavefunction to file
 ext.initial_gspsi = 'qho'            #: Initial 2 or 3 electron ground-state wavefunction ('qho' by default. 'non' can be selected.
                                      #: 'hf', 'lda1', 'lda2', 'lda3', 'ldaheg' or 'ext' can be selected if the orbitals/wavefunction
@@ -68,12 +61,10 @@ ext.initial_gspsi = 'qho'            #: Initial 2 or 3 electron ground-state wav
                                      #: then choose 'qho' - this will ensure stable convergence to the true ground-state.)
 
 
-### Non-interacting approximation parameters
+### NON parameters
 non = InputSection()
 non.rtol_solver = 1e-13              #: Tolerance of linear solver in real time propagation (Recommended: 1e-13)
 non.RE = False                       #: Reverse-engineer non-interacting density
-non.OPT = False                      #: Calculate the external potential for the non-interacting density
-non.HFKS = False                     #: Reverse-engineer non density to give HFKS c potential
 
 
 ### LDA parameters
@@ -87,20 +78,6 @@ lda.kerker_length = 0.5              #: Length over which density fluctuations a
 lda.tol = 1e-12                      #: Convergence tolerance in the density
 lda.etol = 1e-12                     #: Convergence tolerance in the energy
 lda.max_iter = 10000                 #: Maximum number of self-consistency iterations
-lda.OPT = False                      #: Calculate the external potential for the LDA density
-lda.HFKS = False                     #: Reverse-engineer lda density to give HFKS c potential
-
-
-### MLP parameters
-mlp = InputSection()
-mlp.f = 'e'                          #: f mixing parameter (if f='e' the weight is optimzed with the elf)
-mlp.tol = 1e-12                      #: Self-consistent convergence tollerance
-mlp.mix = 1.0                        #: Self-consistent mixing parameter
-mlp.reference_potential = 'lda'      #: Choice of reference potential for mixing with the SOA
-mlp.tdf = 0                          #: Time-dependent bahviour of f (if tdf = 'a' f is adiabatic, default is statis f)
-mlp.TDKS = False                     #: Save the time-dependent KS potential
-mlp.OPT = False                      #: Calculate the external potential for the MLP density
-mlp.HFKS = False                     #: Reverse-engineer mlp density to give HFKS c potential
 
 
 ### HF parameters
@@ -109,8 +86,6 @@ hf.fock = 1                          #: Include Fock term (0 = Hartree approxima
 hf.con = 1e-12                       #: Tolerance
 hf.nu = 0.9                          #: Mixing term
 hf.RE = False                        #: Reverse-engineer hf density
-hf.OPT = False                       #: Calculate the external potential for the HF density
-hf.HFKS = False                      #: Reverse-engineer hf density to give HFKS c potential
 
 
 ### HYB parameters
@@ -125,33 +100,6 @@ hyb.mix = 0.5                        #: Mixing parameter for linear  mixing (flo
 hyb.tol = 1e-12                      #: Convergence tolerance in the density
 hyb.max_iter = 10000                 #: Maximum number of self-consistency iterations
 hyb.RE = False                       #: Calculate the external potential for the HYB density
-hyb.OPT = False                      #: Calculate the external potential for the LDA density
-hyb.HFKS = False                     #: Reverse-engineer hyb density to give HFKS c potential
-
-
-### MBPT parameters
-mbpt = InputSection()
-mbpt.screening = 'dynamic'           #: Approximation to P ('dynamic'=dynamic RPA, 'static'=COSEX, 'inertial'=inertial RPA,'zero'=Hartree-Fock)
-mbpt.flavour = 'GW'                  #: Approximation to Sigma ('G0W0', 'GW0', 'GW')
-mbpt.h0 = 'non'                      #: Starting hamiltonian: 'non','ha','hf','lda2'
-mbpt.ssc = False                     #: Correct the self-screening error using our local vertex to the self-energy
-mbpt.tau_max = 80.0                  #: Maximum value of imaginary time
-mbpt.tau_npt = 4001                  #: Number of imaginary time points
-mbpt.norb = 35                       #: Number of orbitals to use
-mbpt.hedin_shift = True              #: Perform Hedin shift
-mbpt.den_tol = 1e-06                 #: Density tolerance of self-consistent algorithm
-mbpt.max_iter = 100                  #: Maximum iterations of self-consistent algorithm
-mbpt.save_full = []                  #: Save space-time quantities (e.g. 'G0_iw', 'S1_it')
-mbpt.save_zero = ['G_it','P_iw','W_iw','Sx_iw','Sxc_iw','Sc_iw'] #: save space-time quantities (e.g. 'G0_iw', 'S1_it') at iw/it=0
-mbpt.save_diag = []                  #: Save diaginal components of space-time quantities
-mbpt.RE = False                      #: Reverse-engineer mbpt density to give DFT xc potential
-mbpt.OPT = False                     #: Calculate the external potential for the MBPT density
-mbpt.HFKS = False                    #: Reverse-engineer mbpt density to give HFKS c potential
-
-
-### LAN parameters
-lan = InputSection()
-lan.start = 'non'                    #: Ground-state Kohn-Sham potential to be perturbed
 
 
 ### RE parameters
@@ -169,28 +117,3 @@ re.cdensity_tolerance = 1e-7         #: Tolerance of the error in the current de
 re.max_iterations = 20               #: Maximum number of iterations per time step to find the Kohn-Sham potential
 re.damping = True                    #: Damping term used to filter out the noise in the time-dependent Kohn-Sham vector potential
 re.filter_beta = 1.8                 #: 1st parameter in the damping term
-
-
-### OPT parameters
-opt = InputSection()
-opt.tol = 1e-4                       #: Tolerance of the error in the density
-opt.mu = 1.0                         #: 1st convergence parameter
-opt.p = 0.05                         #: 2nd convergence parameter
-
-
-### HFKS parameters
-hfks = InputSection()
-hfks.mu = 1.0                        #: 1st convergence parameter in the ground-state reverse-engineering algorithm
-hfks.p = 0.05                        #: 2nd convergence parameter in the ground-state reverse-engineering algorithm
-hfks.con = 1e-10                     #: Tolerance of the error in the ground-state density
-
-
-### Metrics parameters
-met = InputSection()
-met.type  = 'wavefunction'           #: Type of the metric to be calculated ("wavefunction" or "density")
-met.r_name_1 = 'run_name'            #: Run name of the first system (from run.name)
-met.r_type_1 = 'non'                 #: Run type of the first system (from name of data file: eg. gs_non)
-met.r_name_2 = 'run_name'            #: Run name of the second system
-met.r_type_2 = 'ext'                 #: Run type of the second system
-met.exact_1 = False                  #: Whether the first system is exact (not KS)
-met.exact_2 = True                   #: Whether the second system is exact (not KS)
