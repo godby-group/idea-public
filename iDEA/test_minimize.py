@@ -121,7 +121,7 @@ class TestCG(unittest.TestCase):
         np.random.seed(1)
         wfs = np.random.rand(pm.sys.grid,pm.sys.NE)
         wfs = minimize.orthonormalize(wfs)
-        H = LDA.banded_to_full(LDA.hamiltonian(pm, wfs=wfs/sqdx))
+        H = LDA.banded_to_full(pm, H=LDA.hamiltonian(pm, orbitals=wfs/sqdx))
 
         # keeping H constant, we should find the minimum in ndim steps
         # (if it weren't for the orthonormality condition!...)
@@ -207,7 +207,7 @@ class TestCGLDA(unittest.TestCase):
         results = LDA.main(pm)  # solving using linear mixing
         vks = results.gs_lda2_vks
         wfs = results.gs_lda2_eigf[:pm.sys.NE].T * np.sqrt(pm.sys.deltax)
-        H = LDA.banded_to_full(LDA.hamiltonian(pm, vks))
+        H = LDA.banded_to_full(pm, H=LDA.hamiltonian(pm, v_ks=vks))
 
         # compute current conjugate direction
         minimizer = minimize.CGMinimizer(pm, total_energy=LDA.total_energy_eigf)

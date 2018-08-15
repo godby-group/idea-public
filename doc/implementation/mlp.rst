@@ -5,7 +5,7 @@ The mixed localisation potential (MLP) is an approximation to the Kohn-Sham (KS)
 
 .. math:: V_{\mathrm{KS}} = (1- f)V^{\mathrm{LDA}}_{\mathrm{KS}} + f V^{\mathrm{SOA}}_{\mathrm{KS}}.
 
-In principle :math:`f` depends on space, and for dynamic system also time. The form of the SOA KS potential is analytic (see below). Within the iDEA code, the MLP employs the the LDA of Ref. [Entwistle2016]_.
+In principle :math:`f` depends on space, and for dynamic system also time. The form of the SOA KS potential is analytic (see below). Within the iDEA code, the MLP employs the the LDA of Ref. [Entwistle2018]_.
 
 Calculating the ground state
 ----------------------------
