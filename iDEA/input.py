@@ -147,19 +147,15 @@ class Input(object):
         self.run = InputSection()
         run = self.run
         run.name = 'run_name'                #: Name to identify run. Note: Do not use spaces or any special characters (.~[]{}<>?/\)
-        run.time_dependence = False          #: whether to run time-dependent calculation
-        run.verbosity = 'default'            #: output verbosity ('low', 'default', 'high')
-        run.save = True                      #: whether to save results to disk when they are generated
-        run.module = 'iDEA'                  #: specify alternative folder (in this directory) containing modified iDEA module
+        run.time_dependence = False          #: Run time-dependent calculation
+        run.verbosity = 'default'            #: Output verbosity ('low', 'default', 'high')
+        run.save = True                      #: Save results to disk when they are generated
+        run.module = 'iDEA'                  #: Specify alternative folder (in this directory) containing modified iDEA module
         run.NON = False                      #: Run Non-Interacting approximation
         run.LDA = False                      #: Run LDA approximation
-        run.MLP = False                      #: Run MLP approximation
         run.HF = False                       #: Run Hartree-Fock approximation
-        run.EXT = False                      #: Run Exact Many-Body calculation
-        run.MBPT = False                     #: Run Many-body pertubation theory
         run.HYB = False                      #: Run Hybrid (HF-LDA) calculation
-        run.LAN = False                      #: Run Landauer approximation
-        run.MET = False                      #: Run Metric calculation
+        run.EXT = False                      #: Run Exact Many-Body calculation
 
 
         ### System parameters
@@ -173,40 +169,19 @@ class Input(object):
         sys.imax = 1001                      #: Number of real time iterations (NB: deltat = tmax/(imax-1))
         sys.acon = 1.0                       #: Smoothing of the Coloumb interaction
         sys.interaction_strength = 1.0       #: Scales the strength of the Coulomb interaction
-        sys.im = 0                           #: Use imaginary potentials
-
+        sys.im = 0                           #: Are there imaginary terms in the perturbing potential? (0: no, 1: yes)
 
         def v_ext(x):
-            """Initial external potential
+            """Ground-state external potential
             """
             return 0.5*(0.25**2)*(x**2)
         sys.v_ext = v_ext
-        #sys.v_ext = lambda x: 0.5*(0.25**2)*(x**2)
 
         def v_pert(x):
-            """Time-dependent perturbation potential
-
-            Switched on at t=0.
+            """Perturbing potential (switched on at t=0)
             """
-            y = -0.01*x
-            if(sys.im == 1):
-                return y + v_pert_im(x)
-            return y
+            return -0.01*x
         sys.v_pert = v_pert
-        #sys.v_pert = lambda x: 0.5*(0.25**2)*(x**2)
-
-        def v_pert_im(x):
-            """Imaginary perturbation potential
-
-            Switched on at t=0.
-            """
-            strength = 1.0
-            length_from_edge = 5.0
-            I = sys.xmax - length_from_edge
-            if(-sys.xmax < x and x < -I) or (sys.xmax > x and x > I):
-                return -strength*1.0j
-            return 0.0
-        sys.v_pert_im = v_pert_im
 
 
         ### Exact parameters
@@ -219,61 +194,34 @@ class Input(object):
         ext.iimax = 1e5                      #: Imaginary time iterations
         ext.ideltat = ext.itmax/ext.iimax    #: Imaginary time step (DERIVED)
         ext.RE = False                       #: Reverse engineer many-body density
-        ext.OPT = False                      #: Calculate the external potential for the exact density
-        ext.HFKS = False                     #: Reverse-engineer ext density to give HFKS c potential
-        ext.excited_states = 0               #: Number of excited states to calculate (0: just calculate the ground-state)
-        ext.elf_gs = False                   #: Calculate ELF for the ground-state of the system
-        ext.elf_es = False                   #: Calculate ELF for the excited-states of the system
-        ext.elf_td = False                   #: Calculate ELF for the time-dependent part of the system
         ext.psi_gs = False                   #: Save the reduced ground-state wavefunction to file
-        ext.psi_es = False                   #: Save the reduced excited-state wavefunctions to file
         ext.initial_gspsi = 'qho'            #: Initial ground-state wavefunction ('qho' by default. 'non' can be selected.
                                              #: 'hf', 'lda1', 'lda2', 'lda3', 'ldaheg' or 'ext' can be selected if the orbitals/wavefunction
                                              #: are available. An ext wavefunction from another run can be used, but specify the run.name
                                              #: instead e.g. 'run_name').
                                              #: WARNING: If no reliable starting guess can be provided e.g. wrong number of electrons per well,
                                              #: then choose 'qho' - this will ensure stable convergence to the true ground-state.)
-        ext.initial_espsi = 'qho'            #: Initial excited-state wavefunction ('qho' by default. 'ext' can be selected if the
-                                             #: wavefunctions are available. An ext wavefunction from another run can be used, but specify
-                                             #: the run.name instead e.g. 'run_name').
 
 
         ### Non-interacting approximation parameters
         self.non = InputSection()
         non = self.non
-        non.rtol_solver = 1e-14              #: Tolerance of linear solver in real time propagation (Recommended: 1e-13)
-        non.RE = False                       #: Reverse engineer non-interacting density
-        non.OPT = False                      #: Calculate the external potential for the non-interacting density
-        non.HFKS = False                     #: Reverse-engineer non density to give HFKS c potential
+        non.rtol_solver = 1e-13              #: Tolerance of linear solver in real time propagation (Recommended: 1e-13)
+        non.RE = False                       #: Reverse-engineer non-interacting density
 
 
         ### LDA parameters
         self.lda = InputSection()
         lda = self.lda
-        lda.NE = 2                           #: Number of electrons used in construction of the LDA (1, 2, 3 or 'heg')
-        lda.scf_type = 'pulay'               #: how to perform scf (None, 'linear', 'pulay', 'cg')
+        lda.NE = 'heg'                       #: Number of electrons used in construction of the LDA (1, 2, 3 or 'heg')
+        lda.scf_type = 'pulay'               #: How to perform scf (None, 'linear', 'pulay', 'cg')
         lda.mix = 0.2                        #: Mixing parameter for linear & Pulay mixing (float in [0,1])
-        lda.pulay_order = 20                 #: length of history for Pulay mixing (max: lda.max_iter)
-        lda.pulay_preconditioner = None      #: preconditioner for pulay mixing (None, 'kerker', rpa')
-        lda.kerker_length = 0.5              #: length over which density fluctuations are screened (Kerker only)
-        lda.tol = 1e-12                      #: convergence tolerance in the density
-        lda.etol = 1e-12                     #: convergence tolerance in the energy
+        lda.pulay_order = 20                 #: Length of history for Pulay mixing (max: lda.max_iter)
+        lda.pulay_preconditioner = None      #: Preconditioner for pulay mixing (None, 'kerker', rpa')
+        lda.kerker_length = 0.5              #: Length over which density fluctuations are screened (Kerker only)
+        lda.tol = 1e-12                      #: Convergence tolerance in the density
+        lda.etol = 1e-12                     #: Convergence tolerance in the energy
         lda.max_iter = 10000                 #: Maximum number of self-consistency iterations
-        lda.OPT = False                      #: Calculate the external potential for the LDA density
-        lda.HFKS = False                     #: Reverse-engineer lda density to give HFKS c potential
-
-
-        ### MLP parameters
-        self.mlp = InputSection()
-        mlp = self.mlp
-        mlp.f = 'e'                          #: f mixing parameter (if f='e' the weight is optimzed with the elf)
-        mlp.tol = 1e-12                      #: Self-consistent convergence tollerance
-        mlp.mix = 1.0                        #: Self-consistent mixing parameter
-        mlp.reference_potential = 'lda'      #: Choice of reference potential for mixing with the SOA
-        mlp.OPT = False                      #: Calculate the external potential for the MLP density
-        mlp.tdf = 0                          #: Time-dependent bahviour of f (if tdf = 'a' f is adiabatic, default is statis f)
-        mlp.TDKS = False                     #: Save the time-dependent KS potential
-        mlp.HFKS = False                     #: Reverse-engineer mlp density to give HFKS c potential
 
 
         ### HF parameters
@@ -283,52 +231,21 @@ class Input(object):
         hf.con = 1e-12                       #: Tolerance
         hf.nu = 0.9                          #: Mixing term
         hf.RE = False                        #: Reverse-engineer hf density
-        hf.OPT = False                       #: Calculate the external potential for the HF density
-        hf.HFKS = False                      #: Reverse-engineer hf density to give HFKS c potential
 
 
         ### HYB parameters
         self.hyb = InputSection()
         hyb = self.hyb
-        hyb.seperate = False                 #: seperate Vx and Vc in the hybrid (False: a*F + (1-a)Vxc, True: a*F + (1-a)Vx + Vc)
+        hyb.seperate = False                 #: Seperate Vx and Vc in the hybrid (False: a*F + (1-a)Vxc, True: a*F + (1-a)Vx + Vc)
         hyb.functionality = 'o'              #: Functionality of hybrid functionals: 'o' for optimal alpha, 'f' for fractional numbers of electrons,
                                              #: 'a' for single alpha run
         hyb.of_array = (0.5,1.0,6)           #: If finding optimal alpa, this defines an array going from a->b in c steps whose energies are used for
                                              #: optimisation. If fractional run, this defines the numbers of electrons to calculate
         hyb.alpha = 1.0                      #: If single alpha run, this defines the alpha
         hyb.mix = 0.5                        #: Mixing parameter for linear  mixing (float in [0,1])
-        hyb.tol = 1e-12                      #: convergence tolerance in the density
+        hyb.tol = 1e-12                      #: Convergence tolerance in the density
         hyb.max_iter = 10000                 #: Maximum number of self-consistency iterations
-        hyb.OPT = False                      #: Calculate the external potential for the LDA density
-        hyb.RE = False                       #: Calculate the external potential for the LDA density
-        hyb.HFKS = False                     #: Reverse-engineer hyb density to give HFKS c potential
-
-
-        ### MBPT parameters
-        self.mbpt = InputSection()
-        mbpt = self.mbpt
-        mbpt.h0 = 'non'                      #: starting hamiltonian: 'non','ha','hf','lda'
-        mbpt.tau_max = 40.0                  #: Maximum value of imaginary time
-        mbpt.tau_npt = 800                   #: Number of imaginary time points (must be even)
-        mbpt.norb = 25                       #: Number of orbitals to use
-        mbpt.flavour = 'G0W0'                #: 'G0W0', 'GW', 'G0W', 'GW0'
-        mbpt.ssc = False                     #: Correct the self-screening error using our local vertex to the self-energy
-        mbpt.den_tol = 1e-12                 #: density tolerance of self-consistent algorithm
-        mbpt.max_iter = 100                  #: Maximum number of self-consistent algorithm
-        mbpt.save_diag = ['sigma0_iw']       #: whether to save diagonal components of all space-time quantities
-        mbpt.save_full = []                  #: which space-time quantities to save fully
-        mbpt.screening = 'dynamic'           #: Use 'dynamic' (frequency dependent) or 'static' (frequency independent) screening.
-                                             #: (Note: must use static if running time-dependent calculation)
-        mbpt.hedin_shift = True              #: whether to perform Hedin shift
-        mbpt.RE = False                      #: Reverse-engineer mbpt density
-        mbpt.OPT = False                     #: Calculate the external potential for the MBPT density
-        mbpt.HFKS = False                    #: Reverse-engineer mbpt density to give HFKS c potential
-
-
-        ### LAN parameters
-        self.lan = InputSection()
-        lan = self.lan
-        lan.start = 'non'                    #: Ground-state Kohn-Sham potential to be perturbed
+        hyb.RE = False                       #: Calculate the external potential for the HYB density
 
 
         ### RE parameters
@@ -337,63 +254,55 @@ class Input(object):
         re.stencil = 5                       #: Discretisation of 1st derivative (5 or 7)
         re.mu = 1.0                          #: 1st convergence parameter in the ground-state reverse-engineering algorithm
         re.p = 0.05                          #: 2nd convergence parameter in the ground-state reverse-engineering algorithm
-        re.gs_density_tolerance = 1e-10      #: Tolerance of the error in the ground-state density
+        re.gs_density_tolerance = 1e-12      #: Tolerance of the error in the ground-state density
         re.starting_guess = 'extre'          #: Starting guess of groud-state Vks (if not available will start with Vxt)
         re.nu = 1.0                          #: 1st convergence parameter in the time-dependent reverse-engineering algorithm
         re.a = 1.0e-6                        #: 2nd convergence parameter in the time-dependent reverse-engineering algorithm
         re.rtol_solver = 1e-12               #: Tolerance of linear solver in real time propagation (Recommended: 1e-12)
         re.td_density_tolerance = 1e-7       #: Tolerance of the error in the time-dependent density
         re.cdensity_tolerance = 1e-7         #: Tolerance of the error in the current density
-        re.max_iterations = 10               #: Maximum number of iterations per time step to find the Kohn-Sham potential
+        re.max_iterations = 20               #: Maximum number of iterations per time step to find the Kohn-Sham potential
         re.damping = True                    #: Damping term used to filter out the noise in the time-dependent Kohn-Sham vector potential
         re.filter_beta = 1.8                 #: 1st parameter in the damping term
-
-
-        ### OPT parameters
-        self.opt = InputSection()
-        opt = self.opt
-        opt.tol = 1e-4                       #: Tolerance of the error in the density
-        opt.mu = 1.0                         #: 1st convergence parameter
-        opt.p = 0.05                         #: 2nd convergence parameter
-
-        ### RE parameters
-        self.hfks = InputSection()
-        hfks = self.hfks
-        hfks.mu = 1.0                         #: 1st convergence parameter in the ground-state reverse-engineering algorithm
-        hfks.p = 0.05                         #: 2nd convergence parameter in the ground-state reverse-engineering algorithm
-        hfks.con = 1e-10                     #: Tolerance of the error in the ground-state density
-
-
-        ### Metrics parameters
-        self.met = InputSection()
-        met = self.met
-        met.type  = 'wavefunction'           #: Type of the metric to be calculated ("wavefunction" or "density")
-        met.r_name_1 = 'run_name'            #: Run name of the first system (from run.name)
-        met.r_type_1 = 'non'                 #: Run type of the first system (from name of data file: eg. gs_non)
-        met.r_name_2 = 'run_name'            #: Run name of the second system
-        met.r_type_2 = 'ext'                 #: Run type of the second system
-        met.exact_1 = False                  #: Whether the first system is exact (not KS)
-        met.exact_2 = True                   #: Whether the second system is exact (not KS)
-
 
     def check(self):
         """Checks validity of input parameters."""
         pm = self
+
+        # Time-dependence
         if pm.run.time_dependence == True:
             if pm.run.MBPT == True:
                 self.sprint('MBPT: Warning - time-dependence not implemented!')
+            if pm.run.HYB == True:
+                self.sprint('HYB: Warning - time-dependence not implemented!')
+            if (pm.ext.RE or pm.non.RE or pm.lda.RE or pm.hf.RE or pm.hyb.RE):
+                self.sprint('RE: Warning - time-dependence not implemented!')
 
-        if pm.run.MBPT == True:
-            if pm.mbpt.norb < pm.sys.NE:
-                self.sprint('MBPT: Warning - using {} orbitals for {} electrons'\
-                        .format(pm.mbpt.norb, pm.sys.NE))
+        # EXT
+        if pm.run.EXT == True:
+            if pm.ext.itol > 1e-6:
+                self.sprint('EXT: Warning - value of ext.itol is much larger than 1e-13, this can yeild poor KS potentials')
 
-        if pm.lda.scf_type not in [None, 'pulay', 'linear', 'cg', 'mixh']:
-            raise ValueError("lda.scf_type must be None, 'linear', 'pulay' or 'cg'")
+        # LDA
+        if pm.run.LDA == True:
+            if pm.lda.scf_type not in [None, 'pulay', 'linear', 'cg', 'mixh']:
+                raise ValueError("LDA: Warning - lda.scf_type must be None, 'linear', 'pulay' or 'cg'")
+            if pm.lda.pulay_preconditioner not in [None, 'kerker', 'rpa']:
+                raise ValueError("LDA: Warning - lda.pulay_preconditioner must be None, 'kerker' or 'rpa'")
 
-        if pm.lda.pulay_preconditioner not in [None, 'kerker', 'rpa']:
-            raise ValueError("lda.pulay_preconditioner must be None, 'kerker' or 'rpa'")
+        # HF
+        if pm.run.HF == True:
+            if (pm.hf.fock != 1 and pm.hf.fock != 0):
+                raise ValueError('HF: Error - hf.fock must be set to 0 or 1.'.format(pm.mbpt.norb, pm.sys.NE))
+            if (pm.hf.nu > 1 or pm.hf.nu < 0):
+                self.sprint('HF: Warning - Value of nu should be between 0 and 1')
 
+        # HYB
+        if pm.run.HYB == True:
+            if (pm.hyb.alpha  > 1 or pm.hyb.alpha  < 0):
+                self.sprint('HYB: Warning - Value of alpha should be between 0 and 1')
+            if (pm.hyb.mix > 1 or pm.hyb.mix < 0):
+                self.sprint('HYB: Warning - Value of mix should be between 0 and 1')
 
     def __str__(self):
         """Prints different sections in input file"""
@@ -582,32 +491,10 @@ class Input(object):
         if(pm.non.RE == True):
               from . import RE
               results.add(RE.main(pm,'non'), name='nonre')
-        if(pm.non.OPT == True):
-              from . import OPT
-              results.add(OPT.main(pm,'non'), name='nonopt')
-        if(pm.non.HFKS == True):
-              from . import HFKS
-              results.add(HFKS.main(pm,'non'), name='nonhfks')
 
         if(pm.run.LDA == True):
               from . import LDA
               results.add(LDA.main(pm), name='lda')
-        if(pm.lda.OPT == True):
-              from . import OPT
-              results.add(OPT.main(pm,'lda'), name='ldaopt')
-        if(pm.lda.HFKS == True):
-              from . import HFKS
-              results.add(HFKS.main(pm,'lda'), name='ldahfks')
-
-        if(pm.run.MLP == True):
-              from . import MLP
-              MLP.main(pm)
-        if(pm.mlp.OPT == True):
-              from . import OPT
-              results.add(OPT.main(pm,'mlp'), name='mlpopt')
-        if(pm.mlp.HFKS == True):
-              from . import HFKS
-              results.add(HFKS.main(pm,'mlp'), name='mlphfks')
 
         if(pm.run.HF == True):
               from . import HF
@@ -615,16 +502,6 @@ class Input(object):
         if(pm.hf.RE == True):
               from . import RE
               results.add(RE.main(pm,'hf'), name='hfre')
-        if(pm.hf.OPT == True):
-              from . import OPT
-              results.add(OPT.main(pm,'hf'), name='hfopt')
-        if(pm.hf.HFKS == True):
-              from . import HFKS
-              results.add(HFKS.main(pm,'hf'), name='hfhfks')
-
-        if(pm.run.LAN == True):
-              from . import LAN
-              results.add(LAN.main(pm), name='lan')
 
         if(pm.sys.NE == 1):
            if(pm.run.EXT == True):
@@ -633,12 +510,6 @@ class Input(object):
            if(pm.ext.RE == True):
               from . import RE
               results.add(RE.main(pm,'ext'), name='extre')
-           if(pm.ext.OPT == True):
-              from . import OPT
-              results.add(OPT.main(pm,'ext'), name='extopt')
-           if(pm.ext.HFKS == True):
-              from . import HFKS
-              results.add(HFKS.main(pm,'ext'), name='exthfks')
         elif(pm.sys.NE == 2):
            if(pm.run.EXT == True):
               from . import EXT2
@@ -646,12 +517,6 @@ class Input(object):
            if(pm.ext.RE == True):
               from . import RE
               results.add(RE.main(pm,'ext'), name='extre')
-           if(pm.ext.HFKS == True):
-              from . import HFKS
-              results.add(HFKS.main(pm,'ext'), name='exthfks')
-           if(pm.ext.OPT == True):
-              from . import OPT
-              results.add(OPT.main(pm,'ext'), name='extopt')
         elif(pm.sys.NE == 3):
            if(pm.run.EXT == True):
               from . import EXT3
@@ -659,12 +524,6 @@ class Input(object):
            if(pm.ext.RE == True):
               from . import RE
               results.add(RE.main(pm,'ext'), name='extre')
-           if(pm.ext.HFKS == True):
-              from . import HFKS
-              results.add(HFKS.main(pm,'ext'), name='exthfks')
-           if(pm.ext.OPT == True):
-              from . import OPT
-              results.add(OPT.main(pm,'ext'), name='extopt')
         elif(pm.sys.NE >= 4):
            if(pm.run.EXT == True):
               print('EXT: cannot run exact with more than 3 electrons')
@@ -674,27 +533,6 @@ class Input(object):
         if(pm.hyb.RE == True):
               from . import RE
               results.add(RE.main(pm,'hyb{}'.format(pm.hyb.alpha).replace('.','_')), name='hybre')
-        if(pm.hyb.HFKS == True):
-              from . import HFKS
-              results.add(HFKS.main(pm,'hyb'), name='hybhfks')
-        if(pm.hyb.OPT == True):
-              from . import OPT
-              results.add(OPT.main(pm,'hyb'), name='hybopt')
-        if(pm.run.MBPT == True):
-              from . import MBPT
-              results.add(MBPT.main(pm), name='mbpt')
-        if(pm.mbpt.RE == True):
-              from . import RE
-              results.add(RE.main(pm,'mbpt'), name='mbptre')
-        if(pm.mbpt.OPT == True):
-              from . import OPT
-              results.add(OPT.main(pm,'mbpt'), name='mbptopt')
-        if(pm.mbpt.HFKS == True):
-              from . import HFKS
-              results.add(HFKS.main(pm,'mbpt'), name='mbpthfks')
-        if(pm.run.MET == True):
-              from . import MET
-              results.add(MET.main(pm), name='met')
 
         # All jobs done
         if pm.run.save:
@@ -707,7 +545,6 @@ class Input(object):
             tmp = copy.deepcopy(pm)
             del tmp.sys.v_ext
             del tmp.sys.v_pert
-            del tmp.sys.v_pert_im
 
             # store pickled version of parameters object
             import pickle

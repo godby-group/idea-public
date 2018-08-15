@@ -345,31 +345,4 @@ def main(parameters):
    else:
       pm.sprint('HYB: functionality chosen is not valid - please choose from a, o and f)'.format(pm.sys.NE), 1, newline=True)
 
-   if pm.run.time_dependence:
-      # Starting values for wave functions, density
-      if pm.hyb.functionality == 'o':
-          raise ValueError('HYB: ERROR! Cannot optimise hybrid in time-dependence, please give a numerical value for alpha.')
-      n_t = np.empty((pm.sys.imax, pm.sys.grid), dtype=np.float)
-      n_t[0] = density
-      H, Vh, Vxc_LDA, F = hamiltonian(pm, eigf, density, pm.hyb.alpha, occupations, perturb=False)
-      for i in range(1, pm.sys.imax):
-         string = 'HYB: evolving through real time: t = {:.4f}'.format(i*pm.sys.deltat)
-         pm.sprint(string, 1, newline=False)
-         eigf = iDEA.HF.crank_nicolson_step(pm, eigf, H)
-         density = iDEA.HF.electron_density(pm, eigf)
-         H, Vh, Vxc_LDA, F = hamiltonian(pm, eigf, density, pm.hyb.alpha, occupations, perturb=True)
-         n_t[i] = density
-
-      # Calculate the current density
-      pm.sprint()
-      current_density = iDEA.HF.calculate_current_density(pm, n_t)
-
-      # Output results
-      results.add(n_t, 'td_hyb_den')
-      results.add(current_density, 'td_hyb_cur')
-
-      if pm.run.save:
-         l = ['td_hyb_den','td_hyb_cur']
-         results.save(pm, list=l)
-
    return results

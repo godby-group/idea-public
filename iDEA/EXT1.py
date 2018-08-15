@@ -187,6 +187,8 @@ def main(parameters):
         # Construct the Hamiltonian matrix
         H = np.copy(K)
         H[0,:] += pm.space.v_ext[:]
+        if(pm.sys.im == 1):
+            H = H.astype(np.cfloat)
         H[0,:] += pm.space.v_pert[:]
 
         # Construct the sparse matrices used in the Crank-Nicholson method

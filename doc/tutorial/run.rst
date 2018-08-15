@@ -41,13 +41,13 @@ functionality directly in a python script.
 The example below uses a python loop to converge the grid spacing for an iDEA
 calculation of a test system of non-interacting electrons in a harmonic well.
 
-.. literalinclude:: /../examples/ex02/run.py
+.. literalinclude:: /../examples/06_convergence/run.py
 
 In order to run this example, do
 
 .. code-block:: bash
 
-    cd $path_to_iDEA/examples/ex02
+    cd $path_to_iDEA/examples/06_convergence
     python run.py  # assuming you already added iDEA to your PYTHONPATH
 
 

@@ -1,5 +1,5 @@
-iDEA HYB (Hybrid)
-=================
+HYB (Hybrid)
+============
 
 The HYB code solves the Hybrid DFT equation (containing a linear 
 combination of the LDA exchange-correlation potential and Fock 

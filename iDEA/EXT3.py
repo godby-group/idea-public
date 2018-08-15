@@ -1,7 +1,6 @@
 """Calculates the exact ground-state electron density and energy for a system  of three interacting
 electrons through solving the many-electron Schroedinger equation. If the system is perturbed, the 
-time-dependent electron density and current density are calculated. The ground-state and time-dependent
-ELF can also be calculated. Excited states of the unperturbed system can also be calculated.
+time-dependent electron density and current density are calculated. 
 """
 
 from __future__ import division
@@ -20,7 +19,6 @@ import scipy.sparse.linalg as spsla
 
 from . import EXT_cython
 from . import NON	
-from . import ELF 
 from . import results as rs
 
 
@@ -132,7 +130,7 @@ def construct_A_reduced(pm, reduction_matrix, expansion_matrix, td):
     return A_reduced
 
 
-def initial_wavefunction(pm, state):
+def initial_wavefunction(pm):
     r"""Generates the initial wavefunction for the Crank-Nicholson imaginary time propagation.
 
     .. math:: 
@@ -148,9 +146,6 @@ def initial_wavefunction(pm, state):
     ----------
     pm : object
         Parameters object
-    state : integer
-        Many-electron wavefunction to be calculated, e.g. ground-state = 0, 1st excited state = 1,
-        2nd excited state = 2, etc.
 
     returns array_like
         1D array of the reduced wavefunction, indexed as wavefunction_reduced[space_index_1_2_3]
@@ -160,133 +155,95 @@ def initial_wavefunction(pm, state):
     eigenstate_2 = np.copy(eigenstate_1)
     eigenstate_3 = np.copy(eigenstate_1)
 
-    # If calculating the ground-state wavefunction
-    if(state == 0):
+    # Read the three lowest Hartree-Fock eigenstates of the system
+    if(pm.ext.initial_gspsi == 'hf'):
+        try:
+            eigenstates = rs.Results.read('gs_hf_eigf', pm) 
+            eigenstate_1 = eigenstates[0].real
+            eigenstate_2 = eigenstates[1].real
+            eigenstate_3 = eigenstates[2].real
+        # File does not exist
+        except:
+            raise IOError("EXT: cannot find file containing HF orbitals.")
 
-        # Read the three lowest Hartree-Fock eigenstates of the system
-        if(pm.ext.initial_gspsi == 'hf'):
-            try:
-                eigenstates = rs.Results.read('gs_hf_eigf', pm) 
-                eigenstate_1 = eigenstates[0].real
-                eigenstate_2 = eigenstates[1].real
-                eigenstate_3 = eigenstates[2].real
-            # File does not exist
-            except:
-                raise IOError("EXT: cannot find file containing HF orbitals.")
+    # Read the three lowest one-electron LDA eigenstates of the system
+    elif(pm.ext.initial_gspsi == 'lda1'):
+        try:
+            eigenstates = rs.Results.read('gs_lda1_eigf', pm)
+            eigenstate_1 = eigenstates[0].real
+            eigenstate_2 = eigenstates[1].real
+            eigenstate_3 = eigenstates[2].real
+        # File does not exist 
+        except:
+            raise IOError("EXT: cannot find file containing one-electron LDA orbitals.")
 
-        # Read the three lowest one-electron LDA eigenstates of the system
-        elif(pm.ext.initial_gspsi == 'lda1'):
-            try:
-                eigenstates = rs.Results.read('gs_lda1_eigf', pm)
-                eigenstate_1 = eigenstates[0].real
-                eigenstate_2 = eigenstates[1].real
-                eigenstate_3 = eigenstates[2].real
-            # File does not exist 
-            except:
-                raise IOError("EXT: cannot find file containing one-electron LDA orbitals.")
+    # Read the three lowest two-electron LDA eigenstates of the system
+    elif(pm.ext.initial_gspsi == 'lda2'):
+        try:
+            eigenstates = rs.Results.read('gs_lda2_eigf', pm)
+            eigenstate_1 = eigenstates[0].real
+            eigenstate_2 = eigenstates[1].real
+            eigenstate_3 = eigenstates[2].real
+        # File does not exist 
+        except:
+            raise IOError("EXT: cannot find file containing two-electron LDA orbitals.")
 
-        # Read the three lowest two-electron LDA eigenstates of the system
-        elif(pm.ext.initial_gspsi == 'lda2'):
-            try:
-                eigenstates = rs.Results.read('gs_lda2_eigf', pm)
-                eigenstate_1 = eigenstates[0].real
-                eigenstate_2 = eigenstates[1].real
-                eigenstate_3 = eigenstates[2].real
-            # File does not exist 
-            except:
-                raise IOError("EXT: cannot find file containing two-electron LDA orbitals.")
+    # Read the three lowest three-electron LDA eigenstates of the system
+    elif(pm.ext.initial_gspsi == 'lda3'):
+        try:
+            eigenstates = rs.Results.read('gs_lda3_eigf', pm)
+            eigenstate_1 = eigenstates[0].real
+            eigenstate_2 = eigenstates[1].real
+            eigenstate_3 = eigenstates[2].real
+        # File does not exist 
+        except:
+            raise IOError("EXT: cannot find file containing three-electron LDA orbitals.")
 
-        # Read the three lowest three-electron LDA eigenstates of the system
-        elif(pm.ext.initial_gspsi == 'lda3'):
-            try:
-                eigenstates = rs.Results.read('gs_lda3_eigf', pm)
-                eigenstate_1 = eigenstates[0].real
-                eigenstate_2 = eigenstates[1].real
-                eigenstate_3 = eigenstates[2].real
-            # File does not exist 
-            except:
-                raise IOError("EXT: cannot find file containing three-electron LDA orbitals.")
+    # Read the three lowest HEG LDA eigenstates of the system
+    elif(pm.ext.initial_gspsi == 'ldaheg'):
+        try:
+            eigenstates = rs.Results.read('gs_ldaheg_eigf', pm)
+            eigenstate_1 = eigenstates[0].real
+            eigenstate_2 = eigenstates[1].real
+            eigenstate_3 = eigenstates[2].real
+        # File does not exist 
+        except:
+            raise IOError("EXT: cannot find file containing HEG LDA orbitals.")
 
-        # Read the three lowest HEG LDA eigenstates of the system
-        elif(pm.ext.initial_gspsi == 'ldaheg'):
-            try:
-                eigenstates = rs.Results.read('gs_ldaheg_eigf', pm)
-                eigenstate_1 = eigenstates[0].real
-                eigenstate_2 = eigenstates[1].real
-                eigenstate_3 = eigenstates[2].real
-            # File does not exist 
-            except:
-                raise IOError("EXT: cannot find file containing HEG LDA orbitals.")
+    # Read the three lowest non-interacting eigenstates of the system
+    elif(pm.ext.initial_gspsi == 'non'):
+        try:
+            eigenstates = rs.Results.read('gs_non_eigf', pm)
+            eigenstate_1 = eigenstates[0].real
+            eigenstate_2 = eigenstates[1].real
+            eigenstate_3 = eigenstates[2].real
+        # If the file does not exist, calculate the three lowest eigenstates
+        except:
+            eigenstate_1, eigenstate_2, eigenstate_3 = non_approx(pm)
 
-        # Read the three lowest non-interacting eigenstates of the system
-        elif(pm.ext.initial_gspsi == 'non'):
-            try:
-                eigenstates = rs.Results.read('gs_non_eigf', pm)
-                eigenstate_1 = eigenstates[0].real
-                eigenstate_2 = eigenstates[1].real
-                eigenstate_3 = eigenstates[2].real
-            # If the file does not exist, calculate the three lowest eigenstates
-            except:
-                eigenstate_1, eigenstate_2, eigenstate_3 = non_approx(pm)
+    # Calculate the three lowest eigenstates of the harmonic oscillator
+    elif(pm.ext.initial_gspsi == 'qho'):
+        eigenstate_1 = qho_approx(pm, 0)
+        eigenstate_2 = qho_approx(pm, 1)
+        eigenstate_3 = qho_approx(pm, 2)
 
-        # Calculate the three lowest eigenstates of the harmonic oscillator
-        elif(pm.ext.initial_gspsi == 'qho'):
-            eigenstate_1 = qho_approx(pm, 0)
-            eigenstate_2 = qho_approx(pm, 1)
-            eigenstate_3 = qho_approx(pm, 2)
+    # Read an exact many-electron wavefunction from this directory 
+    elif(pm.ext.initial_gspsi == 'ext'):
+        try:
+            wavefunction_reduced = rs.Results.read('gs_ext_psi', pm)      
+        # File does not exist
+        except:
+            raise IOError("EXT: Cannot find file containting many-electron wavefunction.")
 
-        # Read an exact many-electron wavefunction from this directory 
-        elif(pm.ext.initial_gspsi == 'ext'):
-            try:
-                wavefunction_reduced = rs.Results.read('gs_ext_psi', pm)      
-            # File does not exist
-            except:
-                raise IOError("EXT: Cannot find file containting many-electron wavefunction.")
-
-        # Read an exact many-electron wavefunction from a different directory
-        else:
-            try:
-                pm2 = copy.deepcopy(pm)
-                pm2.run.name = pm.ext.initial_gspsi
-                wavefunction_reduced = rs.Results.read('gs_ext_psi', pm2)
-            # File does not exist
-            except:
-                raise IOError("EXT: Cannot find file containing many-electron wavefunction.")
-
-    # If calculating excited-state wavefunctions
+    # Read an exact many-electron wavefunction from a different directory
     else:
-
-        # Read an exact many-electron wavefunction from this directory 
-        if(pm.ext.initial_espsi == 'ext'):
-            try:
-                wavefunction_reduced = rs.Results.read('es_ext_psi{}'.format(state), pm)         
-            # File does not exist
-            except:
-                string = "EXT: Cannot find file containting many-electron wavefunction. Starting from the quantum harmonic oscillator."
-                pm.sprint(string, 1)
-                eigenstate_1 = qho_approx(pm, 0)
-                eigenstate_2 = qho_approx(pm, 1)
-                eigenstate_3 = qho_approx(pm, 2)
-
-        # Calculate the three lowest eigenstates of the harmonic oscillator
-        elif(pm.ext.initial_espsi == 'qho'):
-            eigenstate_1 = qho_approx(pm, 0)
-            eigenstate_2 = qho_approx(pm, 1)
-            eigenstate_3 = qho_approx(pm, 2)
-
-        # Read an exact many-electron wavefunction from a different directory
-        else:
-            try:
-                pm2 = copy.deepcopy(pm)
-                pm2.run.name = pm.ext.initial_espsi
-                wavefunction_reduced = rs.Results.read('es_ext_psi{}'.format(state), pm2)
-            # File does not exist
-            except:
-                string = "EXT: Cannot find file containting many-electron wavefunction. Starting from the quantum harmonic oscillator."
-                pm.sprint(string, 1)
-                eigenstate_1 = qho_approx(pm, 0)
-                eigenstate_2 = qho_approx(pm, 1)
-                eigenstate_3 = qho_approx(pm, 2)
+        try:
+            pm2 = copy.deepcopy(pm)
+            pm2.run.name = pm.ext.initial_gspsi
+            wavefunction_reduced = rs.Results.read('gs_ext_psi', pm2)
+        # File does not exist
+        except:
+            raise IOError("EXT: Cannot find file containing many-electron wavefunction.")
 
     # Construct a Slater determinant from the single-electron eigenstates if a many-electron wavefunction has not been read 
     nonzero_1 = np.count_nonzero(eigenstate_1)
@@ -454,43 +411,7 @@ def calculate_current_density(pm, density):
     return current_density
 
 
-def gram_schmidt(pm, wavefunction_reduced, eigenstates_array, excited_state):
-    r"""Applies the Gram-Schmidt orthogonalisation process to project out the eigenstates, that have 
-    already been calculated, from the reduced wavefunction. This ensures that the imaginary time 
-    propagation converges to the next eigenstate.
-
-    .. math:: 
-
-        \Psi(x_{1},x_{2},x_{3},\tau) \rightarrow \Psi(x_{1},x_{2},x_{3},\tau) 
-        - \sum_{j} (\Psi(x_{1},x_{2},x_{3},\tau)\boldsymbol{\cdot}\phi_{j}) \phi_{j} \delta x^2
-    
-    parameters
-    ----------
-    pm : object
-        Parameters object
-    wavefunction_reduced : array_like
-        1D array of the reduced wavefunction, indexed as wavefunction_reduced[space_index_1_2_3]
-    eigenstates_array : array_like
-        2D array of the eigenstates of the system, indexed as eigenstates_array[eigenstate,space_index_1_2_3] 
-    excited_state : integer
-        The excited state that is being calculated 
-
-    returns array_like
-        1D array of the reduced wavefunction after the eigenstates that have already been calculated have 
-        been projected out. 
-    """
-    # Copy the reduced wavefunction
-    v0 = wavefunction_reduced.copy()  
-  
-    # Project out the eigenstates
-    for j in range(excited_state):
-        vj = eigenstates_array[j,:]
-        wavefunction_reduced -= (np.vdot(v0,vj))*vj*pm.space.delta**2
-    
-    return wavefunction_reduced
-
-
-def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced, expansion_matrix, eigenstates_array=None):
+def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced, expansion_matrix):
     r"""Propagates the initial wavefunction through imaginary time using the Crank-Nicholson method
     to find the ground-state of the system. 
 
@@ -513,9 +434,7 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced, expansi
         1D array of the reduced wavefunction, indexed as wavefunction_reduced[space_index_1_2_3]
     expansion_matrix : sparse_matrix
         Sparse matrix used to expand the reduced wavefunction (insert indistinct elements) to get 
-        back the full wavefunction
-    eigenstates_array : array_like
-        2D array of the eigenstates of the system, indexed as eigenstates_array[eigenstate,space_index_1_2_3] 
+        back the full wavefunction 
 
     returns float and array_like
         Energy of the ground-state system. 1D array of the ground-state wavefunction, indexed as 
@@ -527,10 +446,6 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced, expansi
     # Print to screen
     string = 'EXT: imaginary time propagation'
     pm.sprint(string, 1)
-
-    # If calculating excited states
-    if(eigenstates_array is not None):
-        excited_state = eigenstates_array.shape[0]
   
     # Perform iterations
     i = 1
@@ -552,10 +467,6 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced, expansi
 
         # Solve Ax=b
         wavefunction_reduced, info = spsla.cg(A_reduced, b_reduced, x0=wavefunction_reduced, tol=pm.ext.itol_solver)
-
-        # Apply Gram-Schmidt orthogonalisation if necessary
-        if(eigenstates_array is not None):
-            wavefunction_reduced = gram_schmidt(pm, wavefunction_reduced, eigenstates_array, excited_state) 
  
         # Normalise the reduced wavefunction
         norm = npla.norm(wavefunction_reduced)*(np.sqrt(pm.space.delta)**3)
@@ -585,10 +496,7 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced, expansi
         if(wavefunction_convergence < pm.ext.itol):
             i = pm.ext.iimax
             pm.sprint('', 1)
-            if(eigenstates_array is None):
-                string = 'EXT: ground-state converged' 
-            else: 
-                string = 'EXT: {} excited state converged'.format(excited_state)
+            string = 'EXT: ground-state converged' 
             pm.sprint(string, 1)
         string = '------------------------------------------------------------------'
         if(i % 1000 == 0):
@@ -602,10 +510,7 @@ def solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced, expansi
     # Calculate the energy
     wavefunction_reduced *= norm
     energy = calculate_energy(pm, wavefunction_reduced, wavefunction_reduced_old)
-    if(eigenstates_array is None):
-        string = 'EXT: ground-state energy = {:.5f}'.format(energy)
-    else:
-        string = 'EXT: {0} excited state energy = {1:.5f}'.format(excited_state, energy)
+    string = 'EXT: ground-state energy = {:.5f}'.format(energy)
     pm.sprint(string, 1)
  
     # Expand the wavefunction and normalise
@@ -648,10 +553,6 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix, ex
     """
     # Array initialisations
     density = np.zeros((pm.sys.imax,pm.space.npt), dtype=np.float)
-    if(pm.ext.elf_td):
-        elf = np.copy(density)
-    else:
-        elf = 0 
 
     # Save the ground-state
     wavefunction_3D = wavefunction.reshape(pm.space.npt, pm.space.npt, pm.space.npt)
@@ -687,11 +588,9 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix, ex
         if(pm.sys.im == 0):
             wavefunction /= norm
        
-        # Calculate the density (and ELF)
+        # Calculate the density 
         wavefunction_3D = wavefunction.reshape(pm.space.npt, pm.space.npt, pm.space.npt)
         density[i,:] = calculate_density(pm, wavefunction_3D)
-        if(pm.ext.elf_td):
-            elf[i,:] = ELF.main(pm, wavefunction_3D, density=density[i,:])
     
         # Stop timing the iteration
         finish = time.time()
@@ -724,7 +623,7 @@ def solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix, ex
     # Calculate the current density
     current_density = calculate_current_density(pm, density)
 
-    return density, current_density, elf
+    return density, current_density
 
 
 def main(parameters):
@@ -753,7 +652,7 @@ def main(parameters):
     C_reduced = -A_reduced + 2.0*reduction_matrix*sps.identity(pm.space.npt**3, dtype=np.float)*expansion_matrix
 
     # Generate the initial wavefunction
-    wavefunction_reduced = initial_wavefunction(pm, 0)
+    wavefunction_reduced = initial_wavefunction(pm)
 
     # Propagate through imaginary time
     energy, wavefunction = solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced, expansion_matrix) 
@@ -770,47 +669,8 @@ def main(parameters):
     if(pm.ext.psi_gs):
         wavefunction_reduced = reduction_matrix*wavefunction
         results.add(wavefunction_reduced,'gs_ext_psi')
-    if(pm.ext.elf_gs):
-        elf = ELF.main(pm, wavefunction_3D, density=density)
-        results.add(elf,'gs_ext_elf')
     if(pm.run.save):
         results.save(pm)
-
-    # Apply Gram-Schmidt orthogonalisation if necessary
-    if(pm.ext.excited_states != 0):
-
-        # Array to store the eigenstates
-        eigenstates_array = np.zeros((pm.ext.excited_states+1, wavefunction_reduced.shape[0]), dtype=np.float)
-
-        # Loop over each excited-state
-        for j in range(pm.ext.excited_states):
-
-            # Save the previously calculated eigenstate
-            wavefunction_reduced = reduction_matrix*wavefunction
-            eigenstates_array[j,:] = wavefunction_reduced[:]
-
-            # Generate the initial wavefunction
-            wavefunction_reduced = initial_wavefunction(pm, j+1)
-          
-            # Propagate through imaginary time
-            energy, wavefunction = solve_imaginary_time(pm, A_reduced, C_reduced, wavefunction_reduced, expansion_matrix, 
-                                   eigenstates_array=eigenstates_array[0:j+1,:])
-
-            # Calculate the excited-state density
-            wavefunction_3D = wavefunction.reshape(pm.space.npt, pm.space.npt, pm.space.npt)
-            density = calculate_density(pm, wavefunction_3D)
-
-            # Save the quantities to file
-            results.add(density,'es_ext_den{}'.format(j+1))
-            results.add(energy,'es_ext_E{}'.format(j+1))
-            if(pm.ext.psi_es):
-                wavefunction_reduced = reduction_matrix*wavefunction
-                results.add(wavefunction_reduced,'es_ext_psi{}'.format(j+1))
-            if(pm.ext.elf_es):
-                elf = ELF.main(pm, wavefunction_3D, density=density)
-                results.add(elf,'es_ext_elf{}'.format(j+1))
-            if(pm.run.save):
-                results.save(pm)
 
     # Dispose of the reduced sparse matrices
     del A_reduced
@@ -829,7 +689,7 @@ def main(parameters):
         C_reduced = -A_reduced + 2.0*reduction_matrix*sps.identity(pm.space.npt**3, dtype=np.cfloat)*expansion_matrix
 
         # Propagate the ground-state wavefunction through real time
-        density, current_density, elf = solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix, expansion_matrix)
+        density, current_density = solve_real_time(pm, A_reduced, C_reduced, wavefunction, reduction_matrix, expansion_matrix)
 
         # Dispose of the reduced sparse matrices
         del A_reduced
@@ -839,8 +699,6 @@ def main(parameters):
         results.add(density,'td_ext_den')
         results.add(current_density,'td_ext_cur')
         results.add(pm.space.v_ext+pm.space.v_pert,'td_ext_vxt')
-        if(pm.ext.elf_td):
-            results.add(elf,'td_ext_elf')
         if(pm.run.save):
             results.save(pm)
 
