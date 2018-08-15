@@ -20,7 +20,7 @@ def draw(pm):
    pm.sprint('  |          Interacting Dynamic Electrons Approach          |')
    pm.sprint('  |              to Many-Body Quantum Mechanics              |')
    pm.sprint('  |                                                          |')
-   pm.sprint('  |{:^58}|'.format('Private Release {}'.format(info.release)))
+   pm.sprint('  |{:^58}|'.format('Public Release {}'.format(info.release)))
    pm.sprint('  |                                                          |')
    sha1 = info.get_sha1()
    if sha1 != "Unknown":
