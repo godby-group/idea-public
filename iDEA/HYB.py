@@ -59,9 +59,9 @@ def hamiltonian(pm, eigf, density, alpha, occupations, perturb=False):
 
    # Construct LDA Vxc.
    if not pm.hyb.seperate:
-      Vxc_LDA = iDEA.LDA.VXC(pm, density, pm.hyb.seperate)
+      Vxc_LDA = iDEA.LDA.xc_potential(pm, density, pm.hyb.seperate)
    else:
-      Vxc_LDA, Vx_LDA, Vc_LDA = iDEA.LDA.VXC(pm, density, pm.hyb.seperate)
+      Vxc_LDA, Vx_LDA, Vc_LDA = iDEA.LDA.xc_potential(pm, density, pm.hyb.seperate)
 
    # Construct the Fock operator.
    if alpha != 0:
@@ -158,12 +158,12 @@ def calc_with_alpha(pm, alpha, occupations):
 
       # LDA energy:
       if pm.hyb.seperate:
-          Exc_LDA, Ex_LDA, Ec_LDA = iDEA.LDA.EXC(pm, density)
+          Exc_LDA, Ex_LDA, Ec_LDA = iDEA.LDA.xc_energy(pm, density)
           Evx_LDA = Ex_LDA - np.dot(density, Vx_LDA)*pm.sys.deltax
           Evc_LDA = Ec_LDA - np.dot(density, Vc_LDA)*pm.sys.deltax
           E = (E_SYS + E_H + alpha*E_F + (1.0 - alpha)*Evx_LDA + Evc_LDA).real
       else:
-          Evxc_LDA = iDEA.LDA.EXC(pm, density) - np.dot(density, Vxc_LDA)*pm.sys.deltax
+          Evxc_LDA = iDEA.LDA.xc_energy(pm, density) - np.dot(density, Vxc_LDA)*pm.sys.deltax
           E = (E_SYS + E_H + alpha*E_F + (1.0 - alpha)*Evxc_LDA).real
 
       # Calculate charges on grid.

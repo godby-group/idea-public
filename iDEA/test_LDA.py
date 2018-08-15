@@ -61,8 +61,8 @@ class LDATestHarmonic(unittest.TestCase):
         norms = np.sum(eigf*eigf.conj(), axis=1) * pm.sys.deltax
         nt.assert_allclose(norms, np.ones(len(eigf)))
 
-        E1 = LDA.total_energy_eigv(pm, eigv, eigf=eigf.T)
-        E2 = LDA.total_energy_eigf(pm, eigf.T)
+        E1 = LDA.total_energy_eigv(pm, eigenvalues=eigv, orbitals=eigf.T)
+        E2 = LDA.total_energy_eigf(pm, orbitals=eigf.T)
 
         self.assertAlmostEqual(E1,E2, delta=1e-12)
 
@@ -78,16 +78,16 @@ class LDATestHarmonic(unittest.TestCase):
         eigf = results.gs_lda2_eigf[:pm.sys.NE].T
         #eigv = results.gs_lda_eigv
 
-        n = LDA.electron_density(pm, eigf)
+        n = LDA.electron_density(pm, orbitals=eigf)
         v_ks = 0
-        H = LDA.banded_to_full(LDA.hamiltonian(pm, v_ks))
+        H = LDA.banded_to_full(pm, H=LDA.hamiltonian(pm, v_ks=v_ks))
 
 
         H_psi = np.dot(H,eigf)
         T_1 = 0
         for i in range(pm.sys.NE):
             T_1 += np.dot(eigf[:,i].T, H_psi[:,i]) * pm.sys.deltax
-        T_2 = LDA.kinetic_energy(pm, eigf)
+        T_2 = LDA.kinetic_energy(pm, orbitals=eigf)
 
         self.assertAlmostEqual(T_1, T_2)
 
@@ -99,7 +99,7 @@ class LDATestHarmonic(unittest.TestCase):
         """
         pm = self.pm
         v_ext = pm.space.v_ext
-        H = LDA.banded_to_full(LDA.hamiltonian(pm, v_ext))
+        H = LDA.banded_to_full(pm, H=LDA.hamiltonian(pm, v_ks=v_ext))
 
         grid = pm.sys.grid
         sd = pm.space.second_derivative
