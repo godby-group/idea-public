@@ -1,5 +1,5 @@
-iDEA ELF (Electron Localisation Function)
-=========================================
+ELF (Electron Localisation Function)
+====================================
 
 The electron localisation function (ELF) is an approximate method to estimate the probability of finding an electron in the vicinity of a reference electron i.e. electron localisation is the tendency of an electron in a many-electron system to exclude other electrons from its vicinity. This is useful, for example, in describing chemical bonds, which are formed by pairs of localised electrons.
 

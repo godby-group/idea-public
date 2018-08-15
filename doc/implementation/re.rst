@@ -1,5 +1,5 @@
-iDEA RE (Reverse-Engineering)
-=============================
+RE (Reverse-Engineering)
+========================
 The RE code calculates the exact Kohn-Sham (KS) potential [and hence exact exchange-correlation (xc) potential] for a given electron density :math:`n(x,t)`. 
 
 Ground-state Kohn-Sham potential

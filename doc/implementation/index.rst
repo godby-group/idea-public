@@ -12,6 +12,7 @@ implemented. For more detailed information, see the iDEA manual by Mike Entwistl
    re
    lda
    hf
+   hfks
    hyb
    non
    mlp
