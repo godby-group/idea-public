@@ -272,8 +272,6 @@ class Input(object):
 
         # Time-dependence
         if pm.run.time_dependence == True:
-            if pm.run.MBPT == True:
-                self.sprint('MBPT: Warning - time-dependence not implemented!')
             if pm.run.HYB == True:
                 self.sprint('HYB: Warning - time-dependence not implemented!')
             if (pm.ext.RE or pm.non.RE or pm.lda.RE or pm.hf.RE or pm.hyb.RE):
@@ -294,7 +292,7 @@ class Input(object):
         # HF
         if pm.run.HF == True:
             if (pm.hf.fock != 1 and pm.hf.fock != 0):
-                raise ValueError('HF: Error - hf.fock must be set to 0 or 1.'.format(pm.mbpt.norb, pm.sys.NE))
+                raise ValueError('HF: Error - hf.fock must be set to 0 or 1.')
             if (pm.hf.nu > 1 or pm.hf.nu < 0):
                 self.sprint('HF: Warning - Value of nu should be between 0 and 1')
 
