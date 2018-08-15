@@ -1,5 +1,5 @@
-iDEA NON (non-interacting)
-==========================
+NON (non-interacting)
+=====================
 
 The NON code solves the single-particle time-independent Schrödinger equation (TISE) for one-dimensional finite systems of non-interacting electrons. A perturbing potential in then applied to the ground-state system and its evolution is calculated through solving the single-particle time-dependent Schrödinger equation (TDSE).
 
