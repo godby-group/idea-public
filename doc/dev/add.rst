@@ -47,12 +47,12 @@ Before contributing your changes back to iDEA, make sure
 to comply with our :doc:`best practises <practises>`.
 
 
- 1. Fork the `iDEA repository on github <https://github.com/godby-group/idea-private>`_
+ 1. Fork the `iDEA repository on github <https://github.com/godby-group/idea-public>`_
  2. Assuming you've already committed your changes to a local repo, add a remote to your fork:
 
     .. code-block:: bash
 
-       git remote add fork git@github.com:ltalirz/idea-private.git
+       git remote add fork git@github.com:ltalirz/idea-public.git
 
  3. Pull from your fork (to synchronize), and then push local changes back to github
 
@@ -61,7 +61,7 @@ to comply with our :doc:`best practises <practises>`.
        git pull fork master # may be asked to merge
        git push fork master
 
- 4. `Create a pull request <https://github.com/godby-group/idea-private/pulls>`_ from your fork to the iDEA repo on github (you'll need to click on *compare across forks*)
+ 4. `Create a pull request <https://github.com/godby-group/idea-public/pulls>`_ from your fork to the iDEA repo on github (you'll need to click on *compare across forks*)
 
 Once a core developer maintainer has reviewed your pull request, your changes
 will be incorporated into iDEA.
@@ -76,7 +76,7 @@ Updating your local repository:
 
 .. code-block:: bash
 
-   git remote add upstream git@github.com:godby-group/idea-private.git
+   git remote add upstream git@github.com:godby-group/idea-public.git
    git pull upstream master
 
 After this, also update your fork on github:
