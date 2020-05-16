@@ -141,7 +141,7 @@ class Input(object):
         """Sets default values of some properties."""
         self.filename = ''
         self.log = ''
-        self.last_print = time.clock()
+        self.last_print = time.process_time()
 
         ### Run parameters
         self.run = InputSection()
@@ -347,7 +347,7 @@ class Input(object):
             self.log += string + '\n'
         if priority >= self.priority_dict[verbosity]:
 
-            timestamp = time.clock()
+            timestamp = time.process_time()
             if newline:
                 print(string)
                 self.last_print = timestamp
